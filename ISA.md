@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 0/61
+progress: 2/61
 mode: build
 started: 2026-08-26
 updated: 2026-08-26
@@ -109,8 +109,8 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [ ] ISC-2: WebMCP namespace verdict for the ChatGPT in-app browser recorded in the repo
 - [ ] ISC-3: Adapter shim feature-detects both namespaces and passes unit tests against a mock of each
 - [ ] ISC-4: Dynamic deregistration spike verdict recorded in Decisions — Exam Mode mode chosen (real revocation | refusal fallback) before any dependent work starts
-- [ ] ISC-5: Repository `miskaone/learn-powerplatform-fyi` exists and is public
-- [ ] ISC-6: MIT `LICENSE` file at repo root, present from the first commit
+- [x] ISC-5: Repository `miskaone/learn-powerplatform-fyi` exists and is public
+- [x] ISC-6: MIT `LICENSE` file at repo root, present from the first commit
 - [ ] ISC-7: CC BY 4.0 notice covers the lesson-content directory
 - [ ] ISC-8: Cloudflare Pages project exists — `source.type=github`, repo bound, `production_branch=main`, build `bun run build` → `out`
 - [ ] ISC-9: `learn` CNAME exists and `https://learn.powerplatform.fyi` returns HTTP 200 with valid TLS
