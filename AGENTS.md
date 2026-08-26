@@ -19,8 +19,11 @@ mastery rubric, and dynamic tool registration/revocation.
   No server API routes, no SSR, no ISR.
 - **One deploy path.** Push to `main` → Cloudflare Pages. Never add a GitHub
   Actions deploy workflow.
-- Build and test commands are **not yet established** — the scaffold has no
-  `package.json` yet. Update this file with verified commands when they exist.
+- Verified commands (bun workspaces: `apps/*`, `packages/*`):
+  - `bun install` — repo root
+  - `bun run build` — builds `apps/web` (Next.js static export → `apps/web/out/`)
+  - `bun test` — runs bun:test across both workspaces
+  - `bun run --cwd packages/mastery-gate typecheck` — strict `tsc --noEmit` on the engine package
 
 ## Architecture invariants
 

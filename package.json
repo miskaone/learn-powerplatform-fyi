@@ -1,0 +1,9 @@
+{
+  "name": "learn-powerplatform-fyi",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build": "bun run --cwd apps/web build",
+    "test": "bun test"
+  }
+}
