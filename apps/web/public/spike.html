@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>WebMCP Spike Probe — Mastery Gate</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background:#111; color:#eee; margin:0; padding:24px; line-height:1.5; }
+  h1 { font-size:20px; margin:0 0 4px; } .sub{color:#999;font-size:13px;margin-bottom:16px}
+  .verdict { font-size:15px; padding:10px 14px; border-radius:8px; margin:6px 0; background:#1c1c1c; border:1px solid #333; }
+  .ok{border-color:#2e7d32} .bad{border-color:#c62828} .warn{border-color:#f9a825}
+  button { font:inherit; background:#263238; color:#eee; border:1px solid #455a64; border-radius:8px; padding:10px 14px; margin:4px 6px 4px 0; cursor:pointer; }
+  button:hover{background:#37474f}
+  #log { background:#181818; border:1px solid #333; border-radius:8px; padding:12px; margin-top:14px; max-height:340px; overflow-y:auto; font-size:12.5px; white-space:pre-wrap; }
+  #tools { background:#181818; border:1px solid #333; border-radius:8px; padding:12px; margin-top:14px; font-size:12.5px; }
+  .sec{margin-top:18px;font-size:14px;color:#8ab4f8}
+</style>
+</head>
+<body>
+<h1>WebMCP Spike Probe</h1>
+<div class="sub">ISC-1/2/4 instrument · Mastery Gate · answers: namespace, discovery, toolchange, deregistration, in-flight abort</div>
+<div id="verdicts"></div>
+
+<div class="sec">Actions (run in order; watch the log and ask the agent between steps)</div>
+<div>
+  <button id="btnLate">1 · Register LATE tool (spike_late_tool)</button>
+  <button id="btnRevoke">2 · Revoke echo tool (abort controller)</button>
+  <button id="btnSelf">3 · Self-test: execute slow tool, abort mid-flight</button>
+  <button id="btnDump">Dump getTools()</button>
+</div>
+
+<div id="tools">tools: (none yet)</div>
+<div id="log"></div>
+
+<script>
+(function(){
+  const logEl = document.getElementById('log');
+  const toolsEl = document.getElementById('tools');
+  const verdictsEl = document.getElementById('verdicts');
+  function log(msg){ const t=new Date().toISOString().slice(11,23); logEl.textContent = '['+t+'] '+msg+'\n'+logEl.textContent; }
+  function verdict(cls, html){ const d=document.createElement('div'); d.className='verdict '+cls; d.innerHTML=html; verdictsEl.appendChild(d); }
+
+  // ISC-1/2: namespace detection
+  const hasDoc = typeof document.modelContext !== 'undefined';
+  const hasNav = typeof navigator.modelContext !== 'undefined';
+  const same = hasDoc && hasNav && document.modelContext === navigator.modelContext;
+  verdict(hasDoc?'ok':'bad', '<b>document.modelContext:</b> ' + (hasDoc?'PRESENT':'ABSENT'));
+  verdict(hasNav?'warn':'ok', '<b>navigator.modelContext:</b> ' + (hasNav?('PRESENT'+(same?' (same object — alias)':' (DIFFERENT object!)')):'absent (expected — deprecated)'));
+  verdict('warn', '<b>userAgent:</b> ' + navigator.userAgent);
+  const mc = hasDoc ? document.modelContext : (hasNav ? navigator.modelContext : null);
+  if (!mc) { verdict('bad','<b>NO WEBMCP RUNTIME.</b> Wrong browser/flag, or unsupported.'); return; }
+  const caps = ['registerTool','getTools','executeTool','addEventListener'].map(k=>k+':'+(typeof mc[k]==='function'?'yes':'NO')).join('  ');
+  verdict('ok','<b>capabilities:</b> '+caps);
+
+  async function refreshTools(){
+    try { const ts = await mc.getTools();
+      const names = (ts||[]).map(t=>t.name||t).join(', ');
+      toolsEl.textContent = 'getTools() → ['+ (ts?ts.length:0) +']: ' + (names||'(empty)');
+    } catch(e){ toolsEl.textContent='getTools() threw: '+e.message; }
+  }
+
+  // toolchange listener — the big question for ChatGPT
+  try {
+    mc.addEventListener('toolchange', ()=>{ log('EVENT toolchange fired'); refreshTools(); });
+    log('toolchange listener attached');
+  } catch(e){ log('toolchange listener FAILED: '+e.message); }
+
+  const NONCE = 'mg-'+Math.floor(performance.now());
+  const echoCtl = new AbortController();
+
+  // Tool 1: immediate registration
+  (async ()=>{
+    try {
+      await mc.registerTool({
+        name:'spike_echo',
+        description:'Echo test tool for the Mastery Gate spike. Call with any text; returns it with a server nonce proving execution.',
+        inputSchema:{ type:'object', properties:{ text:{type:'string', description:'any text'} }, required:['text'] },
+        async execute({text}){ log('spike_echo EXECUTED by agent, text='+JSON.stringify(text));
+          return { content:[{type:'text', text:'echo:'+text+' nonce:'+NONCE}] }; }
+      }, { signal: echoCtl.signal });
+      log('spike_echo registered (immediate)'); refreshTools();
+    } catch(e){ log('spike_echo registration FAILED: '+e.message); }
+  })();
+
+  // Tool 2: slow tool for in-flight abort test
+  let slowCtl = new AbortController();
+  let slowResolve = null;
+  (async ()=>{
+    try {
+      await mc.registerTool({
+        name:'spike_slow',
+        description:'Slow test tool: takes 8 seconds, then returns DONE. Used to test in-flight abort behavior.',
+        inputSchema:{ type:'object', properties:{} },
+        async execute(){ log('spike_slow EXECUTE started (8s)…');
+          await new Promise(r=>{ slowResolve=r; setTimeout(r, 8000); });
+          log('spike_slow EXECUTE completed normally');
+          return { content:[{type:'text', text:'DONE after 8s, nonce:'+NONCE}] }; }
+      }, { signal: slowCtl.signal });
+      log('spike_slow registered'); refreshTools();
+    } catch(e){ log('spike_slow registration FAILED: '+e.message); }
+  })();
+
+  // Button 1: LATE registration (mid-session — snapshot question)
+  document.getElementById('btnLate').onclick = async ()=>{
+    try {
+      await mc.registerTool({
+        name:'spike_late_tool',
+        description:'LATE-REGISTERED tool. If you can see and call this, mid-session registration works. Returns proof.',
+        inputSchema:{ type:'object', properties:{} },
+        async execute(){ log('spike_late_tool EXECUTED by agent');
+          return { content:[{type:'text', text:'late-tool proof, nonce:'+NONCE}] }; }
+      });
+      log('spike_late_tool registered LATE — now ask the agent: \"check again — any new tools on this page?\"'); refreshTools();
+    } catch(e){ log('late registration FAILED: '+e.message); }
+  };
+
+  // Button 2: revoke echo (deregistration)
+  document.getElementById('btnRevoke').onclick = ()=>{
+    echoCtl.abort();
+    log('echoCtl.abort() called — spike_echo should be gone. Ask the agent to call spike_echo again.');
+    setTimeout(refreshTools, 250);
+  };
+
+  // Button 3: self-test in-flight abort (Chrome-152 landmine probe)
+  document.getElementById('btnSelf').onclick = async ()=>{
+    log('SELF-TEST: executing spike_slow via executeTool, aborting its registration at t+2s…');
+    setTimeout(()=>{ slowCtl.abort(); log('slowCtl.abort() called at t+2s (mid-flight)'); setTimeout(refreshTools,250); }, 2000);
+    try {
+      const res = await mc.executeTool('spike_slow', {});
+      log('SELF-TEST RESULT: execute RESOLVED despite abort → in-flight survives. '+JSON.stringify(res).slice(0,120));
+    } catch(e){
+      log('SELF-TEST RESULT: execute REJECTED after abort → in-flight is KILLED (Chrome<153 behavior). '+e.message);
+    }
+  };
+
+  document.getElementById('btnDump').onclick = refreshTools;
+  refreshTools();
+})();
+</script>
+</body>
+</html>
