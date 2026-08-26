@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+.open-next/
+
+# Environment & credentials — never commit key material
+.env
+.env.*
+.dev.vars
+
+# Cloudflare
+.wrangler/
+
+# Local tooling
+.codegraph/
+.DS_Store
+*.log
