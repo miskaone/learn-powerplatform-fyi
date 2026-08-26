@@ -1,0 +1,182 @@
+{
+  "courseId": "pl-400",
+  "title": "PL-400 Mastery Gate — SAMPLE — replace with authored content",
+  "objectives": [
+    {
+      "id": "objective-1-placeholder",
+      "title": "Objective 1 — SAMPLE — replace with authored content",
+      "summary": "Placeholder coverage of the sample concept for the first objective. SAMPLE — replace with authored content",
+      "questionIds": ["sample-q-obj1-1", "sample-q-obj1-2"]
+    },
+    {
+      "id": "objective-2-placeholder",
+      "title": "Objective 2 — SAMPLE — replace with authored content",
+      "summary": "Placeholder coverage of the sample concept for the second objective. SAMPLE — replace with authored content",
+      "questionIds": ["sample-q-obj2-1", "sample-q-obj2-2"]
+    }
+  ],
+  "questions": [
+    {
+      "id": "sample-q-obj1-1",
+      "objectiveId": "objective-1-placeholder",
+      "concepts": ["sample-concept"],
+      "prompt": "SAMPLE — replace with authored content. Which statement best describes the sample concept?",
+      "options": [
+        {
+          "id": "sample-q-obj1-1-a",
+          "text": "The sample concept is the named idea this placeholder item is checking."
+        },
+        {
+          "id": "sample-q-obj1-1-b",
+          "text": "The sample concept is interchangeable with any nearby term.",
+          "misconceptionId": "sample-mc-collapse"
+        },
+        {
+          "id": "sample-q-obj1-1-c",
+          "text": "The sample concept can be skipped when the wording feels familiar.",
+          "misconceptionId": "sample-mc-skip"
+        },
+        {
+          "id": "sample-q-obj1-1-d",
+          "text": "The sample concept is a label that never needs a contrast.",
+          "misconceptionId": "sample-mc-label-only"
+        }
+      ],
+      "correctOptionId": "sample-q-obj1-1-a",
+      "rationale": "SAMPLE — replace with authored content. The correct choice restates the sample concept without collapsing it into a neighboring idea.",
+      "remediationAnchor": "sample-concept"
+    },
+    {
+      "id": "sample-q-obj1-2",
+      "objectiveId": "objective-1-placeholder",
+      "concepts": ["sample-concept", "sample-contrast"],
+      "prompt": "SAMPLE — replace with authored content. Why does the sample concept need an explicit contrast?",
+      "options": [
+        {
+          "id": "sample-q-obj1-2-a",
+          "text": "A contrast keeps the sample concept from being confused with a neighboring idea."
+        },
+        {
+          "id": "sample-q-obj1-2-b",
+          "text": "A contrast is optional once the sample concept has a name.",
+          "misconceptionId": "sample-mc-no-contrast"
+        },
+        {
+          "id": "sample-q-obj1-2-c",
+          "text": "The sample concept collapses into whichever nearby term is more popular.",
+          "misconceptionId": "sample-mc-collapse"
+        },
+        {
+          "id": "sample-q-obj1-2-d",
+          "text": "The sample concept can be skipped if the contrast is already obvious.",
+          "misconceptionId": "sample-mc-skip"
+        }
+      ],
+      "correctOptionId": "sample-q-obj1-2-a",
+      "rationale": "SAMPLE — replace with authored content. The sample concept stays usable only when its contrast is named.",
+      "remediationAnchor": "sample-model-driven"
+    },
+    {
+      "id": "sample-q-obj2-1",
+      "objectiveId": "objective-2-placeholder",
+      "concepts": ["sample-concept", "sample-application"],
+      "prompt": "SAMPLE — replace with authored content. How should a learner apply the sample concept in this second objective?",
+      "options": [
+        {
+          "id": "sample-q-obj2-1-a",
+          "text": "Restate the sample concept, then check it against the situation before choosing."
+        },
+        {
+          "id": "sample-q-obj2-1-b",
+          "text": "Skip the sample concept and choose the first familiar term.",
+          "misconceptionId": "sample-mc-skip"
+        },
+        {
+          "id": "sample-q-obj2-1-c",
+          "text": "Treat the sample concept as a label with no work behind it.",
+          "misconceptionId": "sample-mc-label-only"
+        },
+        {
+          "id": "sample-q-obj2-1-d",
+          "text": "Drop the contrast and let neighboring ideas stand in.",
+          "misconceptionId": "sample-mc-no-contrast"
+        }
+      ],
+      "correctOptionId": "sample-q-obj2-1-a",
+      "rationale": "SAMPLE — replace with authored content. Applying the sample concept means checking it, not substituting a nearby term.",
+      "remediationAnchor": "sample-canvas-guided"
+    },
+    {
+      "id": "sample-q-obj2-2",
+      "objectiveId": "objective-2-placeholder",
+      "concepts": ["sample-concept", "sample-connections"],
+      "prompt": "SAMPLE — replace with authored content. How does the sample concept connect across the two placeholder objectives?",
+      "options": [
+        {
+          "id": "sample-q-obj2-2-a",
+          "text": "The sample concept is the same idea in both objectives; only the situation changes."
+        },
+        {
+          "id": "sample-q-obj2-2-b",
+          "text": "Each objective invents a new sample concept with no shared meaning.",
+          "misconceptionId": "sample-mc-collapse"
+        },
+        {
+          "id": "sample-q-obj2-2-c",
+          "text": "The sample concept is only a heading label and does not transfer.",
+          "misconceptionId": "sample-mc-label-only"
+        },
+        {
+          "id": "sample-q-obj2-2-d",
+          "text": "Connections do not need a contrast between the two objectives.",
+          "misconceptionId": "sample-mc-no-contrast"
+        }
+      ],
+      "correctOptionId": "sample-q-obj2-2-a",
+      "rationale": "SAMPLE — replace with authored content. The sample concept transfers; the surrounding situation is what changes.",
+      "remediationAnchor": "sample-concept-connections"
+    }
+  ],
+  "misconceptions": [
+    {
+      "id": "sample-mc-collapse",
+      "name": "Collapsing the sample concept — SAMPLE — replace with authored content",
+      "contrast": "The sample concept is distinct from neighboring ideas. SAMPLE — replace with authored content",
+      "socraticSeeds": [
+        "What nearby term did you treat as the same as the sample concept?",
+        "What would stop working if those two ideas were actually the same?"
+      ],
+      "anchor": "sample-concept"
+    },
+    {
+      "id": "sample-mc-skip",
+      "name": "Skipping the sample concept — SAMPLE — replace with authored content",
+      "contrast": "Familiar wording is not a reason to skip the check. SAMPLE — replace with authored content",
+      "socraticSeeds": [
+        "What felt familiar enough that the sample concept seemed skippable?",
+        "What would you check if the wording were less familiar?"
+      ],
+      "anchor": "sample-model-driven"
+    },
+    {
+      "id": "sample-mc-label-only",
+      "name": "Label-only sample concept — SAMPLE — replace with authored content",
+      "contrast": "A name without a contrast is not yet the sample concept. SAMPLE — replace with authored content",
+      "socraticSeeds": [
+        "If you only have the name, what can you not yet decide?",
+        "What work does the sample concept do beyond labeling?"
+      ],
+      "anchor": "sample-concept-connections"
+    },
+    {
+      "id": "sample-mc-no-contrast",
+      "name": "Missing contrast — SAMPLE — replace with authored content",
+      "contrast": "The sample concept is defined by what it is not. SAMPLE — replace with authored content",
+      "socraticSeeds": [
+        "What is the sample concept being distinguished from?",
+        "What decision becomes ambiguous without that contrast?"
+      ],
+      "anchor": "sample-power-pages"
+    }
+  ]
+}

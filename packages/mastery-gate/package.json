@@ -6,7 +6,11 @@
   "module": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema.ts"
+    "./schema": "./src/schema.ts",
+    "./engine": "./src/engine/index.ts",
+    "./webmcp": "./src/webmcp/index.ts",
+    "./rules": "./src/rules/rules.ts",
+    "./rules/flipCondition": "./src/rules/flipCondition.ts"
   },
   "scripts": {
     "test": "bun test",

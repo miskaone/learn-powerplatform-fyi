@@ -1,0 +1,44 @@
+{
+  "id": "sample-flip-ui",
+  "title": "UI tree sample flips — SAMPLE — replace with authored content",
+  "treeKind": "ui",
+  "baselineRowId": "row-baseline",
+  "note": "Placeholder Flip-Condition table. SAMPLE — replace with authored content",
+  "rows": [
+    {
+      "id": "row-baseline",
+      "answers": {
+        "ui-root": false,
+        "ui-relational": true
+      },
+      "expectedOutcomeId": "ui-model",
+      "expectedComponent": "Model-driven app",
+      "expectedRuleId": "related-records",
+      "citation": "sample-model-driven"
+    },
+    {
+      "id": "row-flip-external",
+      "answers": {
+        "ui-root": true,
+        "ui-relational": true
+      },
+      "expectedOutcomeId": "ui-pages",
+      "expectedComponent": "Power Pages",
+      "expectedRuleId": "external-users",
+      "citation": "sample-power-pages",
+      "mutatedQuestionId": "ui-root"
+    },
+    {
+      "id": "row-flip-relational",
+      "answers": {
+        "ui-root": false,
+        "ui-relational": false
+      },
+      "expectedOutcomeId": "ui-canvas",
+      "expectedComponent": "Canvas app",
+      "expectedRuleId": "guided-task",
+      "citation": "sample-canvas-guided",
+      "mutatedQuestionId": "ui-relational"
+    }
+  ]
+}

@@ -8,6 +8,7 @@
     "apps/web": {
       "name": "@learn/web",
       "dependencies": {
+        "@learn/mastery-gate": "workspace:*",
         "next": "^15",
         "react": "^19",
         "react-dom": "^19",

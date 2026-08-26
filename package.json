@@ -4,6 +4,7 @@
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "build": "bun run --cwd apps/web build",
-    "test": "bun test"
+    "test": "bun test",
+    "validate:content": "bun scripts/validate-content.ts"
   }
 }
