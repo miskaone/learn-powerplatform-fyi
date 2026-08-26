@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 2/61
+progress: 4/61
 mode: build
 started: 2026-08-26
 updated: 2026-08-26
@@ -112,8 +112,8 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [x] ISC-5: Repository `miskaone/learn-powerplatform-fyi` exists and is public
 - [x] ISC-6: MIT `LICENSE` file at repo root, present from the first commit
 - [ ] ISC-7: CC BY 4.0 notice covers the lesson-content directory
-- [ ] ISC-8: Cloudflare Pages project exists — `source.type=github`, repo bound, `production_branch=main`, build `bun run build` → `out`
-- [ ] ISC-9: `learn` CNAME exists and `https://learn.powerplatform.fyi` returns HTTP 200 with valid TLS
+- [x] ISC-8: Cloudflare Pages project exists — `source.type=github`, repo bound, `production_branch=main`, build `bun run build` → `out`
+- [x] ISC-9: `learn` CNAME exists and `https://learn.powerplatform.fyi` returns HTTP 200 with valid TLS
 - [ ] ISC-10: Cold clone passes `bun install && bun run build` with only the README instructions
 
 ### Engine (`packages/mastery-gate`)
@@ -270,3 +270,8 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   to the video — which converts narration from a TTS trick into a protocol demonstration.
 - **2026-08-26** — Phase moved observe → execute; Day 1 opened: new local repo +
   repo-bootstrap, spikes to follow. ISA relocates to the new repo root once it exists.
+- **2026-08-26** — Deploy chain live: Pages project learn-powerplatform-fyi bound to
+  main, learn CNAME created explicitly (scar 1 applied), first production deploy
+  767f44a3-42ff-434c-9b29-1ff304ce9386 verified at learn.powerplatform.fyi. Merged
+  build/day1-overnight into main (fast-forward) as the deploy trigger, per owner
+  authorization.
