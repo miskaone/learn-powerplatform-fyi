@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 4/61
+progress: 6/61
 mode: build
 started: 2026-08-26
 updated: 2026-08-26
@@ -106,9 +106,9 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 ### Day-1 spikes, repo, and deploy chain
 
 - [ ] ISC-1: WebMCP namespace verdict for Chrome-behind-flag recorded in the repo (which of `navigator.modelContext` / `document.modelContext` resolves, with probe output)
-- [ ] ISC-2: WebMCP namespace verdict for the ChatGPT in-app browser recorded in the repo
+- [x] ISC-2: WebMCP namespace verdict for the ChatGPT in-app browser recorded in the repo
 - [ ] ISC-3: Adapter shim feature-detects both namespaces and passes unit tests against a mock of each
-- [ ] ISC-4: Dynamic deregistration spike verdict recorded in Decisions — Exam Mode mode chosen (real revocation | refusal fallback) before any dependent work starts
+- [x] ISC-4: Dynamic deregistration spike verdict recorded in Decisions — Exam Mode mode chosen (real revocation | refusal fallback) before any dependent work starts
 - [x] ISC-5: Repository `miskaone/learn-powerplatform-fyi` exists and is public
 - [x] ISC-6: MIT `LICENSE` file at repo root, present from the first commit
 - [ ] ISC-7: CC BY 4.0 notice covers the lesson-content directory
@@ -275,3 +275,12 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   767f44a3-42ff-434c-9b29-1ff304ce9386 verified at learn.powerplatform.fyi. Merged
   build/day1-overnight into main (fast-forward) as the deploy trigger, per owner
   authorization.
+- **2026-08-26** — Spike verdicts (ChatGPT in-app browser, live probe at /spike, evidence in
+  `docs/spike-verdicts.md`): `document.modelContext` only (`navigator` absent); Chromium 151 base;
+  no `toolchange`/`addEventListener` surface — agent notification + `getTools()` polling is the
+  required mechanism, events optional. **Mid-session registration IS visible to the agent** (it
+  listed and executed the late tool) and **deregistration IS honored** (aborted tool vanished from
+  its list). ISC-4 verdict: **Exam Mode ships real revocation** with a hard drain-first rule
+  (never abort mid-execution; Chromium <153 kills in-flight calls), refusal fallback retained
+  behind the registry interface. Shim namespace preference flips to document-first. Chrome-side
+  ISC-1 still pending.
