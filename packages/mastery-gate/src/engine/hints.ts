@@ -1,4 +1,4 @@
-import type { Ledger, Question } from '../schema';
+import type { Ledger, Misconception, Question } from '../schema';
 import { attemptCount } from './ledger';
 
 export interface HintState {
@@ -11,7 +11,6 @@ export type HintResult =
       tier: 1 | 2;
       questionId: string;
       guidance: string;
-      eliminatedOptionId?: string;
     }
   | {
       granted: false;
@@ -29,6 +28,7 @@ export function requestHint(
   state: HintState,
   ledger: Ledger,
   question: Question,
+  misconceptions: readonly Misconception[],
 ): { state: HintState; result: HintResult } {
   const nextTier = (state.tiersIssued[question.id] ?? 0) + 1;
 
@@ -57,11 +57,7 @@ export function requestHint(
       };
     }
 
-    const eliminated = question.options.find(
-      (option) => option.id !== question.correctOptionId,
-    );
-    const eliminatedOptionId = eliminated ? eliminated.id : '';
-    const guidance = `You can safely eliminate option ${eliminatedOptionId}.`;
+    const guidance = contrastGuidance(ledger, question, misconceptions);
     return {
       state: grantTier(state, question.id, 2),
       result: {
@@ -69,7 +65,6 @@ export function requestHint(
         tier: 2,
         questionId: question.id,
         guidance,
-        eliminatedOptionId,
       },
     };
   }
@@ -82,6 +77,44 @@ export function requestHint(
       reason: 'ladder-exhausted',
     },
   };
+}
+
+function contrastGuidance(
+  ledger: Ledger,
+  question: Question,
+  misconceptions: readonly Misconception[],
+): string {
+  const fallback = `Contrast the options against: ${question.concepts.join(', ')}. Restate the concept in your own words before choosing again.`;
+
+  let lastIncorrectOptionId: string | null = null;
+  for (let i = ledger.attempts.length - 1; i >= 0; i -= 1) {
+    const attempt = ledger.attempts[i];
+    if (attempt.questionId === question.id && !attempt.correct) {
+      lastIncorrectOptionId = attempt.optionId;
+      break;
+    }
+  }
+  if (lastIncorrectOptionId === null) {
+    return fallback;
+  }
+
+  let misconceptionId: string | undefined;
+  for (const option of question.options) {
+    if (option.id === lastIncorrectOptionId) {
+      misconceptionId = option.misconceptionId;
+      break;
+    }
+  }
+  if (misconceptionId === undefined) {
+    return fallback;
+  }
+
+  for (const misconception of misconceptions) {
+    if (misconception.id === misconceptionId) {
+      return `Your previous answer reflects "${misconception.name}". ${misconception.contrast}`;
+    }
+  }
+  return fallback;
 }
 
 function grantTier(

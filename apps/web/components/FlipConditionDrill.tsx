@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { FlipScenario } from "../lib/mockState";
+import type { FlipScenario } from "../lib/types";
 
 type DrillPhase = "mutate" | "commit" | "reveal";
 

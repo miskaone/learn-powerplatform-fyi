@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { QuestionPublic } from "@learn/mastery-gate/schema";
-import type { GradeVerdict } from "../lib/mockState";
+import type { UiVerdict } from "../lib/types";
 
 const OPTION_LETTERS = ["A", "B", "C", "D"] as const;
 
@@ -10,7 +10,7 @@ export function QuizCard(props: {
   question: QuestionPublic;
   questionNumber: number;
   questionCount: number;
-  verdict: GradeVerdict | null;
+  verdict: UiVerdict | null;
   onSubmit: (optionId: string) => void;
   onHint: () => void;
   hint: string | null;
@@ -91,8 +91,11 @@ export function QuizCard(props: {
         ) : (
           <div className="pl400-banner pl400-banner-danger" role="status">
             Misconception detected:{" "}
-            {props.verdict.misconceptionName ?? "unnamed misconception"}.
-            Attempts used: {props.verdict.attemptsUsed}.
+            {props.verdict.misconceptionName ??
+              props.verdict.misconceptionId ??
+              "unnamed misconception"}
+            . Attempt {props.verdict.attemptNumber};{" "}
+            {props.verdict.attemptsRemaining} remaining.
           </div>
         )
       ) : null}

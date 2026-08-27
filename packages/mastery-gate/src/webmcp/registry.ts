@@ -26,6 +26,7 @@ export interface ToolRegistryOptions {
   drainTimeoutMs?: number;
   logger?: (message: string) => void;
   toolsetOverride?: Partial<Record<ToolName, ToolDescriptor>>;
+  disabledTools?: readonly ToolName[];
 }
 
 const EXAM_TOOL_NAME_SET: ReadonlySet<ToolName> = new Set(EXAM_TOOL_NAMES);
@@ -93,6 +94,7 @@ export class ToolRegistry {
   private readonly pendingRevocations = new Map<ToolName, Promise<void>>();
   private readonly drainTimeoutMs: number;
   private readonly logger: (message: string) => void;
+  private readonly disabledTools: ReadonlySet<ToolName>;
   private refusalActive = false;
 
   constructor(
@@ -108,6 +110,7 @@ export class ToolRegistry {
       ((message: string) => {
         console.warn(message);
       });
+    this.disabledTools = new Set(options?.disabledTools ?? []);
     const toolset: Record<ToolName, ToolDescriptor> = {
       ...createToolset(engine),
       ...options?.toolsetOverride,
@@ -123,6 +126,9 @@ export class ToolRegistry {
 
   async sync(snapshot: RegistrySnapshot): Promise<void> {
     const desired = desiredToolNames(snapshot, this.revocationMode);
+    for (const name of this.disabledTools) {
+      desired.delete(name);
+    }
     this.refusalActive =
       this.revocationMode === 'refusal' && snapshot.phase === 'exam';
 
@@ -178,23 +184,18 @@ export class ToolRegistry {
     }
 
     if ((this.inFlight.get(name) ?? 0) > 0) {
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
-      const timeout = new Promise<'timeout'>((resolve) => {
-        timeoutId = setTimeout(() => {
-          resolve('timeout');
-        }, this.drainTimeoutMs);
-      });
-      const winner = await Promise.race([
-        this.whenDrained(name).then(() => 'drained' as const),
-        timeout,
-      ]);
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
-      if (winner === 'timeout') {
+      let warnId: ReturnType<typeof setTimeout> | undefined;
+      warnId = setTimeout(() => {
         this.logger(
-          `Tool ${name} drain timed out after ${this.drainTimeoutMs}ms; aborting registration anyway`,
+          `Tool ${name} drain exceeded ${this.drainTimeoutMs}ms; still waiting for in-flight executions to settle before abort`,
         );
+      }, this.drainTimeoutMs);
+      try {
+        await this.whenDrained(name);
+      } finally {
+        if (warnId !== undefined) {
+          clearTimeout(warnId);
+        }
       }
     }
 

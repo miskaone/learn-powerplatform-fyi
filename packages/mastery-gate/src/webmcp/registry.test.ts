@@ -481,7 +481,7 @@ test('post-drain abort proceeds', async () => {
   );
 });
 
-test('timeout path aborts anyway and logs', async () => {
+test('drain timeout warns but never aborts an in-flight registration', async () => {
   const logs: string[] = [];
   const { ctx, registry, deferred } = await registerHangingQuestion({
     drainTimeoutMs: 20,
@@ -491,12 +491,18 @@ test('timeout path aborts anyway and logs', async () => {
   });
   const inFlight = ctx.callTool('get_current_question', {});
   await Promise.resolve();
-  await registry.sync(snap({ phase: 'exam' }));
-  expect(logs).toHaveLength(1);
+  const revoking = registry.sync(snap({ phase: 'exam' }));
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 50);
+  });
+  expect(logs.length >= 1).toBe(true);
   expect(logs[0]).toContain('get_current_question');
-  expect(ctx.getToolNames()).not.toContain('get_current_question');
+  expect(logs[0]).toContain('still waiting');
+  expect(ctx.getToolNames()).toContain('get_current_question');
   deferred.resolve(textResponse({ question: null }));
   await inFlight;
+  await revoking;
+  expect(ctx.getToolNames()).not.toContain('get_current_question');
 });
 
 test('no in-flight revocation aborts immediately', async () => {
@@ -509,4 +515,34 @@ test('no in-flight revocation aborts immediately', async () => {
   await registry.sync(snap({ phase: 'exam' }));
   expect(Date.now() - started).toBeLessThan(1000);
   expect(ctx.getToolNames()).not.toContain('get_current_question');
+});
+
+test('registry: disabledTools never register even when desiredToolNames would include them', async () => {
+  const ctx = new MockModelContext();
+  const registered: string[] = [];
+  const originalRegister = ctx.registerTool.bind(ctx);
+  ctx.registerTool = (tool, options) => {
+    registered.push(tool.name);
+    originalRegister(tool, options);
+  };
+  const { engine } = createStubEngine();
+  const registry = new ToolRegistry(ctx, engine, {
+    disabledTools: ['start_exam', 'mutate_assumption'],
+  });
+  await registry.sync(snap({ gatePassed: true, phase: 'drill' }));
+  expect(registry.getRegisteredNames()).not.toContain('start_exam');
+  expect(registry.getRegisteredNames()).not.toContain('mutate_assumption');
+  expect(registered).not.toContain('start_exam');
+  expect(registered).not.toContain('mutate_assumption');
+  expect(registry.getRegisteredNames()).toContain('advance_module');
+  expect(registered).toContain('advance_module');
+});
+
+test('registry: omitting disabledTools still registers start_exam when gatePassed and phase is not exam', async () => {
+  const ctx = new MockModelContext();
+  const { engine } = createStubEngine();
+  const registry = new ToolRegistry(ctx, engine);
+  await registry.sync(snap({ gatePassed: true, phase: 'practice' }));
+  expect(registry.getRegisteredNames()).toContain('start_exam');
+  expect(ctx.getToolNames()).toContain('start_exam');
 });

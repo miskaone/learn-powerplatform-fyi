@@ -39,4 +39,4 @@ export type {
   SubmitAnswerResult,
   MasteryEngineOptions,
 } from './engine';
-export { MasteryEngine } from './engine';
+export { MasteryEngine, MAX_ATTEMPTS_PER_QUESTION } from './engine';

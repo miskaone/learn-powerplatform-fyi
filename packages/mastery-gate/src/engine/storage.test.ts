@@ -111,6 +111,7 @@ function createMapBacking(): {
 test('LocalStorageAdapter round-trips through a Map-backed stub', () => {
   const { backing, store } = createMapBacking();
   const adapter = new LocalStorageAdapter(backing);
+  expect(store.has('mastery-gate:probe')).toBe(false);
   adapter.setItem('k', 'v');
   expect(store.get('k')).toBe('v');
   expect(adapter.getItem('k')).toBe('v');
@@ -119,6 +120,24 @@ test('LocalStorageAdapter round-trips through a Map-backed stub', () => {
   expect(store.has('k')).toBe(false);
   expect(adapter.getItem('k')).toBe(null);
   expect(adapter.isDegraded).toBe(false);
+});
+
+test('LocalStorageAdapter constructor probe degrades immediately and still round-trips in memory', () => {
+  const backing: LocalStorageLike = {
+    getItem(_key: string): string | null {
+      return null;
+    },
+    setItem(_key: string, _value: string): void {
+      throw new Error('QuotaExceededError');
+    },
+    removeItem(_key: string): void {
+      return;
+    },
+  };
+  const adapter = new LocalStorageAdapter(backing);
+  expect(adapter.isDegraded).toBe(true);
+  adapter.setItem('k', 'kept');
+  expect(adapter.getItem('k')).toBe('kept');
 });
 
 test('LocalStorageAdapter degrades on quota throw and never touches the stub again', () => {

@@ -36,6 +36,8 @@ export interface SubmitAnswerResult {
   attemptNumber: number;
 }
 
+export const MAX_ATTEMPTS_PER_QUESTION = 2;
+
 export interface MasteryEngineOptions {
   now?: () => number;
 }
@@ -106,7 +108,12 @@ export class MasteryEngine {
       };
     }
 
-    const { state, result } = nextHint(this.hints, this.ledger, question);
+    const { state, result } = nextHint(
+      this.hints,
+      this.ledger,
+      question,
+      this.manifest.misconceptions,
+    );
     if (result.granted) {
       this.hints = state;
       this.persist();
@@ -169,13 +176,17 @@ export class MasteryEngine {
   private findCurrentQuestion(): Question | null {
     for (const question of this.manifest.questions) {
       let hasCorrect = false;
+      let total = 0;
       for (const attempt of this.ledger.attempts) {
-        if (attempt.questionId === question.id && attempt.correct) {
+        if (attempt.questionId !== question.id) {
+          continue;
+        }
+        total += 1;
+        if (attempt.correct) {
           hasCorrect = true;
-          break;
         }
       }
-      if (!hasCorrect) {
+      if (!hasCorrect && total < MAX_ATTEMPTS_PER_QUESTION) {
         return question;
       }
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ToolRosterEntry } from "../lib/mockState";
+import type { ToolRosterEntry } from "../lib/types";
 
 export type RosterEvent = { tool: string; kind: "register" | "revoke" };
 
@@ -52,6 +52,8 @@ export function ToolRoster(props: {
   tools: ToolRosterEntry[];
   lockedTools?: string[];
   flashes?: Record<string, "register" | "revoke">;
+  notice?: string;
+  modeLabel?: string;
 }) {
   const locked = new Set(props.lockedTools ?? []);
   const flashes = props.flashes ?? {};
@@ -60,6 +62,10 @@ export function ToolRoster(props: {
   return (
     <section className="pl400-card tool-roster" aria-labelledby="tool-roster-heading">
       <h2 id="tool-roster-heading">Tool Roster</h2>
+      {props.modeLabel ? (
+        <p className="pl400-phase">{props.modeLabel}</p>
+      ) : null}
+      {props.notice ? <p className="muted">{props.notice}</p> : null}
       <p className="tool-roster-count">
         {count} {count === 1 ? "tool" : "tools"} registered
       </p>

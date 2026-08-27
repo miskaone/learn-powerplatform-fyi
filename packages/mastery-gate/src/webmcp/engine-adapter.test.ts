@@ -18,24 +18,42 @@ function makeFacade(navigate?: (anchor: string) => boolean) {
   };
 }
 
+const VERBATIM = {
+  recall: FIXTURE_MANIFEST.questions[0].prompt,
+  connections: FIXTURE_MANIFEST.questions[1].prompt,
+  application: FIXTURE_MANIFEST.questions[2].options[1].text,
+  transfer: FIXTURE_MANIFEST.questions[3].options[0].text,
+} as const;
+
 function rubric(
   recall: number,
   connections: number,
   application: number,
   transfer: number,
+  quotes: {
+    recall: string;
+    connections: string;
+    application: string;
+    transfer: string;
+  } = VERBATIM,
 ): RubricSubmission {
-  const quote = 'verbatim evidence';
   return {
-    recall: { score: recall as 0 | 1 | 2 | 3 | 4, evidenceQuote: quote },
+    recall: {
+      score: recall as 0 | 1 | 2 | 3 | 4,
+      evidenceQuote: quotes.recall,
+    },
     connections: {
       score: connections as 0 | 1 | 2 | 3 | 4,
-      evidenceQuote: quote,
+      evidenceQuote: quotes.connections,
     },
     application: {
       score: application as 0 | 1 | 2 | 3 | 4,
-      evidenceQuote: quote,
+      evidenceQuote: quotes.application,
     },
-    transfer: { score: transfer as 0 | 1 | 2 | 3 | 4, evidenceQuote: quote },
+    transfer: {
+      score: transfer as 0 | 1 | 2 | 3 | 4,
+      evidenceQuote: quotes.transfer,
+    },
   };
 }
 
@@ -108,6 +126,53 @@ describe('MasteryEngineFacade', () => {
     expect(verdict.rejectionReason).toContain('recall');
   });
 
+  test('scoreRubric rejects fabricated quotes that are not in the corpus', () => {
+    const { facade } = makeFacade();
+    const fabricated = 'xxxxxxxxxxxx';
+    const verdict = facade.scoreRubric(
+      rubric(4, 4, 4, 4, {
+        recall: fabricated,
+        connections: fabricated,
+        application: fabricated,
+        transfer: fabricated,
+      }),
+    );
+    expect(verdict.accepted).toBe(false);
+    expect(verdict.gatePassed).toBe(false);
+    expect(verdict.rejectionReason).toContain('verbatim');
+  });
+
+  test('scoreRubric rejects quotes laundered through log_coaching_note', () => {
+    const { facade } = makeFacade();
+    const laundered = 'this sentence exists only in an agent-authored note';
+    facade.logCoachingNote(laundered);
+    const verdict = facade.scoreRubric(
+      rubric(4, 4, 4, 4, {
+        recall: laundered,
+        connections: laundered,
+        application: laundered,
+        transfer: laundered,
+      }),
+    );
+    expect(verdict.accepted).toBe(false);
+    expect(verdict.gatePassed).toBe(false);
+    expect(verdict.rejectionReason).toContain('verbatim');
+  });
+
+  test('scoreRubric accepts verbatim corpus quotes and opens the gate at 3/3/3/3', () => {
+    const { facade } = makeFacade();
+    const verdict = facade.scoreRubric(rubric(3, 3, 3, 3));
+    expect(verdict.accepted).toBe(true);
+    expect(verdict.gatePassed).toBe(true);
+  });
+
+  test('scoreRubric accepts verbatim quotes but keeps the gate shut at 3/3/3/2', () => {
+    const { facade } = makeFacade();
+    const verdict = facade.scoreRubric(rubric(3, 3, 3, 2));
+    expect(verdict.accepted).toBe(true);
+    expect(verdict.gatePassed).toBe(false);
+  });
+
   test('prescribeDrill targets the weakest dimension deterministically', () => {
     const { facade } = makeFacade();
     facade.scoreRubric(rubric(4, 3, 3, 1));
@@ -123,6 +188,15 @@ describe('MasteryEngineFacade', () => {
     const brief = facade.getMisconceptionBrief('mc-shared');
     expect(brief).not.toBeNull();
     expect(facade.getMisconceptionBrief('mc-nope')).toBeNull();
+  });
+
+  test('getMisconceptionBrief is null for an unfired taxonomy id', () => {
+    const { facade } = makeFacade();
+    facade.submitAnswer('q1', 'q1-b');
+    const fired = facade.getMisconceptionBrief('mc-shared');
+    expect(fired).not.toBeNull();
+    expect(fired?.id).toBe('mc-shared');
+    expect(facade.getMisconceptionBrief('mc-q1-legacy')).toBeNull();
   });
 
   test('navigateToAnchor uses the injected hook and defaults to ok:false', () => {
@@ -199,5 +273,23 @@ describe('MasteryEngineFacade', () => {
     const missText = JSON.stringify(missResponse);
     expect(missText).toContain('mc-shared');
     expect(missText).not.toContain('q1-a');
+  });
+
+  test('submit_answer on an exhausted question returns question-not-current', async () => {
+    const { facade } = makeFacade();
+    facade.submitAnswer('q1', 'q1-b');
+    facade.submitAnswer('q1', 'q1-c');
+    const tools = createToolset(facade);
+    const response = await tools['submit_answer'].execute({
+      questionId: 'q1',
+      optionId: 'q1-a',
+    });
+    const payload = JSON.parse(response.content[0].text) as {
+      error?: string;
+      questionId?: string;
+    };
+    expect(payload.error).toBe('question-not-current');
+    expect(payload.questionId).toBe('q1');
+    expect(facade.getLearnerState().attemptCount).toBe(2);
   });
 });

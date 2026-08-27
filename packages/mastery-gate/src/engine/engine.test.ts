@@ -40,12 +40,9 @@ test('full loop on the fixture manifest', () => {
   expect(missJson).not.toContain('correctOptionId');
   expect(missJson).not.toContain(Q1_RATIONALE);
 
-  const miss2 = engine.submitAnswer('q1-c');
-  expect(miss2.attemptNumber).toBe(2);
-  expect(miss2.correct).toBe(false);
-
   const hit = engine.submitAnswer('q1-a');
   expect(hit.correct).toBe(true);
+  expect(hit.attemptNumber).toBe(2);
   const next = engine.getCurrentQuestion();
   expect(next === null).toBe(false);
   if (next === null) {
@@ -87,6 +84,22 @@ test('full loop on the fixture manifest', () => {
   expect(afterReset.id).toBe('q1');
   const fresh = new MasteryEngine(FIXTURE_MANIFEST, adapter);
   expect(fresh.getLearnerState().attemptsCount).toBe(0);
+});
+
+test('two wrong answers exhaust a question and advance to the next', () => {
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST,
+    new MemoryStorageAdapter(),
+  );
+  engine.submitAnswer('q1-b');
+  engine.submitAnswer('q1-c');
+  const next = engine.getCurrentQuestion();
+  expect(next === null).toBe(false);
+  if (next === null) {
+    return;
+  }
+  expect(next.id).toBe('q2');
+  expect(engine.getLearnerState().attemptsCount).toBe(2);
 });
 
 test('submitAnswer throws when no current question remains', () => {

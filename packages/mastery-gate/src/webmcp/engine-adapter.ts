@@ -9,7 +9,7 @@ import type {
   RubricDimension,
 } from '../schema';
 import type { MasteryEngine } from '../engine';
-import { RUBRIC_DIMENSIONS } from '../engine';
+import { MAX_ATTEMPTS_PER_QUESTION, RUBRIC_DIMENSIONS } from '../engine';
 import type {
   AdvanceModuleResultPublic,
   AdvanceSegmentResultPublic,
@@ -32,7 +32,7 @@ import type {
 } from './engine-facade';
 
 /** Attempts per question the demo script promises ("attempt 1 of 2 unused"). */
-export const MAX_ATTEMPTS_PER_QUESTION = 2;
+export { MAX_ATTEMPTS_PER_QUESTION } from '../engine';
 
 /** Thrown by facade methods whose engine backing has not landed yet. */
 export class NotImplementedError extends Error {
@@ -56,6 +56,8 @@ export interface MasteryEngineFacadeOptions {
    * `ok: false`.
    */
   navigate?: (anchor: string) => boolean;
+  /** Extra corpus lines the host app supplies (e.g. lesson body text). */
+  evidenceCorpus?: readonly string[];
 }
 
 /**
@@ -76,6 +78,7 @@ export class MasteryEngineFacade implements EngineFacade {
   private readonly engine: MasteryEngine;
   private readonly manifest: ContentManifest;
   private readonly navigate: ((anchor: string) => boolean) | undefined;
+  private readonly evidenceCorpus: readonly string[];
   /** TODO(day-2): persist through the engine ledger's coachNotes instead. */
   private readonly coachingNotes: string[] = [];
 
@@ -87,6 +90,7 @@ export class MasteryEngineFacade implements EngineFacade {
     this.engine = engine;
     this.manifest = manifest;
     this.navigate = options?.navigate;
+    this.evidenceCorpus = options?.evidenceCorpus ?? [];
   }
 
   getLearnerState(): LearnerStatePublic {
@@ -179,7 +183,10 @@ export class MasteryEngineFacade implements EngineFacade {
         quote: entry.evidenceQuote,
       };
     }
-    const result = this.engine.scoreRubric(engineInput);
+    const result = this.engine.scoreRubric(
+      engineInput,
+      this.buildEvidenceCorpus(),
+    );
     const state = this.engine.getLearnerState();
     if (result.ok) {
       return {
@@ -207,6 +214,10 @@ export class MasteryEngineFacade implements EngineFacade {
   }
 
   getMisconceptionBrief(misconceptionId: string): Misconception | null {
+    const fires = this.engine.getLearnerState().misconceptionFires[misconceptionId];
+    if (!(fires >= 1)) {
+      return null;
+    }
     for (const misconception of this.manifest.misconceptions) {
       if (misconception.id === misconceptionId) {
         return misconception;
@@ -287,6 +298,34 @@ export class MasteryEngineFacade implements EngineFacade {
 
   advanceSegment(_segmentId: string): AdvanceSegmentResultPublic {
     throw new NotImplementedError('mastery-debrief');
+  }
+
+  private buildEvidenceCorpus(): string {
+    const lines: string[] = [];
+    for (const objective of this.manifest.objectives) {
+      lines.push(objective.title);
+      lines.push(objective.summary);
+    }
+    for (const question of this.manifest.questions) {
+      lines.push(question.prompt);
+      for (const option of question.options) {
+        lines.push(option.text);
+      }
+    }
+    for (const misconception of this.manifest.misconceptions) {
+      lines.push(misconception.name);
+      lines.push(misconception.contrast);
+      for (const seed of misconception.socraticSeeds) {
+        lines.push(seed);
+      }
+    }
+    for (const extra of this.evidenceCorpus) {
+      lines.push(extra);
+    }
+    // Deliberately excluded: coachingNotes. They are agent-authored, so
+    // admitting them would let an agent launder fabricated evidence through
+    // log_coaching_note and then quote it back "verbatim".
+    return lines.join('\n');
   }
 
   private assertCurrentQuestion(questionId: string): void {

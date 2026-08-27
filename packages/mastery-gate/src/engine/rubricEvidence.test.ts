@@ -147,6 +147,20 @@ test('corpus mismatch errors with the verbatim message', () => {
   }
 });
 
+test('quote shorter than 10 chars fails even when present in the corpus', () => {
+  const result = validateRubricSubmission(
+    submission({ recall: { score: 3, quote: 'abc' } }),
+    'abc appears in this corpus along with other text',
+  );
+  expect(result.ok).toBe(false);
+  if (result.ok) {
+    return;
+  }
+  expect(result.errors).toContain(
+    'recall: quote is too short to be evidence (min 10 chars)',
+  );
+});
+
 test('corpus containing all quotes is ok', () => {
   const corpus = [
     quotes.recall,

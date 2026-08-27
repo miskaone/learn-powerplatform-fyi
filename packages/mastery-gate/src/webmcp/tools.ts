@@ -146,11 +146,21 @@ export function createToolset(
         if (!parsed.ok) {
           return parsed.response;
         }
-        return textResponse(
-          publicVerdict(
-            engine.submitAnswer(parsed.value.questionId, parsed.value.optionId),
-          ),
-        );
+        try {
+          return textResponse(
+            publicVerdict(
+              engine.submitAnswer(parsed.value.questionId, parsed.value.optionId),
+            ),
+          );
+        } catch (error) {
+          if (error instanceof RangeError) {
+            return textResponse({
+              error: 'question-not-current',
+              questionId: parsed.value.questionId,
+            });
+          }
+          throw error;
+        }
       },
     ),
     get_hint: descriptor(
@@ -162,7 +172,17 @@ export function createToolset(
         if (!parsed.ok) {
           return parsed.response;
         }
-        return textResponse(publicHint(engine.getHint(parsed.value.questionId)));
+        try {
+          return textResponse(publicHint(engine.getHint(parsed.value.questionId)));
+        } catch (error) {
+          if (error instanceof RangeError) {
+            return textResponse({
+              error: 'question-not-current',
+              questionId: parsed.value.questionId,
+            });
+          }
+          throw error;
+        }
       },
     ),
     request_next_action: descriptor(

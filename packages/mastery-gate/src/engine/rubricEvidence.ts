@@ -36,6 +36,10 @@ export function validateRubricSubmission(
       errors.push(
         `${dimension}: quote is missing, not a string, or empty`,
       );
+    } else if (quote.trim().length < 10) {
+      errors.push(
+        `${dimension}: quote is too short to be evidence (min 10 chars)`,
+      );
     } else if (corpus !== undefined && !corpus.includes(quote)) {
       errors.push(
         `${dimension}: quote is not verbatim from the session transcript`,

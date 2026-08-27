@@ -52,6 +52,14 @@ export class LocalStorageAdapter implements StorageAdapter {
       this.backing = backing;
     }
     this.degraded = this.backing === null;
+    if (this.backing !== null) {
+      try {
+        this.backing.setItem('mastery-gate:probe', '1');
+        this.backing.removeItem('mastery-gate:probe');
+      } catch {
+        this.degraded = true;
+      }
+    }
   }
 
   get isDegraded(): boolean {
