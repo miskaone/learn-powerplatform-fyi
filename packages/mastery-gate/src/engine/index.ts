@@ -8,6 +8,9 @@ export {
   missCount,
   misconceptionFireCount,
   isRepeatedMisconception,
+  clampCoachNotes,
+  MAX_COACH_NOTES,
+  MAX_COACH_NOTE_LENGTH,
 } from './ledger';
 
 export { RUBRIC_DIMENSIONS, GATE_THRESHOLD, gatePasses } from './rubric';

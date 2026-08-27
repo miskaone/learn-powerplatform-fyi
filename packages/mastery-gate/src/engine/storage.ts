@@ -7,6 +7,7 @@ import type {
 } from '../schema';
 import type { GradeResult } from './grading';
 import type { HintState } from './hints';
+import { clampCoachNotes } from './ledger';
 
 export const STORAGE_KEY = 'mastery-gate:v1';
 
@@ -272,7 +273,8 @@ function validateLedger(value: unknown): Ledger | null {
     attempts: validatedAttempts,
     misconceptionFires: { ...misconceptionFires },
     scores: { recall, connections, application, transfer },
-    coachNotes: coachNotes.slice() as string[],
+    // Tampered/oversized persisted notes are clamped, not rejected.
+    coachNotes: clampCoachNotes(coachNotes as string[]),
     phase,
   };
 }

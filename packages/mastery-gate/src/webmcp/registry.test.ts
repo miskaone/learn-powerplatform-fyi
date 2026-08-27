@@ -430,8 +430,9 @@ function hangingQuestionDescriptor(
 }
 
 async function registerHangingQuestion(options?: {
-  drainTimeoutMs?: number;
+  drainWarnMs?: number;
   logger?: (message: string) => void;
+  onStuckRevocation?: (name: string) => void;
 }): Promise<{
   ctx: MockModelContext;
   registry: ToolRegistry;
@@ -441,8 +442,9 @@ async function registerHangingQuestion(options?: {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine, {
-    drainTimeoutMs: options?.drainTimeoutMs,
+    drainWarnMs: options?.drainWarnMs,
     logger: options?.logger,
+    onStuckRevocation: options?.onStuckRevocation,
     toolsetOverride: {
       get_current_question: hangingQuestionDescriptor(() => deferred.promise),
     },
@@ -484,7 +486,7 @@ test('post-drain abort proceeds', async () => {
 test('drain timeout warns but never aborts an in-flight registration', async () => {
   const logs: string[] = [];
   const { ctx, registry, deferred } = await registerHangingQuestion({
-    drainTimeoutMs: 20,
+    drainWarnMs: 20,
     logger: (message) => {
       logs.push(message);
     },
@@ -508,7 +510,7 @@ test('drain timeout warns but never aborts an in-flight registration', async () 
 test('no in-flight revocation aborts immediately', async () => {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
-  const registry = new ToolRegistry(ctx, engine, { drainTimeoutMs: 60000 });
+  const registry = new ToolRegistry(ctx, engine, { drainWarnMs: 60000 });
   await registry.sync(snap({}));
   expect(ctx.getToolNames()).toContain('get_current_question');
   const started = Date.now();
@@ -536,6 +538,78 @@ test('registry: disabledTools never register even when desiredToolNames would in
   expect(registered).not.toContain('mutate_assumption');
   expect(registry.getRegisteredNames()).toContain('advance_module');
   expect(registered).toContain('advance_module');
+});
+
+test('stuck revocation: never-settling execution fires onStuckRevocation and repeated sync() calls neither hang nor stack', async () => {
+  const stuck: string[] = [];
+  const logs: string[] = [];
+  const { ctx, registry, deferred } = await registerHangingQuestion({
+    drainWarnMs: 10,
+    logger: (message) => {
+      logs.push(message);
+    },
+    onStuckRevocation: (name) => {
+      stuck.push(name);
+    },
+  });
+  const inFlight = ctx.callTool('get_current_question', {});
+  await Promise.resolve();
+  // First sync starts the revocation; it will not settle until the drain
+  // does, so it must not be awaited here.
+  const firstSync = registry.sync(snap({ phase: 'exam' }));
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 40);
+  });
+  expect(stuck).toEqual(['get_current_question']);
+  expect(registry.getStuckRevocations()).toEqual(['get_current_question']);
+  expect(logs.some((line) => line.includes('still waiting'))).toBe(true);
+
+  // Later syncs must resolve promptly (no hang) and must reuse the single
+  // pending revocation instead of stacking new promises on it.
+  for (let i = 0; i < 5; i += 1) {
+    await registry.sync(snap({ phase: 'exam' }));
+  }
+  // Only the one stuck callback ever fires — the revocation is shared.
+  expect(stuck).toEqual(['get_current_question']);
+  // Drain-first law: the tool is still registered, never aborted in flight.
+  expect(ctx.getToolNames()).toContain('get_current_question');
+
+  // Unwedge: once the execution settles, the drain completes, the abort
+  // proceeds, and the stuck state clears.
+  deferred.resolve(textResponse({ question: null }));
+  await inFlight;
+  await firstSync;
+  expect(ctx.getToolNames()).not.toContain('get_current_question');
+  expect(registry.getStuckRevocations()).toEqual([]);
+});
+
+test('stuck revocation: a tool desired again while draining re-registers after settlement without awaiting the drain', async () => {
+  const { ctx, registry, deferred } = await registerHangingQuestion({
+    drainWarnMs: 10,
+    logger: () => {},
+  });
+  const inFlight = ctx.callTool('get_current_question', {});
+  await Promise.resolve();
+  void registry.sync(snap({ phase: 'exam' }));
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 30);
+  });
+  expect(registry.getStuckRevocations()).toEqual(['get_current_question']);
+
+  // The tool becomes desired again while its revocation is stuck. sync()
+  // must resolve promptly and queue a single post-drain re-sync.
+  await registry.sync(snap({}));
+  await registry.sync(snap({}));
+
+  deferred.resolve(textResponse({ question: null }));
+  await inFlight;
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 10);
+  });
+  // Post-drain re-sync re-registered the tool for the latest snapshot.
+  expect(ctx.getToolNames()).toContain('get_current_question');
+  expect(registry.getRegisteredNames()).toContain('get_current_question');
+  expect(registry.getStuckRevocations()).toEqual([]);
 });
 
 test('registry: omitting disabledTools still registers start_exam when gatePassed and phase is not exam', async () => {

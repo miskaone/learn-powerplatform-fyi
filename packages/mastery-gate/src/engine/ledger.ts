@@ -1,6 +1,22 @@
 import type { AttemptRecord, Ledger } from '../schema';
 import type { GradeResult } from './grading';
 
+/** Storage sanity caps for agent-authored coaching notes. */
+export const MAX_COACH_NOTES = 50;
+export const MAX_COACH_NOTE_LENGTH = 500;
+
+/**
+ * Clamp coaching notes to the storage caps: each note truncated to
+ * MAX_COACH_NOTE_LENGTH chars, only the most recent MAX_COACH_NOTES kept.
+ */
+export function clampCoachNotes(notes: readonly string[]): string[] {
+  const clamped = notes.map((note) => note.slice(0, MAX_COACH_NOTE_LENGTH));
+  if (clamped.length <= MAX_COACH_NOTES) {
+    return clamped;
+  }
+  return clamped.slice(clamped.length - MAX_COACH_NOTES);
+}
+
 export function createEmptyLedger(): Ledger {
   return {
     attempts: [],

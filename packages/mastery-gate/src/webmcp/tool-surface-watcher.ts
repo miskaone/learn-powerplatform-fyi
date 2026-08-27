@@ -1,4 +1,5 @@
 import { hasToolchangeEvents, type ModelContextLike } from './model-context';
+import { canonicalToolOrder } from './tool-names';
 
 export type ToolSurfaceWatcherMode = 'events' | 'polling';
 
@@ -74,10 +75,10 @@ export class ToolSurfaceWatcher {
 }
 
 function toolNames(ctx: ModelContextLike): string[] {
-  return ctx
-    .getTools()
-    .map((tool) => tool.name)
-    .sort();
+  // Canonical ordering shared with ToolRegistry.getRegisteredNames() — a
+  // plain alphabetical sort here made the roster reshuffle between a
+  // sync-driven update and the next poll tick.
+  return canonicalToolOrder(ctx.getTools().map((tool) => tool.name));
 }
 
 function snapshotKey(names: string[]): string {

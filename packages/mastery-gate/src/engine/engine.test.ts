@@ -188,3 +188,53 @@ test('requestHint persists granted tiers', () => {
   }
   expect(second.reason).toBe('tier2-requires-attempt');
 });
+
+test('coaching notes persist on the ledger and round-trip through a reload', () => {
+  const adapter = new MemoryStorageAdapter();
+  const engine = new MasteryEngine(FIXTURE_MANIFEST, adapter, {
+    now: () => 1000,
+  });
+  engine.logCoachingNote('Learner conflates pre-validation with pre-operation.');
+  engine.logCoachingNote('  second note with padding  ');
+  expect(engine.getCoachNotes()).toEqual([
+    'Learner conflates pre-validation with pre-operation.',
+    'second note with padding',
+  ]);
+
+  // Reload: a fresh engine on the same adapter restores the notes.
+  const resumed = new MasteryEngine(FIXTURE_MANIFEST, adapter, {
+    now: () => 2000,
+  });
+  expect(resumed.getCoachNotes()).toEqual([
+    'Learner conflates pre-validation with pre-operation.',
+    'second note with padding',
+  ]);
+});
+
+test('coaching notes are validated, clamped to 500 chars, and capped at the last 50', () => {
+  const adapter = new MemoryStorageAdapter();
+  const engine = new MasteryEngine(FIXTURE_MANIFEST, adapter);
+
+  // Empty / whitespace-only / non-string input is ignored, never stored.
+  engine.logCoachingNote('');
+  engine.logCoachingNote('   ');
+  engine.logCoachingNote(123 as unknown as string);
+  expect(engine.getCoachNotes()).toEqual([]);
+
+  // Over-long notes clamp to 500 characters.
+  engine.logCoachingNote('x'.repeat(900));
+  expect(engine.getCoachNotes()[0]!.length).toBe(500);
+
+  // Only the most recent 50 notes are kept.
+  for (let i = 0; i < 60; i += 1) {
+    engine.logCoachingNote(`note-${i}`);
+  }
+  const notes = engine.getCoachNotes();
+  expect(notes.length).toBe(50);
+  expect(notes[0]).toBe('note-10');
+  expect(notes[49]).toBe('note-59');
+
+  // The cap also holds through persistence.
+  const resumed = new MasteryEngine(FIXTURE_MANIFEST, adapter);
+  expect(resumed.getCoachNotes()).toEqual(notes);
+});

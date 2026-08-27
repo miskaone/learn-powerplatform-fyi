@@ -41,3 +41,32 @@ export const ALL_TOOL_NAMES: readonly ToolName[] = [
   ...STATIC_TOOL_NAMES,
   ...DYNAMIC_TOOL_NAMES,
 ];
+
+const TOOL_ORDER_INDEX: ReadonlyMap<string, number> = new Map(
+  ALL_TOOL_NAMES.map((name, index) => [name, index]),
+);
+
+/**
+ * Canonical Tool Roster ordering: ALL_TOOL_NAMES declaration order for known
+ * tools, then any unknown (non-mastery) tool names alphabetically after.
+ * Every surface that lists tools (registry.getRegisteredNames, the
+ * ToolSurfaceWatcher's getTools() polling) must order through this one
+ * function so the on-page roster never reshuffles between a sync-driven
+ * update and the next poll tick.
+ */
+export function canonicalToolOrder(names: readonly string[]): string[] {
+  return [...names].sort((a, b) => {
+    const ai = TOOL_ORDER_INDEX.get(a);
+    const bi = TOOL_ORDER_INDEX.get(b);
+    if (ai !== undefined && bi !== undefined) {
+      return ai - bi;
+    }
+    if (ai !== undefined) {
+      return -1;
+    }
+    if (bi !== undefined) {
+      return 1;
+    }
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
+}

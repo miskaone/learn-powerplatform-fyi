@@ -53,6 +53,8 @@ export function ToolRoster(props: {
   lockedTools?: string[];
   flashes?: Record<string, "register" | "revoke">;
   notice?: string;
+  /** Non-blocking error line (e.g. a failed registry sync). */
+  errorNotice?: string;
   modeLabel?: string;
 }) {
   const locked = new Set(props.lockedTools ?? []);
@@ -64,6 +66,11 @@ export function ToolRoster(props: {
       <h2 id="tool-roster-heading">Tool Roster</h2>
       {props.modeLabel ? (
         <p className="pl400-phase">{props.modeLabel}</p>
+      ) : null}
+      {props.errorNotice ? (
+        <p className="tool-roster-error" role="alert">
+          {props.errorNotice}
+        </p>
       ) : null}
       {props.notice ? <p className="muted">{props.notice}</p> : null}
       <p className="tool-roster-count">

@@ -14,6 +14,7 @@ import {
 } from "@learn/mastery-gate/webmcp";
 import { scrollToSection } from "./anchor";
 import { lessonSections, manifest } from "./content";
+import { NotifyingFacade } from "./notifyingFacade";
 
 /**
  * Drill, exam, and debrief tools stay off the live surface until the engine
@@ -31,114 +32,6 @@ export const QUARANTINED_TOOLS: readonly ToolName[] = [
   "get_narration_script",
   "advance_segment",
 ];
-
-class NotifyingFacade implements EngineFacade {
-  constructor(
-    private readonly inner: EngineFacade,
-    private readonly notify: () => void,
-  ) {}
-
-  getLearnerState() {
-    return this.inner.getLearnerState();
-  }
-
-  getCurrentContext() {
-    return this.inner.getCurrentContext();
-  }
-
-  getCurrentQuestion() {
-    return this.inner.getCurrentQuestion();
-  }
-
-  submitAnswer(questionId: string, optionId: string) {
-    const result = this.inner.submitAnswer(questionId, optionId);
-    this.notify();
-    return result;
-  }
-
-  getHint(questionId: string) {
-    const result = this.inner.getHint(questionId);
-    this.notify();
-    return result;
-  }
-
-  requestNextAction(confidence?: "low" | "high") {
-    return this.inner.requestNextAction(confidence);
-  }
-
-  prescribeDrill() {
-    return this.inner.prescribeDrill();
-  }
-
-  scoreRubric(submission: Parameters<EngineFacade["scoreRubric"]>[0]) {
-    const result = this.inner.scoreRubric(submission);
-    this.notify();
-    return result;
-  }
-
-  logCoachingNote(note: string) {
-    this.inner.logCoachingNote(note);
-    this.notify();
-  }
-
-  navigateToAnchor(anchor: string) {
-    return this.inner.navigateToAnchor(anchor);
-  }
-
-  getMisconceptionBrief(misconceptionId: string) {
-    return this.inner.getMisconceptionBrief(misconceptionId);
-  }
-
-  mutateAssumption(scenarioId: string, assumptionId: string) {
-    return this.inner.mutateAssumption(scenarioId, assumptionId);
-  }
-
-  commitPrediction(scenarioId: string, prediction: string, reason: string) {
-    return this.inner.commitPrediction(scenarioId, prediction, reason);
-  }
-
-  revealOutcome(scenarioId: string) {
-    return this.inner.revealOutcome(scenarioId);
-  }
-
-  startExam() {
-    return this.inner.startExam();
-  }
-
-  getExamStatus() {
-    return this.inner.getExamStatus();
-  }
-
-  submitExam() {
-    return this.inner.submitExam();
-  }
-
-  getExamDebrief() {
-    return this.inner.getExamDebrief();
-  }
-
-  advanceModule() {
-    const result = this.inner.advanceModule();
-    this.notify();
-    return result;
-  }
-
-  getFiredMisconceptionIds() {
-    return this.inner.getFiredMisconceptionIds();
-  }
-
-  composeDebrief(segments: Parameters<EngineFacade["composeDebrief"]>[0]) {
-    return this.inner.composeDebrief(segments);
-  }
-
-  getNarrationScript() {
-    return this.inner.getNarrationScript();
-  }
-
-  advanceSegment(segmentId: string) {
-    return this.inner.advanceSegment(segmentId);
-  }
-}
 
 export interface MasteryStack {
   engine: MasteryEngine;

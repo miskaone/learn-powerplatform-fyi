@@ -4,6 +4,7 @@ import {
   MockModelContext,
 } from './mock-model-context';
 import { textResponse, type ToolDescriptor } from './model-context';
+import { canonicalToolOrder, ALL_TOOL_NAMES } from './tool-names';
 import { ToolSurfaceWatcher } from './tool-surface-watcher';
 
 function makeTool(name: string): ToolDescriptor {
@@ -134,4 +135,70 @@ test('polling mode detects abort unregistration on the next tick', async () => {
   await wait(40);
   expect(seen.at(-1)).toEqual([]);
   watcher.stop();
+});
+
+test('roster ordering: watcher and registry.getRegisteredNames agree on canonical declaration order', async () => {
+  // Regression (cross-review finding 7): the watcher used a plain
+  // alphabetical sort while the registry used ALL_TOOL_NAMES declaration
+  // order, so the on-page roster reshuffled between a sync-driven update and
+  // the next poll tick. Both paths must yield IDENTICAL ordering for the
+  // same tool set.
+  const { ToolRegistry } = await import('./registry');
+  const ctx = new EventlessMockModelContext();
+  const watcher = new ToolSurfaceWatcher(ctx, { pollIntervalMs: 5 });
+  const seen: string[][] = [];
+  watcher.onChange((names) => {
+    seen.push(names);
+  });
+
+  const stubEngine = new Proxy(
+    {},
+    {
+      get:
+        () =>
+        () => {
+          throw new Error('not called in this test');
+        },
+    },
+  );
+  const registry = new ToolRegistry(
+    ctx,
+    stubEngine as never,
+  );
+  await registry.sync({
+    phase: 'practice',
+    gatePassed: true,
+    repeatedMisconceptionIds: ['mc-x'],
+    predictionCommitted: false,
+    examSubmitted: false,
+    moduleComplete: true,
+  });
+  watcher.refresh();
+
+  const registryOrder = registry.getRegisteredNames();
+  const watcherOrder = seen.at(-1);
+  expect(watcherOrder).toEqual(registryOrder);
+  // And the shared ordering really is declaration order, not alphabetical.
+  const declarationIndex = new Map(
+    ALL_TOOL_NAMES.map((name, index) => [name, index]),
+  );
+  const indices = registryOrder.map((name) => declarationIndex.get(name) ?? -1);
+  expect([...indices].sort((a, b) => a - b)).toEqual(indices);
+});
+
+test('canonicalToolOrder: known tools by declaration order, unknown names alphabetical after', () => {
+  const shuffled = [
+    'zeta_custom',
+    'submit_answer',
+    'alpha_custom',
+    'get_learner_state',
+    'advance_module',
+  ];
+  expect(canonicalToolOrder(shuffled)).toEqual([
+    'get_learner_state',
+    'submit_answer',
+    'advance_module',
+    'alpha_custom',
+    'zeta_custom',
+  ]);
 });

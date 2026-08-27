@@ -18,6 +18,7 @@ import {
   wouldRegisterToolNames,
   type MasteryStack,
 } from "../lib/masteryStack";
+import { syncRegistryRoster } from "../lib/rosterSync";
 import type { ToolRosterEntry, UiVerdict } from "../lib/types";
 import { ExamModePanel } from "./ExamModePanel";
 import { FlipConditionDrill } from "./FlipConditionDrill";
@@ -84,6 +85,7 @@ export function Pl400App() {
     null,
   );
   const [rubricNotice, setRubricNotice] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const { flashes, flash } = useToolRosterHighlights();
 
   const stackRef = useRef<MasteryStack | null>(null);
@@ -139,13 +141,20 @@ export function Pl400App() {
       misconceptionFires: state.misconceptionFires,
     });
     if (s.registry) {
-      void s.registry
-        .sync(snapshot)
-        .then(() => {
-          handleRosterNamesRef.current(s.registry!.getRegisteredNames());
+      void syncRegistryRoster(s.registry, snapshot, {
+        onNames: (names) => {
+          handleRosterNamesRef.current(names);
+        },
+        onSyncError: (notice) => {
+          setSyncError(notice);
+        },
+        onSyncOk: () => {
+          setSyncError(null);
+        },
+        afterSync: () => {
           s.watcher?.refresh();
-        })
-        .catch(() => {});
+        },
+      });
     } else {
       handleRosterNamesRef.current(wouldRegisterToolNames(snapshot));
     }
@@ -519,6 +528,7 @@ export function Pl400App() {
           <ToolRoster
             tools={rosterTools}
             flashes={flashes}
+            errorNotice={syncError ?? undefined}
             modeLabel={
               agentDetected
                 ? "agent runtime: modelContext detected (getTools polling)"

@@ -12,7 +12,13 @@ import type { GradeResult } from './grading';
 import { gradeAnswer } from './grading';
 import type { HintResult, HintState } from './hints';
 import { createHintState, requestHint as nextHint } from './hints';
-import { attemptCount, createEmptyLedger, recordAttempt } from './ledger';
+import {
+  attemptCount,
+  clampCoachNotes,
+  createEmptyLedger,
+  MAX_COACH_NOTE_LENGTH,
+  recordAttempt,
+} from './ledger';
 import { gatePasses } from './rubric';
 import type { RubricValidationResult } from './rubricEvidence';
 import { validateRubricSubmission } from './rubricEvidence';
@@ -161,6 +167,41 @@ export class MasteryEngine {
     };
     this.persist();
     return result;
+  }
+
+  /**
+   * Append an agent-authored coaching note to the persisted ledger. Notes are
+   * validated and clamped (each ≤ MAX_COACH_NOTE_LENGTH chars, only the last
+   * MAX_COACH_NOTES kept), survive reload via the storage adapter, and feed
+   * the Debrief graft later. They are NEVER admitted to the rubric evidence
+   * corpus — agent-authored text must not launder itself into "verbatim
+   * evidence".
+   */
+  logCoachingNote(note: string): void {
+    if (typeof note !== 'string') {
+      return;
+    }
+    const trimmed = note.trim().slice(0, MAX_COACH_NOTE_LENGTH);
+    if (trimmed.length === 0) {
+      return;
+    }
+    this.ledger = {
+      attempts: this.ledger.attempts.slice(),
+      misconceptionFires: copyFires(this.ledger.misconceptionFires),
+      scores: {
+        recall: this.ledger.scores.recall,
+        connections: this.ledger.scores.connections,
+        application: this.ledger.scores.application,
+        transfer: this.ledger.scores.transfer,
+      },
+      coachNotes: clampCoachNotes([...this.ledger.coachNotes, trimmed]),
+      phase: this.ledger.phase,
+    };
+    this.persist();
+  }
+
+  getCoachNotes(): string[] {
+    return this.ledger.coachNotes.slice();
   }
 
   getLearnerState(): LearnerStatePublic {

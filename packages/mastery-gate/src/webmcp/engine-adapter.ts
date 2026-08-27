@@ -79,8 +79,6 @@ export class MasteryEngineFacade implements EngineFacade {
   private readonly manifest: ContentManifest;
   private readonly navigate: ((anchor: string) => boolean) | undefined;
   private readonly evidenceCorpus: readonly string[];
-  /** TODO(day-2): persist through the engine ledger's coachNotes instead. */
-  private readonly coachingNotes: string[] = [];
 
   constructor(
     engine: MasteryEngine,
@@ -205,7 +203,10 @@ export class MasteryEngineFacade implements EngineFacade {
   }
 
   logCoachingNote(note: string): void {
-    this.coachingNotes.push(note);
+    // Persisted on the engine ledger (Ledger.coachNotes) via the storage
+    // adapter, so notes survive reload and the Debrief graft can read them.
+    // The engine validates/clamps input and caps the stored list.
+    this.engine.logCoachingNote(note);
   }
 
   navigateToAnchor(anchor: string): NavigateResultPublic {
@@ -308,9 +309,9 @@ export class MasteryEngineFacade implements EngineFacade {
     // names/contrasts/seeds (get_misconception_brief, tier-2 hints), and
     // objective titles (get_current_context.sectionTitle). Admitted: objective
     // summaries and the host-supplied corpus (lesson body text the learner
-    // reads on the page). Also excluded: coachingNotes — agent-authored, so
-    // admitting them would let an agent launder fabricated evidence through
-    // log_coaching_note and then quote it back "verbatim".
+    // reads on the page). Also excluded: the ledger's coachNotes —
+    // agent-authored, so admitting them would let an agent launder fabricated
+    // evidence through log_coaching_note and then quote it back "verbatim".
     const lines: string[] = [];
     for (const objective of this.manifest.objectives) {
       lines.push(objective.summary);

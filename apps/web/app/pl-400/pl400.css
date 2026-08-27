@@ -286,6 +286,13 @@ button.pl400-btn,
 }
 
 /* Tool roster */
+.tool-roster-error {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e5484d;
+}
+
 .tool-roster-count {
   margin: 0 0 0.65rem;
   font-size: 0.85rem;

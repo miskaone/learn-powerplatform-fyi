@@ -23,14 +23,28 @@ export interface RegistrySnapshot {
 
 export interface ToolRegistryOptions {
   revocationMode?: RevocationMode;
-  drainTimeoutMs?: number;
+  /**
+   * How long a revocation may wait on in-flight executions before the
+   * registry reports the revocation as STUCK (logger + onStuckRevocation).
+   * A warning threshold only — the drain-first law is absolute: the registry
+   * NEVER aborts a registration while an execution is in flight
+   * (docs/spike-verdicts.md §4; Chromium <153 kills in-flight calls).
+   */
+  drainWarnMs?: number;
   logger?: (message: string) => void;
+  /**
+   * Called once per revocation whose drain exceeds drainWarnMs. Surfaces the
+   * wedge condition to the UI: a tool execution that never settles keeps its
+   * revocation pending forever by design; this callback (and
+   * getStuckRevocations()) is how that state becomes observable.
+   */
+  onStuckRevocation?: (name: ToolName) => void;
   toolsetOverride?: Partial<Record<ToolName, ToolDescriptor>>;
   disabledTools?: readonly ToolName[];
 }
 
 const EXAM_TOOL_NAME_SET: ReadonlySet<ToolName> = new Set(EXAM_TOOL_NAMES);
-const DEFAULT_DRAIN_TIMEOUT_MS = 3000;
+const DEFAULT_DRAIN_WARN_MS = 3000;
 
 export function desiredToolNames(
   snapshot: RegistrySnapshot,
@@ -92,10 +106,14 @@ export class ToolRegistry {
   private readonly inFlight = new Map<ToolName, number>();
   private readonly drainWaiters = new Map<ToolName, Array<() => void>>();
   private readonly pendingRevocations = new Map<ToolName, Promise<void>>();
-  private readonly drainTimeoutMs: number;
+  private readonly stuckRevocations = new Set<ToolName>();
+  private readonly resyncQueued = new Set<ToolName>();
+  private readonly drainWarnMs: number;
   private readonly logger: (message: string) => void;
-  private readonly disabledTools: ReadonlySet<ToolName>;
+  private readonly onStuckRevocation: ((name: ToolName) => void) | undefined;
+  private lastSnapshot: RegistrySnapshot | null = null;
   private refusalActive = false;
+  private readonly disabledTools: ReadonlySet<ToolName>;
 
   constructor(
     ctx: ModelContextLike,
@@ -104,7 +122,8 @@ export class ToolRegistry {
   ) {
     this.ctx = ctx;
     this.revocationMode = options?.revocationMode ?? 'deregister';
-    this.drainTimeoutMs = options?.drainTimeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS;
+    this.drainWarnMs = options?.drainWarnMs ?? DEFAULT_DRAIN_WARN_MS;
+    this.onStuckRevocation = options?.onStuckRevocation;
     this.logger =
       options?.logger ??
       ((message: string) => {
@@ -125,6 +144,7 @@ export class ToolRegistry {
   }
 
   async sync(snapshot: RegistrySnapshot): Promise<void> {
+    this.lastSnapshot = snapshot;
     const desired = desiredToolNames(snapshot, this.revocationMode);
     for (const name of this.disabledTools) {
       desired.delete(name);
@@ -138,7 +158,11 @@ export class ToolRegistry {
       }
       const pending = this.pendingRevocations.get(name);
       if (pending !== undefined) {
-        await pending;
+        // The tool is mid-revocation. Never await the drain here — a wedged
+        // execution would hang every future sync. Queue at most ONE re-sync
+        // continuation on the shared revocation promise instead.
+        this.queueResyncAfterRevocation(name, pending);
+        continue;
       }
       if (this.controllers.has(name)) {
         continue;
@@ -155,7 +179,15 @@ export class ToolRegistry {
     const revocations: Promise<void>[] = [];
     for (const name of ALL_TOOL_NAMES) {
       if (!desired.has(name) && this.controllers.has(name)) {
-        revocations.push(this.revokeTool(name));
+        const revocation = this.revokeTool(name);
+        // A revocation already reported stuck may never settle (wedge
+        // condition: a never-settling execute keeps the drain open forever
+        // by design — drain-first law). Awaiting it again would chain one
+        // more reaction onto the shared promise per sync call; the single
+        // pending revocation already covers it, so skip the await.
+        if (!this.stuckRevocations.has(name)) {
+          revocations.push(revocation);
+        }
       }
     }
     await Promise.all(revocations);
@@ -163,6 +195,38 @@ export class ToolRegistry {
 
   getRegisteredNames(): ToolName[] {
     return ALL_TOOL_NAMES.filter((name) => this.controllers.has(name));
+  }
+
+  /**
+   * Tools whose revocation drain has exceeded drainWarnMs and is still
+   * waiting on an in-flight execution. Empties again if the execution
+   * eventually settles (the drain then completes and the abort proceeds).
+   */
+  getStuckRevocations(): ToolName[] {
+    return ALL_TOOL_NAMES.filter((name) => this.stuckRevocations.has(name));
+  }
+
+  /**
+   * Registers a single continuation per tool that re-runs sync with the
+   * latest snapshot once a pending revocation settles — so a tool that
+   * becomes desired again while draining is re-registered without stacking
+   * one reaction per sync call on the shared revocation promise.
+   */
+  private queueResyncAfterRevocation(
+    name: ToolName,
+    pending: Promise<void>,
+  ): void {
+    if (this.resyncQueued.has(name)) {
+      return;
+    }
+    this.resyncQueued.add(name);
+    void pending.then(() => {
+      this.resyncQueued.delete(name);
+      const snapshot = this.lastSnapshot;
+      if (snapshot !== null) {
+        void this.sync(snapshot);
+      }
+    });
   }
 
   private revokeTool(name: ToolName): Promise<void> {
@@ -184,18 +248,27 @@ export class ToolRegistry {
     }
 
     if ((this.inFlight.get(name) ?? 0) > 0) {
+      // Wedge condition (documented): if an execution never settles, this
+      // drain never completes and the revocation stays pending forever —
+      // deliberately, per the drain-first law (docs/spike-verdicts.md §4:
+      // never abort while in flight). The stuck state is made observable
+      // via logger + onStuckRevocation + getStuckRevocations(), and sync()
+      // is guarded so repeated calls never stack on the pending promise.
       let warnId: ReturnType<typeof setTimeout> | undefined;
       warnId = setTimeout(() => {
+        this.stuckRevocations.add(name);
         this.logger(
-          `Tool ${name} drain exceeded ${this.drainTimeoutMs}ms; still waiting for in-flight executions to settle before abort`,
+          `Tool ${name} drain exceeded ${this.drainWarnMs}ms; still waiting for in-flight executions to settle before abort`,
         );
-      }, this.drainTimeoutMs);
+        this.onStuckRevocation?.(name);
+      }, this.drainWarnMs);
       try {
         await this.whenDrained(name);
       } finally {
         if (warnId !== undefined) {
           clearTimeout(warnId);
         }
+        this.stuckRevocations.delete(name);
       }
     }
 
