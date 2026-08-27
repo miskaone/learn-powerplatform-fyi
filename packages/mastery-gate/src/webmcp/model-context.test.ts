@@ -1,19 +1,23 @@
 import { test, expect } from 'bun:test';
-import { MockModelContext } from './mock-model-context';
+import {
+  EventlessMockModelContext,
+  MockModelContext,
+} from './mock-model-context';
 import {
   hasModelContext,
+  hasToolchangeEvents,
   resolveModelContext,
   textResponse,
 } from './model-context';
 
-test('resolveModelContext prefers navigator.modelContext when both namespaces exist', () => {
+test('resolveModelContext prefers document.modelContext when both namespaces exist', () => {
   const navigatorContext = new MockModelContext();
   const documentContext = new MockModelContext();
   const host = {
     navigator: { modelContext: navigatorContext },
     document: { modelContext: documentContext },
   };
-  expect(resolveModelContext(host)).toBe(navigatorContext);
+  expect(resolveModelContext(host)).toBe(documentContext);
   expect(hasModelContext(host)).toBe(true);
 });
 
@@ -23,6 +27,15 @@ test('resolveModelContext returns document.modelContext when only that namespace
     document: { modelContext: documentContext },
   };
   expect(resolveModelContext(host)).toBe(documentContext);
+  expect(hasModelContext(host)).toBe(true);
+});
+
+test('resolveModelContext falls back to navigator.modelContext when only that namespace exists', () => {
+  const navigatorContext = new MockModelContext();
+  const host = {
+    navigator: { modelContext: navigatorContext },
+  };
+  expect(resolveModelContext(host)).toBe(navigatorContext);
   expect(hasModelContext(host)).toBe(true);
 });
 
@@ -39,6 +52,14 @@ test('resolveModelContext returns null for an empty host', () => {
 test('resolveModelContext returns null when navigator exists but has no modelContext', () => {
   expect(resolveModelContext({ navigator: {} })).toBe(null);
   expect(hasModelContext({ navigator: {} })).toBe(false);
+});
+
+test('hasToolchangeEvents is true for MockModelContext', () => {
+  expect(hasToolchangeEvents(new MockModelContext())).toBe(true);
+});
+
+test('hasToolchangeEvents is false for EventlessMockModelContext', () => {
+  expect(hasToolchangeEvents(new EventlessMockModelContext())).toBe(false);
 });
 
 test('textResponse wraps payload as a single text content block', () => {

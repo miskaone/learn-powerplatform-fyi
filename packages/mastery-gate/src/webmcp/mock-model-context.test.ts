@@ -1,5 +1,8 @@
 import { test, expect } from 'bun:test';
-import { MockModelContext } from './mock-model-context';
+import {
+  EventlessMockModelContext,
+  MockModelContext,
+} from './mock-model-context';
 import { textResponse, type ToolDescriptor } from './model-context';
 
 function throws(fn: () => unknown): boolean {
@@ -91,4 +94,35 @@ test('callTool on unknown name throws', () => {
       void ctx.callTool('missing', {});
     }),
   ).toBe(true);
+});
+
+test('EventlessMockModelContext has no addEventListener or removeEventListener', () => {
+  const ctx = new EventlessMockModelContext();
+  expect('addEventListener' in ctx).toBe(false);
+  expect('removeEventListener' in ctx).toBe(false);
+  expect(typeof (ctx as { addEventListener?: unknown }).addEventListener).not.toBe(
+    'function',
+  );
+});
+
+test('EventlessMockModelContext register/getTools/abort match Mock without events', async () => {
+  const ctx = new EventlessMockModelContext();
+  const response = textResponse({ ok: true });
+  const tool = makeTool('echo', response);
+  ctx.registerTool(tool);
+  expect(ctx.getToolNames()).toEqual(['echo']);
+  expect(ctx.hasTool('echo')).toBe(true);
+  expect(await ctx.callTool('echo', {})).toBe(response);
+
+  expect(
+    throws(() => {
+      ctx.registerTool(tool);
+    }),
+  ).toBe(true);
+
+  const controller = new AbortController();
+  ctx.registerTool(makeTool('other'), { signal: controller.signal });
+  expect(ctx.hasTool('other')).toBe(true);
+  controller.abort();
+  expect(ctx.hasTool('other')).toBe(false);
 });

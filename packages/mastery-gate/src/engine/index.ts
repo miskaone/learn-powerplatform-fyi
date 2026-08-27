@@ -25,10 +25,11 @@ export type {
 } from './rubricEvidence';
 export { validateRubricSubmission } from './rubricEvidence';
 
-export type { PersistedState } from './storage';
+export type { PersistedState, LocalStorageLike } from './storage';
 export {
   STORAGE_KEY,
   MemoryStorageAdapter,
+  LocalStorageAdapter,
   saveState,
   loadState,
 } from './storage';

@@ -28,6 +28,83 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 }
 
+export interface LocalStorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+export class LocalStorageAdapter implements StorageAdapter {
+  private backing: LocalStorageLike | null;
+  private readonly memory = new MemoryStorageAdapter();
+  private degraded: boolean;
+
+  constructor(backing?: LocalStorageLike | null) {
+    if (backing === undefined) {
+      try {
+        const fromGlobal = (globalThis as { localStorage?: LocalStorageLike })
+          .localStorage;
+        this.backing = fromGlobal ?? null;
+      } catch {
+        this.backing = null;
+      }
+    } else {
+      this.backing = backing;
+    }
+    this.degraded = this.backing === null;
+  }
+
+  get isDegraded(): boolean {
+    return this.degraded;
+  }
+
+  getItem(key: string): string | null {
+    const backing = this.usableBacking();
+    if (backing === null) {
+      return this.memory.getItem(key);
+    }
+    try {
+      return backing.getItem(key);
+    } catch {
+      this.degraded = true;
+      return this.memory.getItem(key);
+    }
+  }
+
+  setItem(key: string, value: string): void {
+    this.memory.setItem(key, value);
+    const backing = this.usableBacking();
+    if (backing === null) {
+      return;
+    }
+    try {
+      backing.setItem(key, value);
+    } catch {
+      this.degraded = true;
+    }
+  }
+
+  removeItem(key: string): void {
+    this.memory.removeItem(key);
+    const backing = this.usableBacking();
+    if (backing === null) {
+      return;
+    }
+    try {
+      backing.removeItem(key);
+    } catch {
+      this.degraded = true;
+    }
+  }
+
+  private usableBacking(): LocalStorageLike | null {
+    if (this.degraded) {
+      return null;
+    }
+    return this.backing;
+  }
+}
+
 export function saveState(
   adapter: StorageAdapter,
   state: PersistedState,

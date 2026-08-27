@@ -8,7 +8,8 @@ import type {
   SubmitAnswerVerdictPublic,
 } from './engine-facade';
 import { MockModelContext } from './mock-model-context';
-import type { ToolResponse } from './model-context';
+import type { ToolDescriptor, ToolResponse } from './model-context';
+import { textResponse } from './model-context';
 import {
   desiredToolNames,
   ToolRegistry,
@@ -236,85 +237,85 @@ const RICH_FLAGS: Pick<
   moduleComplete: true,
 };
 
-test('registry: initial sync in lesson phase registers exactly the ten STATIC_TOOL_NAMES', () => {
+test('registry: initial sync in lesson phase registers exactly the ten STATIC_TOOL_NAMES', async () => {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine);
-  registry.sync(snap({}));
+  await registry.sync(snap({}));
   const expected = sortedNames(STATIC_TOOL_NAMES);
   expect(sortedNames(registry.getRegisteredNames())).toEqual(expected);
   expect(sortedNames(ctx.getToolNames())).toEqual(expected);
 });
 
-test('registry: gate closed then gatePassed registers advance_module and start_exam', () => {
+test('registry: gate closed then gatePassed registers advance_module and start_exam', async () => {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine);
-  registry.sync(snap({ gatePassed: false }));
+  await registry.sync(snap({ gatePassed: false }));
   expect(ctx.getToolNames()).not.toContain('advance_module');
   expect(ctx.getToolNames()).not.toContain('start_exam');
   const before = ctx.toolchangeCount;
-  registry.sync(snap({ gatePassed: true }));
+  await registry.sync(snap({ gatePassed: true }));
   expect(ctx.getToolNames()).toContain('advance_module');
   expect(ctx.getToolNames()).toContain('start_exam');
   expect(ctx.toolchangeCount > before).toBe(true);
 });
 
-test('registry: gate passes then regresses revokes advance_module and start_exam', () => {
+test('registry: gate passes then regresses revokes advance_module and start_exam', async () => {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine);
-  registry.sync(snap({ gatePassed: true }));
+  await registry.sync(snap({ gatePassed: true }));
   expect(ctx.getToolNames()).toContain('advance_module');
   expect(ctx.getToolNames()).toContain('start_exam');
-  registry.sync(snap({ gatePassed: false }));
+  await registry.sync(snap({ gatePassed: false }));
   expect(ctx.getToolNames()).not.toContain('advance_module');
   expect(ctx.getToolNames()).not.toContain('start_exam');
 });
 
-test('registry: get_misconception_brief registers after repeated fire and revokes when cleared', () => {
+test('registry: get_misconception_brief registers after repeated fire and revokes when cleared', async () => {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine);
-  registry.sync(snap({ repeatedMisconceptionIds: [] }));
+  await registry.sync(snap({ repeatedMisconceptionIds: [] }));
   expect(ctx.getToolNames()).not.toContain('get_misconception_brief');
-  registry.sync(snap({ repeatedMisconceptionIds: ['mc-x'] }));
+  await registry.sync(snap({ repeatedMisconceptionIds: ['mc-x'] }));
   expect(ctx.getToolNames()).toContain('get_misconception_brief');
-  registry.sync(snap({ repeatedMisconceptionIds: [] }));
+  await registry.sync(snap({ repeatedMisconceptionIds: [] }));
   expect(ctx.getToolNames()).not.toContain('get_misconception_brief');
 });
 
-test('registry: drill tools follow commit-then-reveal and revoke on leaving drill', () => {
+test('registry: drill tools follow commit-then-reveal and revoke on leaving drill', async () => {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine);
-  registry.sync(snap({ phase: 'drill' }));
+  await registry.sync(snap({ phase: 'drill' }));
   expect(ctx.getToolNames()).toContain('mutate_assumption');
   expect(ctx.getToolNames()).toContain('commit_prediction');
   expect(ctx.getToolNames()).not.toContain('reveal_outcome');
-  registry.sync(snap({ phase: 'drill', predictionCommitted: true }));
+  await registry.sync(snap({ phase: 'drill', predictionCommitted: true }));
   expect(ctx.getToolNames()).toContain('reveal_outcome');
-  registry.sync(snap({ phase: 'practice', predictionCommitted: true }));
+  await registry.sync(snap({ phase: 'practice', predictionCommitted: true }));
   expect(ctx.getToolNames()).not.toContain('mutate_assumption');
   expect(ctx.getToolNames()).not.toContain('commit_prediction');
   expect(ctx.getToolNames()).not.toContain('reveal_outcome');
 });
 
-test('registry: exam deregister mode mass-revokes coaching tools then restores after exam', () => {
+test('registry: exam deregister mode mass-revokes coaching tools then restores after exam', async () => {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine);
-  registry.sync(snap({ ...RICH_FLAGS, phase: 'practice' }));
-  registry.sync(snap({ ...RICH_FLAGS, phase: 'exam' }));
+  await registry.sync(snap({ ...RICH_FLAGS, phase: 'practice' }));
+  await registry.sync(snap({ ...RICH_FLAGS, phase: 'exam' }));
   const examOnly = sortedNames(['get_exam_status', 'submit_exam']);
   expect(sortedNames(ctx.getToolNames())).toEqual(examOnly);
   expect(sortedNames(ctx.getTools().map((tool) => tool.name))).toEqual(examOnly);
-  registry.sync(snap({ ...RICH_FLAGS, phase: 'exam', examSubmitted: true }));
+  await registry.sync(snap({ ...RICH_FLAGS, phase: 'exam', examSubmitted: true }));
   expect(ctx.getToolNames()).toContain('get_exam_debrief');
   expect(sortedNames(ctx.getToolNames())).toEqual(
     sortedNames(['get_exam_status', 'submit_exam', 'get_exam_debrief']),
   );
-  registry.sync(snap({ ...RICH_FLAGS, phase: 'practice' }));
+  await registry.sync(snap({ ...RICH_FLAGS, phase: 'practice' }));
   const restored = sortedNames([
     ...STATIC_TOOL_NAMES,
     'advance_module',
@@ -332,7 +333,7 @@ test('registry: exam refusal mode keeps coaching tools registered and refuses at
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine, { revocationMode: 'refusal' });
-  registry.sync(snap({ ...RICH_FLAGS, phase: 'practice' }));
+  await registry.sync(snap({ ...RICH_FLAGS, phase: 'practice' }));
   const priorCoaching = ctx
     .getToolNames()
     .filter(
@@ -342,7 +343,7 @@ test('registry: exam refusal mode keeps coaching tools registered and refuses at
         name !== 'submit_exam' &&
         name !== 'get_exam_debrief',
     );
-  registry.sync(snap({ ...RICH_FLAGS, phase: 'exam' }));
+  await registry.sync(snap({ ...RICH_FLAGS, phase: 'exam' }));
   const names = ctx.getToolNames();
   for (const name of priorCoaching) {
     expect(names).toContain(name);
@@ -358,20 +359,20 @@ test('registry: exam refusal mode keeps coaching tools registered and refuses at
   const examStatus = await ctx.callTool('get_exam_status', {});
   expect(textOf(examStatus)).not.toContain('refused');
 
-  registry.sync(snap({ ...RICH_FLAGS, phase: 'practice' }));
+  await registry.sync(snap({ ...RICH_FLAGS, phase: 'practice' }));
   const question = await ctx.callTool('get_current_question', {});
   expect(textOf(question)).toContain('question');
 });
 
-test('registry: identical snapshot sync is idempotent', () => {
+test('registry: identical snapshot sync is idempotent', async () => {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine);
   const snapshot = snap({ gatePassed: true, repeatedMisconceptionIds: ['mc-x'] });
-  registry.sync(snapshot);
+  await registry.sync(snapshot);
   const count = ctx.toolchangeCount;
   const names = ctx.getToolNames();
-  registry.sync(snapshot);
+  await registry.sync(snapshot);
   expect(ctx.toolchangeCount).toBe(count);
   expect(ctx.getToolNames()).toEqual(names);
 });
@@ -400,8 +401,112 @@ test('registry: refusal flag does not leak after returning to practice', async (
   const ctx = new MockModelContext();
   const { engine, log } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine, { revocationMode: 'refusal' });
-  registry.sync(snap({ phase: 'exam', gatePassed: true }));
-  registry.sync(snap({ phase: 'practice' }));
+  await registry.sync(snap({ phase: 'exam', gatePassed: true }));
+  await registry.sync(snap({ phase: 'practice' }));
   await ctx.callTool('submit_answer', { questionId: 'q1', optionId: 'o1' });
   expect(log.submitAnswer).toEqual({ questionId: 'q1', optionId: 'o1' });
+});
+
+function createDeferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+} {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+function hangingQuestionDescriptor(
+  execute: () => Promise<ToolResponse>,
+): ToolDescriptor {
+  return {
+    name: 'get_current_question',
+    description: 'Controlled question tool for drain tests',
+    inputSchema: { type: 'object', additionalProperties: false },
+    execute,
+  };
+}
+
+async function registerHangingQuestion(options?: {
+  drainTimeoutMs?: number;
+  logger?: (message: string) => void;
+}): Promise<{
+  ctx: MockModelContext;
+  registry: ToolRegistry;
+  deferred: ReturnType<typeof createDeferred<ToolResponse>>;
+}> {
+  const deferred = createDeferred<ToolResponse>();
+  const ctx = new MockModelContext();
+  const { engine } = createStubEngine();
+  const registry = new ToolRegistry(ctx, engine, {
+    drainTimeoutMs: options?.drainTimeoutMs,
+    logger: options?.logger,
+    toolsetOverride: {
+      get_current_question: hangingQuestionDescriptor(() => deferred.promise),
+    },
+  });
+  await registry.sync(snap({}));
+  expect(ctx.getToolNames()).toContain('get_current_question');
+  return { ctx, registry, deferred };
+}
+
+test('revoke during in-flight waits for settlement', async () => {
+  const { ctx, registry, deferred } = await registerHangingQuestion();
+  const inFlight = ctx.callTool('get_current_question', {});
+  await Promise.resolve();
+  const revoking = registry.sync(snap({ phase: 'exam' }));
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 10);
+  });
+  expect(ctx.getToolNames()).toContain('get_current_question');
+  deferred.resolve(textResponse({ question: null }));
+  await inFlight;
+  await revoking;
+  expect(ctx.getToolNames()).not.toContain('get_current_question');
+});
+
+test('post-drain abort proceeds', async () => {
+  const { ctx, registry, deferred } = await registerHangingQuestion();
+  const inFlight = ctx.callTool('get_current_question', {});
+  await Promise.resolve();
+  const revoking = registry.sync(snap({ phase: 'exam' }));
+  deferred.resolve(textResponse({ question: null }));
+  await inFlight;
+  await revoking;
+  expect(ctx.getToolNames()).not.toContain('get_current_question');
+  expect(sortedNames(registry.getRegisteredNames())).toEqual(
+    sortedNames(ctx.getToolNames()),
+  );
+});
+
+test('timeout path aborts anyway and logs', async () => {
+  const logs: string[] = [];
+  const { ctx, registry, deferred } = await registerHangingQuestion({
+    drainTimeoutMs: 20,
+    logger: (message) => {
+      logs.push(message);
+    },
+  });
+  const inFlight = ctx.callTool('get_current_question', {});
+  await Promise.resolve();
+  await registry.sync(snap({ phase: 'exam' }));
+  expect(logs).toHaveLength(1);
+  expect(logs[0]).toContain('get_current_question');
+  expect(ctx.getToolNames()).not.toContain('get_current_question');
+  deferred.resolve(textResponse({ question: null }));
+  await inFlight;
+});
+
+test('no in-flight revocation aborts immediately', async () => {
+  const ctx = new MockModelContext();
+  const { engine } = createStubEngine();
+  const registry = new ToolRegistry(ctx, engine, { drainTimeoutMs: 60000 });
+  await registry.sync(snap({}));
+  expect(ctx.getToolNames()).toContain('get_current_question');
+  const started = Date.now();
+  await registry.sync(snap({ phase: 'exam' }));
+  expect(Date.now() - started).toBeLessThan(1000);
+  expect(ctx.getToolNames()).not.toContain('get_current_question');
 });

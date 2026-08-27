@@ -23,8 +23,8 @@ export interface ToolRegistrationOptions {
 export interface ModelContextLike {
   registerTool(tool: ToolDescriptor, options?: ToolRegistrationOptions): void;
   getTools(): ToolDescriptor[];
-  addEventListener(type: 'toolchange', listener: () => void): void;
-  removeEventListener(type: 'toolchange', listener: () => void): void;
+  addEventListener?(type: 'toolchange', listener: () => void): void;
+  removeEventListener?(type: 'toolchange', listener: () => void): void;
 }
 
 export interface ModelContextHost {
@@ -48,18 +48,23 @@ function readModelContext(carrier: unknown): ModelContextLike | null {
 }
 
 /**
- * Feature-detect navigator.modelContext (preferred) vs document.modelContext.
- * Returns null when neither exists. host defaults to globalThis cast to ModelContextHost.
+ * Feature-detect document.modelContext first, falling back to
+ * navigator.modelContext for backward compatibility. Returns null when
+ * neither exists. host defaults to globalThis cast to ModelContextHost.
  */
 export function resolveModelContext(
   host?: ModelContextHost,
 ): ModelContextLike | null {
   const resolved = host ?? (globalThis as ModelContextHost);
-  const fromNavigator = readModelContext(resolved.navigator);
-  if (fromNavigator !== null) {
-    return fromNavigator;
+  const fromDocument = readModelContext(resolved.document);
+  if (fromDocument !== null) {
+    return fromDocument;
   }
-  return readModelContext(resolved.document);
+  return readModelContext(resolved.navigator);
+}
+
+export function hasToolchangeEvents(mc: ModelContextLike): boolean {
+  return typeof mc.addEventListener === 'function';
 }
 
 export function hasModelContext(host?: ModelContextHost): boolean {

@@ -5,14 +5,13 @@ import type {
   ToolResponse,
 } from './model-context';
 
-export class MockModelContext implements ModelContextLike {
-  private readonly tools = new Map<string, ToolDescriptor>();
-  private readonly listeners = new Set<() => void>();
-  private changeCount = 0;
-
-  public get toolchangeCount(): number {
-    return this.changeCount;
-  }
+/**
+ * In-memory ModelContextLike with no toolchange events. addEventListener and
+ * removeEventListener are intentionally absent so feature detection matches
+ * hosts that only expose document.modelContext.
+ */
+export class EventlessMockModelContext implements ModelContextLike {
+  protected readonly tools = new Map<string, ToolDescriptor>();
 
   registerTool(tool: ToolDescriptor, options?: ToolRegistrationOptions): void {
     if (this.tools.has(tool.name)) {
@@ -28,26 +27,16 @@ export class MockModelContext implements ModelContextLike {
         'abort',
         () => {
           this.tools.delete(tool.name);
-          this.dispatchToolChange();
+          this.onToolsChanged();
         },
         { once: true },
       );
     }
-    this.dispatchToolChange();
+    this.onToolsChanged();
   }
 
   getTools(): ToolDescriptor[] {
     return [...this.tools.values()];
-  }
-
-  addEventListener(type: 'toolchange', listener: () => void): void {
-    void type;
-    this.listeners.add(listener);
-  }
-
-  removeEventListener(type: 'toolchange', listener: () => void): void {
-    void type;
-    this.listeners.delete(listener);
   }
 
   getToolNames(): string[] {
@@ -66,7 +55,28 @@ export class MockModelContext implements ModelContextLike {
     return tool.execute(input);
   }
 
-  private dispatchToolChange(): void {
+  protected onToolsChanged(): void {}
+}
+
+export class MockModelContext extends EventlessMockModelContext {
+  private readonly listeners = new Set<() => void>();
+  private changeCount = 0;
+
+  public get toolchangeCount(): number {
+    return this.changeCount;
+  }
+
+  addEventListener(type: 'toolchange', listener: () => void): void {
+    void type;
+    this.listeners.add(listener);
+  }
+
+  removeEventListener(type: 'toolchange', listener: () => void): void {
+    void type;
+    this.listeners.delete(listener);
+  }
+
+  protected override onToolsChanged(): void {
     this.changeCount += 1;
     for (const listener of [...this.listeners]) {
       listener();
