@@ -25,6 +25,7 @@ import type {
   LearnerStatePublic,
   MutateAssumptionResultPublic,
   NavigateResultPublic,
+  RegistrySnapshot,
   RevealOutcomeResultPublic,
   RubricSubmission,
   RubricVerdictPublic,
@@ -33,14 +34,6 @@ import type {
 
 /** Attempts per question the demo script promises ("attempt 1 of 2 unused"). */
 export { MAX_ATTEMPTS_PER_QUESTION } from '../engine';
-
-/** Thrown by facade methods whose engine backing has not landed yet. */
-export class NotImplementedError extends Error {
-  constructor(feature: string) {
-    super(`not-implemented: ${feature}`);
-    this.name = 'NotImplementedError';
-  }
-}
 
 const DRILL_BY_DIMENSION: Record<RubricDimension, DrillKind> = {
   recall: 'spaced_review',
@@ -67,12 +60,8 @@ export interface MasteryEngineFacadeOptions {
  *
  * Implemented: the full practice loop (state, context, question, answer,
  * hint, routing, drill prescription, rubric, misconception brief, notes,
- * navigation) plus gate-aware `advanceModule` and an inactive-exam status.
- *
- * TODO(day-2): flip-condition drill session, exam lifecycle, and debrief
- * methods throw NotImplementedError until their engine state machines land;
- * the ToolRegistry never registers those tools because the engine cannot yet
- * enter the phases that would surface them.
+ * navigation) plus gate-aware `advanceModule`. The three state machines —
+ * flip-condition drill, exam lifecycle, and mastery debrief — are live.
  */
 export class MasteryEngineFacade implements EngineFacade {
   private readonly engine: MasteryEngine;
@@ -239,44 +228,84 @@ export class MasteryEngineFacade implements EngineFacade {
   }
 
   mutateAssumption(
-    _scenarioId: string,
-    _assumptionId: string,
+    scenarioId: string,
+    assumptionId: string,
   ): MutateAssumptionResultPublic {
-    throw new NotImplementedError('flip-condition-drill-session');
+    const r = this.engine.mutateAssumption(scenarioId, assumptionId);
+    return {
+      accepted: r.accepted,
+      scenarioId: r.scenarioId,
+      round: r.round,
+      assumptionText: r.assumptionText,
+    };
   }
 
   commitPrediction(
-    _scenarioId: string,
-    _prediction: string,
-    _reason: string,
+    scenarioId: string,
+    prediction: string,
+    reason: string,
   ): CommitPredictionResultPublic {
-    throw new NotImplementedError('flip-condition-drill-session');
+    const r = this.engine.commitPrediction(scenarioId, prediction, reason);
+    return {
+      committed: r.committed,
+      scenarioId: r.scenarioId,
+    };
   }
 
-  revealOutcome(_scenarioId: string): RevealOutcomeResultPublic {
-    throw new NotImplementedError('flip-condition-drill-session');
+  revealOutcome(scenarioId: string): RevealOutcomeResultPublic {
+    const r = this.engine.revealOutcome(scenarioId);
+    return {
+      outcome: r.outcomeComponent,
+      predictionWasCorrect: r.predictionWasCorrect,
+      explanationAnchor: r.explanationAnchor,
+    };
   }
 
   startExam(): ExamStatusPublic {
-    throw new NotImplementedError('exam-lifecycle');
+    const r = this.engine.startExam();
+    return {
+      active: r.active,
+      remainingSeconds: r.remainingSeconds,
+      questionsAnswered: r.questionsAnswered,
+      questionsTotal: r.questionsTotal,
+      submitted: r.submitted,
+    };
   }
 
   getExamStatus(): ExamStatusPublic {
+    const r = this.engine.getExamStatus();
     return {
-      active: false,
-      remainingSeconds: 0,
-      questionsAnswered: 0,
-      questionsTotal: 0,
-      submitted: false,
+      active: r.active,
+      remainingSeconds: r.remainingSeconds,
+      questionsAnswered: r.questionsAnswered,
+      questionsTotal: r.questionsTotal,
+      submitted: r.submitted,
     };
   }
 
   submitExam(): ExamStatusPublic {
-    throw new NotImplementedError('exam-lifecycle');
+    const r = this.engine.submitExam();
+    return {
+      active: r.active,
+      remainingSeconds: r.remainingSeconds,
+      questionsAnswered: r.questionsAnswered,
+      questionsTotal: r.questionsTotal,
+      submitted: r.submitted,
+    };
   }
 
   getExamDebrief(): ExamDebriefPublic {
-    throw new NotImplementedError('exam-lifecycle');
+    const r = this.engine.getExamDebrief();
+    return {
+      scores: {
+        recall: r.scores.recall,
+        connections: r.scores.connections,
+        application: r.scores.application,
+        transfer: r.scores.transfer,
+      },
+      missedConceptIds: r.missedConceptIds.slice(),
+      misconceptionIdsFired: r.misconceptionIdsFired.slice(),
+    };
   }
 
   advanceModule(): AdvanceModuleResultPublic {
@@ -289,16 +318,50 @@ export class MasteryEngineFacade implements EngineFacade {
     return { advanced: true, nextObjectiveId: this.nextObjectiveId() };
   }
 
-  composeDebrief(_segments: DebriefSegment[]): ComposeDebriefResultPublic {
-    throw new NotImplementedError('mastery-debrief');
+  composeDebrief(segments: DebriefSegment[]): ComposeDebriefResultPublic {
+    const r = this.engine.composeDebrief(segments);
+    return {
+      accepted: r.accepted,
+      rejectedSegmentIds: r.rejectedSegmentIds.slice(),
+      reason: r.reason,
+    };
   }
 
   getNarrationScript(): NarrationCue[] {
-    throw new NotImplementedError('mastery-debrief');
+    return this.engine.getNarrationScript().map((cue) => {
+      return {
+        segmentId: cue.segmentId,
+        order: cue.order,
+        scriptLine: cue.scriptLine,
+      };
+    });
   }
 
-  advanceSegment(_segmentId: string): AdvanceSegmentResultPublic {
-    throw new NotImplementedError('mastery-debrief');
+  advanceSegment(segmentId: string): AdvanceSegmentResultPublic {
+    const r = this.engine.advanceSegment(segmentId);
+    return {
+      ok: r.ok,
+      currentSegmentId: r.currentSegmentId,
+    };
+  }
+
+  getRegistrySnapshot(): RegistrySnapshot {
+    const state = this.engine.getLearnerState();
+    const fires = state.misconceptionFires;
+    const repeatedMisconceptionIds: string[] = [];
+    for (const id of Object.keys(fires)) {
+      if (fires[id] >= 2) {
+        repeatedMisconceptionIds.push(id);
+      }
+    }
+    return {
+      phase: state.phase,
+      gatePassed: state.gatePassed,
+      repeatedMisconceptionIds,
+      predictionCommitted: this.engine.getActiveDrill()?.prediction != null,
+      examSubmitted: this.engine.getExamState()?.submitted === true,
+      moduleComplete: this.engine.isModuleComplete(),
+    };
   }
 
   private buildEvidenceCorpus(): string {

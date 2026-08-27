@@ -29,6 +29,11 @@ test('createEmptyLedger has phase lesson, zero scores, empty collections', () =>
     application: 0,
     transfer: 0,
   });
+  expect(ledger.drillResults).toEqual([]);
+  expect(ledger.activeDrill).toBe(null);
+  expect(ledger.exam).toBe(null);
+  expect(ledger.debrief).toBe(null);
+  expect(ledger.learnerName).toBe(null);
 });
 
 test('recordAttempt is immutable and does not share arrays or fire maps', () => {

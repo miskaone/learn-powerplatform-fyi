@@ -140,7 +140,7 @@ export function Pl400App() {
       phase,
       gatePassed: state.gatePassed,
       misconceptionFires: state.misconceptionFires,
-    });
+    }, s.facade);
     if (s.registry) {
       void syncRegistryRoster(s.registry, snapshot, {
         onNames: (names) => {

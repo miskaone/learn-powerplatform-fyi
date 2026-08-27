@@ -4,17 +4,14 @@ import type {
   ComposeDebriefResultPublic,
   EngineFacade,
   LearnerStatePublic,
+  RegistrySnapshot,
   RubricSubmission,
   SubmitAnswerVerdictPublic,
 } from './engine-facade';
 import { MockModelContext } from './mock-model-context';
 import type { ToolDescriptor, ToolResponse } from './model-context';
 import { textResponse } from './model-context';
-import {
-  desiredToolNames,
-  ToolRegistry,
-  type RegistrySnapshot,
-} from './registry';
+import { desiredToolNames, ToolRegistry } from './registry';
 import { STATIC_TOOL_NAMES } from './tool-names';
 
 const SAMPLE_QUESTION: QuestionPublic = {
@@ -195,6 +192,14 @@ function createStubEngine(options?: {
     advanceSegment: (segmentId) => ({
       ok: true,
       currentSegmentId: segmentId,
+    }),
+    getRegistrySnapshot: () => ({
+      phase: 'practice',
+      gatePassed: false,
+      repeatedMisconceptionIds: [],
+      predictionCommitted: false,
+      examSubmitted: false,
+      moduleComplete: false,
     }),
   };
 

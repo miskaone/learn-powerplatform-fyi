@@ -88,6 +88,11 @@ test("empty Ledger typechecks with phase 'lesson' and all four rubric dimensions
     },
     coachNotes: [],
     phase: 'lesson',
+    drillResults: [],
+    activeDrill: null,
+    exam: null,
+    debrief: null,
+    learnerName: null,
   };
 
   expect(ledger.phase).toBe('lesson');

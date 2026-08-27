@@ -1,3 +1,5 @@
+import type { FlipConditionScenario } from './rules/flipCondition';
+
 /** Course phase that governs which tools are registered. */
 export type ToolPhase =
   | 'lesson'
@@ -59,6 +61,12 @@ export interface Objective {
   questionIds: string[];
 }
 
+/** Timed exam configuration owned by the content manifest. */
+export interface ExamConfig {
+  questionIds: string[];
+  durationSeconds: number;
+}
+
 /** Frozen course payload the engine loads: objectives, items, and misconceptions. */
 export interface ContentManifest {
   courseId: string;
@@ -66,6 +74,8 @@ export interface ContentManifest {
   objectives: Objective[];
   questions: Question[];
   misconceptions: Misconception[];
+  exam?: ExamConfig;
+  flipScenarios?: FlipConditionScenario[];
 }
 
 /** Redacted option: id and visible text only — no misconception mapping. */
@@ -114,6 +124,54 @@ export interface AttemptRecord {
   timestamp: number;
 }
 
+/** One completed Flip-Condition drill round — a transfer-dimension practice event. */
+export interface DrillResultRecord {
+  scenarioId: string;
+  assumptionId: string; // the mutated question-node id
+  prediction: string;
+  reason: string;
+  outcomeId: string; // expectedOutcomeId of the matched row
+  outcomeComponent: string; // expectedComponent of the matched row
+  predictionWasCorrect: boolean;
+  dimension: 'transfer';
+  timestamp: number;
+}
+
+/** Active Flip-Condition drill session (survives reload). */
+export interface DrillSessionState {
+  scenarioId: string;
+  round: number; // 1-based; increments after each reveal
+  usedAssumptionIds: string[]; // assumptions already revealed this session
+  currentAssumptionId: string | null; // the ONE mutation this round, engine-enforced
+  prediction: { text: string; reason: string } | null;
+}
+
+/** One graded exam question verdict (post-submit only). */
+export interface ExamVerdict {
+  questionId: string;
+  chosenOptionId: string | null; // null = unanswered
+  correct: boolean;
+  misconceptionId: string | null;
+  concepts: string[];
+}
+
+/** Exam lifecycle state (survives reload). */
+export interface ExamState {
+  startedAt: number;
+  durationSeconds: number;
+  questionIds: string[];
+  answers: Record<string, string>; // questionId -> chosen optionId
+  submitted: boolean;
+  submittedAt: number | null;
+  verdicts: ExamVerdict[]; // empty until submitted
+}
+
+/** Composed mastery-debrief playlist state (survives reload). */
+export interface DebriefState {
+  playlist: DebriefSegment[];
+  currentIndex: number; // 0 = first segment is current
+}
+
 /** Authoritative learner state the engine owns; agent input is untrusted against this. */
 export interface Ledger {
   attempts: AttemptRecord[];
@@ -121,10 +179,18 @@ export interface Ledger {
   scores: RubricScores;
   coachNotes: string[];
   phase: ToolPhase;
+  drillResults: DrillResultRecord[];
+  activeDrill: DrillSessionState | null;
+  exam: ExamState | null;
+  debrief: DebriefState | null;
+  learnerName: string | null;
 }
 
 /** Kind of a Mastery Debrief playlist beat. */
 export type DebriefSegmentKind = 'title' | 'misconception' | 'rubric' | 'drill';
+
+/** Storage clamp for debrief script lines loaded from persistence. */
+export const MAX_SCRIPT_LINE_LENGTH = 300;
 
 /**
  * One debrief playlist beat. `audioAsset` is a baked MP3 path in baked-audio

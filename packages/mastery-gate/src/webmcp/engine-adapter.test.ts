@@ -1,14 +1,21 @@
 import { describe, expect, test } from 'bun:test';
 
 import { MasteryEngine, MemoryStorageAdapter } from '../engine';
-import { FIXTURE_MANIFEST } from '../engine/fixtures';
+import {
+  FIXTURE_MANIFEST,
+  FIXTURE_MANIFEST_WITH_DRILLS,
+  FIXTURE_MANIFEST_WITH_EXAM,
+} from '../engine/fixtures';
+import type { DebriefSegment } from '../schema';
 import type { RubricSubmission } from './engine-facade';
 import {
   MasteryEngineFacade,
   MAX_ATTEMPTS_PER_QUESTION,
-  NotImplementedError,
 } from './engine-adapter';
 import { createToolset } from './tools';
+
+const UI_SCENARIO = 'sample-flip-ui';
+const AUTO_SCENARIO = 'fixture-flip-automation';
 
 function makeFacade(navigate?: (anchor: string) => boolean) {
   const engine = new MasteryEngine(FIXTURE_MANIFEST, new MemoryStorageAdapter());
@@ -16,6 +23,55 @@ function makeFacade(navigate?: (anchor: string) => boolean) {
     engine,
     facade: new MasteryEngineFacade(engine, FIXTURE_MANIFEST, { navigate }),
   };
+}
+
+function makeDrillFacade(now: () => number = () => 1000) {
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST_WITH_DRILLS,
+    new MemoryStorageAdapter(),
+    { now },
+  );
+  return {
+    engine,
+    facade: new MasteryEngineFacade(engine, FIXTURE_MANIFEST_WITH_DRILLS),
+  };
+}
+
+function makeExamFacade(now: () => number) {
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST_WITH_EXAM,
+    new MemoryStorageAdapter(),
+    { now },
+  );
+  return {
+    engine,
+    facade: new MasteryEngineFacade(engine, FIXTURE_MANIFEST_WITH_EXAM),
+  };
+}
+
+function debriefSegment(
+  id: string,
+  kind: DebriefSegment['kind'],
+  scriptLine: string,
+  misconceptionId?: string,
+): DebriefSegment {
+  const item: DebriefSegment = {
+    id,
+    kind,
+    scriptLine,
+    audioAsset: null,
+  };
+  if (misconceptionId !== undefined) {
+    item.misconceptionId = misconceptionId;
+  }
+  return item;
+}
+
+function attemptAllQuestions(facade: MasteryEngineFacade): void {
+  facade.submitAnswer('q1', 'q1-a');
+  facade.submitAnswer('q2', 'q2-b');
+  facade.submitAnswer('q3', 'q3-b');
+  facade.submitAnswer('q4', 'q4-a');
 }
 
 // Evidence must come from corpus lines the tool surface never emits:
@@ -284,31 +340,10 @@ describe('MasteryEngineFacade', () => {
     expect(result.nextObjectiveId).toBe('obj-2');
   });
 
-  test('getExamStatus reports an inactive exam before the lifecycle lands', () => {
+  test('getExamStatus reports an inactive exam before startExam', () => {
     const { facade } = makeFacade();
     expect(facade.getExamStatus().active).toBe(false);
   });
-
-  test('unlanded phase machinery throws NotImplementedError', () => {
-    const { facade } = makeFacade();
-    expect(() => facade.mutateAssumption('s', 'a')).toThrow(NotImplementedError);
-    expect(() => facade.commitPrediction('s', 'p', 'r')).toThrow(
-      NotImplementedError,
-    );
-    expect(() => facade.revealOutcome('s')).toThrow(NotImplementedError);
-    expect(() => facade.startExam()).toThrow(NotImplementedError);
-    expect(() => facade.submitExam()).toThrow(NotImplementedError);
-    expect(() => facade.getExamDebrief()).toThrow(NotImplementedError);
-    expect(() => facade.composeDebrief([])).toThrow(NotImplementedError);
-    expect(() => facade.getNarrationScript()).toThrow(NotImplementedError);
-    expect(() => facade.advanceSegment('seg')).toThrow(NotImplementedError);
-  });
-
-  // TODO(day-2): unskip as the engine grows the drill/exam/debrief state
-  // machines and the adapter stops throwing NotImplementedError for them.
-  test.skip('flip-condition drill runs commit-then-reveal through the facade', () => {});
-  test.skip('exam lifecycle revokes and restores tools through the facade', () => {});
-  test.skip('compose_debrief validates segments against the live ledger', () => {});
 
   test('createToolset runs against the real engine with no key leakage', async () => {
     const { facade } = makeFacade();
@@ -349,5 +384,187 @@ describe('MasteryEngineFacade', () => {
     expect(payload.error).toBe('question-not-current');
     expect(payload.questionId).toBe('q1');
     expect(facade.getLearnerState().attemptCount).toBe(2);
+  });
+
+  test('flip-condition drill round maps public shapes and refusals through the facade', () => {
+    const { engine, facade } = makeDrillFacade();
+    engine.startDrill(UI_SCENARIO);
+
+    const mutated = facade.mutateAssumption(UI_SCENARIO, 'ui-root');
+    expect(mutated).toEqual({
+      accepted: true,
+      scenarioId: UI_SCENARIO,
+      round: 1,
+      assumptionText: 'External users?',
+    });
+    expect(Object.keys(mutated).sort()).toEqual(
+      ['accepted', 'assumptionText', 'round', 'scenarioId'].sort(),
+    );
+
+    const wrongScenario = facade.mutateAssumption(AUTO_SCENARIO, 'ui-root');
+    expect(wrongScenario.accepted).toBe(false);
+    expect(wrongScenario.assumptionText).toBe('');
+
+    const committed = facade.commitPrediction(
+      UI_SCENARIO,
+      'Power Pages',
+      'external users flip the tree',
+    );
+    expect(committed).toEqual({
+      committed: true,
+      scenarioId: UI_SCENARIO,
+    });
+
+    const revealed = facade.revealOutcome(UI_SCENARIO);
+    expect(revealed.outcome).toBe('Power Pages');
+    expect(revealed.explanationAnchor).toBe('sample-power-pages');
+    expect(revealed.predictionWasCorrect).toBe(true);
+    expect(Object.keys(revealed).sort()).toEqual(
+      ['explanationAnchor', 'outcome', 'predictionWasCorrect'].sort(),
+    );
+
+    const beforeCommit = makeDrillFacade();
+    beforeCommit.engine.startDrill(UI_SCENARIO);
+    expect(() => beforeCommit.facade.revealOutcome(UI_SCENARIO)).toThrow(
+      'refused: prediction-not-committed',
+    );
+  });
+
+  test('exam lifecycle maps through the facade with an injected clock and no verdict leak', () => {
+    let t = 1_000_000;
+    const { facade } = makeExamFacade(() => t);
+    primeAttempt(facade);
+    const gated = facade.scoreRubric(rubric(3, 3, 3, 3));
+    expect(gated.gatePassed).toBe(true);
+
+    const attemptsBefore = facade.getLearnerState().attemptCount;
+    const started = facade.startExam();
+    expect(started.active).toBe(true);
+    expect(started.submitted).toBe(false);
+    expect(started.remainingSeconds).toBe(300);
+    expect(started.questionsTotal).toBe(3);
+    expect(Object.keys(started).sort()).toEqual(
+      [
+        'active',
+        'questionsAnswered',
+        'questionsTotal',
+        'remainingSeconds',
+        'submitted',
+      ].sort(),
+    );
+
+    const miss = facade.submitAnswer('q1', 'q1-b');
+    expect(miss.misconceptionId).toBe(null);
+    expect(facade.getLearnerState().attemptCount).toBe(attemptsBefore);
+
+    facade.submitAnswer('q2', 'q2-c');
+    const submitted = facade.submitExam();
+    expect(submitted.submitted).toBe(true);
+    expect(submitted.active).toBe(false);
+
+    const debrief = facade.getExamDebrief();
+    expect(Object.keys(debrief).sort()).toEqual(
+      ['missedConceptIds', 'misconceptionIdsFired', 'scores'].sort(),
+    );
+    expect(debrief.misconceptionIdsFired).toContain('mc-q2-post');
+    expect(debrief.missedConceptIds.length).toBeGreaterThan(0);
+    expect(JSON.stringify(debrief)).not.toContain('verdicts');
+  });
+
+  test('debrief through the facade rejects unfired segments then narrates in order', () => {
+    const { engine, facade } = makeExamFacade(() => 1_000_000);
+    attemptAllQuestions(facade);
+    const gated = facade.scoreRubric(rubric(3, 3, 3, 3));
+    expect(gated.gatePassed).toBe(true);
+
+    const refused = facade.composeDebrief([
+      debriefSegment('drill-1', 'drill', 'Try the flip again'),
+      debriefSegment(
+        'mc-never',
+        'misconception',
+        'This never fired',
+        'mc-q2-post',
+      ),
+      debriefSegment('title-1', 'title', 'Hello {learnerName}.'),
+      debriefSegment('rubric-1', 'rubric', 'Every dimension cleared'),
+    ]);
+    expect(refused.accepted).toBe(false);
+    expect(refused.rejectedSegmentIds).toEqual(['mc-never']);
+    expect(Object.keys(refused).sort()).toEqual(
+      ['accepted', 'reason', 'rejectedSegmentIds'].sort(),
+    );
+
+    const accepted = facade.composeDebrief([
+      debriefSegment('drill-1', 'drill', 'Try the flip again'),
+      debriefSegment('title-1', 'title', 'Hello {learnerName}.'),
+      debriefSegment('rubric-1', 'rubric', 'Every dimension cleared'),
+    ]);
+    expect(accepted.accepted).toBe(true);
+
+    engine.setLearnerName('Mike');
+    const cues = facade.getNarrationScript();
+    expect(cues.map((cue) => cue.order)).toEqual([0, 1, 2]);
+    expect(cues[0]).toEqual({
+      segmentId: 'title-1',
+      order: 0,
+      scriptLine: 'Hello Mike.',
+    });
+    expect(cues[1]?.segmentId).toBe('rubric-1');
+    expect(cues[2]?.segmentId).toBe('drill-1');
+
+    expect(facade.advanceSegment('drill-1')).toEqual({
+      ok: false,
+      currentSegmentId: 'title-1',
+    });
+    expect(facade.advanceSegment('title-1')).toEqual({
+      ok: false,
+      currentSegmentId: 'title-1',
+    });
+    expect(facade.advanceSegment('rubric-1')).toEqual({
+      ok: true,
+      currentSegmentId: 'rubric-1',
+    });
+    expect(facade.advanceSegment('drill-1')).toEqual({
+      ok: true,
+      currentSegmentId: 'drill-1',
+    });
+  });
+
+  test('getRegistrySnapshot derives phase and booleans from real engine state', () => {
+    const fresh = makeFacade().facade.getRegistrySnapshot();
+    expect(fresh.phase).toBe('lesson');
+    expect(fresh.predictionCommitted).toBe(false);
+    expect(fresh.examSubmitted).toBe(false);
+    expect(fresh.moduleComplete).toBe(false);
+
+    const { engine: drillEngine, facade: drillFacade } = makeDrillFacade();
+    drillEngine.startDrill(UI_SCENARIO);
+    drillFacade.mutateAssumption(UI_SCENARIO, 'ui-root');
+    drillFacade.commitPrediction(UI_SCENARIO, 'Power Pages', 'external');
+    const afterCommit = drillFacade.getRegistrySnapshot();
+    expect(afterCommit.predictionCommitted).toBe(true);
+    expect(afterCommit.phase).toBe('drill');
+
+    let t = 1_000_000;
+    const { facade: examFacade } = makeExamFacade(() => t);
+    primeAttempt(examFacade);
+    examFacade.scoreRubric(rubric(3, 3, 3, 3));
+    examFacade.startExam();
+    examFacade.submitExam();
+    expect(examFacade.getRegistrySnapshot().examSubmitted).toBe(true);
+
+    const gatedOnly = makeExamFacade(() => 1_000_000).facade;
+    primeAttempt(gatedOnly);
+    gatedOnly.scoreRubric(rubric(3, 3, 3, 3));
+    expect(gatedOnly.getRegistrySnapshot().moduleComplete).toBe(false);
+
+    const attemptedOnly = makeExamFacade(() => 1_000_000).facade;
+    attemptAllQuestions(attemptedOnly);
+    expect(attemptedOnly.getRegistrySnapshot().moduleComplete).toBe(false);
+
+    const complete = makeExamFacade(() => 1_000_000).facade;
+    attemptAllQuestions(complete);
+    complete.scoreRubric(rubric(3, 3, 3, 3));
+    expect(complete.getRegistrySnapshot().moduleComplete).toBe(true);
   });
 });

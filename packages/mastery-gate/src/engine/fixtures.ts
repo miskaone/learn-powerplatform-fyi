@@ -1,4 +1,5 @@
-import type { ContentManifest, Question } from '../schema';
+import type { ContentManifest, Question, QuestionOption } from '../schema';
+import type { FlipConditionScenario } from '../rules/flipCondition';
 
 export const Q1_RATIONALE =
   'Plug-ins write Dataverse data through IOrganizationService inside the sandbox.';
@@ -179,3 +180,187 @@ export function fixtureQuestion(id: string): Question {
   }
   return question;
 }
+
+export const FIXTURE_FLIP_SCENARIOS: FlipConditionScenario[] = [
+  {
+    id: 'sample-flip-ui',
+    title: 'UI tree sample flips — SAMPLE — replace with authored content',
+    treeKind: 'ui',
+    baselineRowId: 'row-baseline',
+    note: 'Placeholder Flip-Condition table. SAMPLE — replace with authored content',
+    rows: [
+      {
+        id: 'row-baseline',
+        answers: {
+          'ui-root': false,
+          'ui-relational': true,
+        },
+        expectedOutcomeId: 'ui-model',
+        expectedComponent: 'Model-driven app',
+        expectedRuleId: 'related-records',
+        citation: 'sample-model-driven',
+      },
+      {
+        id: 'row-flip-external',
+        answers: {
+          'ui-root': true,
+          'ui-relational': true,
+        },
+        expectedOutcomeId: 'ui-pages',
+        expectedComponent: 'Power Pages',
+        expectedRuleId: 'external-users',
+        citation: 'sample-power-pages',
+        mutatedQuestionId: 'ui-root',
+      },
+      {
+        id: 'row-flip-relational',
+        answers: {
+          'ui-root': false,
+          'ui-relational': false,
+        },
+        expectedOutcomeId: 'ui-canvas',
+        expectedComponent: 'Canvas app',
+        expectedRuleId: 'guided-task',
+        citation: 'sample-canvas-guided',
+        mutatedQuestionId: 'ui-relational',
+      },
+    ],
+  },
+  {
+    id: 'fixture-flip-automation',
+    title: 'Automation tree fixture flips',
+    treeKind: 'automation',
+    baselineRowId: 'row-baseline',
+    rows: [
+      {
+        id: 'row-baseline',
+        answers: {
+          'auto-root': false,
+          'auto-stateless': false,
+        },
+        expectedOutcomeId: 'auto-flow',
+        expectedComponent: 'Power Automate',
+        expectedRuleId: 'orchestration',
+        citation: 'sample-power-automate',
+      },
+      {
+        id: 'row-flip-conversation',
+        answers: {
+          'auto-root': true,
+          'auto-stateless': false,
+        },
+        expectedOutcomeId: 'auto-copilot',
+        expectedComponent: 'Copilot Studio',
+        expectedRuleId: 'conversation',
+        citation: 'sample-copilot-studio',
+        mutatedQuestionId: 'auto-root',
+      },
+      {
+        id: 'row-flip-stateless',
+        answers: {
+          'auto-root': false,
+          'auto-stateless': true,
+        },
+        expectedOutcomeId: 'auto-prompt',
+        expectedComponent: 'AI prompt, called from a flow, app, or agent',
+        expectedRuleId: 'stateless-generation',
+        citation: 'sample-ai-prompt',
+        mutatedQuestionId: 'auto-stateless',
+      },
+    ],
+  },
+];
+
+export const FIXTURE_MANIFEST_WITH_DRILLS: ContentManifest = {
+  courseId: FIXTURE_MANIFEST.courseId,
+  title: FIXTURE_MANIFEST.title,
+  objectives: FIXTURE_MANIFEST.objectives.map((objective) => {
+    return {
+      id: objective.id,
+      title: objective.title,
+      summary: objective.summary,
+      questionIds: objective.questionIds.slice(),
+    };
+  }),
+  questions: FIXTURE_MANIFEST.questions.map((question) => {
+    return {
+      id: question.id,
+      objectiveId: question.objectiveId,
+      concepts: question.concepts.slice(),
+      prompt: question.prompt,
+      options: question.options.map((option) => {
+        const cloned: QuestionOption = {
+          id: option.id,
+          text: option.text,
+        };
+        if (option.misconceptionId !== undefined) {
+          cloned.misconceptionId = option.misconceptionId;
+        }
+        return cloned;
+      }),
+      correctOptionId: question.correctOptionId,
+      rationale: question.rationale,
+      remediationAnchor: question.remediationAnchor,
+    };
+  }),
+  misconceptions: FIXTURE_MANIFEST.misconceptions.map((misconception) => {
+    return {
+      id: misconception.id,
+      name: misconception.name,
+      contrast: misconception.contrast,
+      socraticSeeds: misconception.socraticSeeds.slice(),
+      anchor: misconception.anchor,
+    };
+  }),
+  flipScenarios: FIXTURE_FLIP_SCENARIOS,
+};
+
+export const FIXTURE_MANIFEST_WITH_EXAM: ContentManifest = {
+  courseId: FIXTURE_MANIFEST_WITH_DRILLS.courseId,
+  title: FIXTURE_MANIFEST_WITH_DRILLS.title,
+  objectives: FIXTURE_MANIFEST_WITH_DRILLS.objectives.map((objective) => {
+    return {
+      id: objective.id,
+      title: objective.title,
+      summary: objective.summary,
+      questionIds: objective.questionIds.slice(),
+    };
+  }),
+  questions: FIXTURE_MANIFEST_WITH_DRILLS.questions.map((question) => {
+    return {
+      id: question.id,
+      objectiveId: question.objectiveId,
+      concepts: question.concepts.slice(),
+      prompt: question.prompt,
+      options: question.options.map((option) => {
+        const cloned: QuestionOption = {
+          id: option.id,
+          text: option.text,
+        };
+        if (option.misconceptionId !== undefined) {
+          cloned.misconceptionId = option.misconceptionId;
+        }
+        return cloned;
+      }),
+      correctOptionId: question.correctOptionId,
+      rationale: question.rationale,
+      remediationAnchor: question.remediationAnchor,
+    };
+  }),
+  misconceptions: FIXTURE_MANIFEST_WITH_DRILLS.misconceptions.map(
+    (misconception) => {
+      return {
+        id: misconception.id,
+        name: misconception.name,
+        contrast: misconception.contrast,
+        socraticSeeds: misconception.socraticSeeds.slice(),
+        anchor: misconception.anchor,
+      };
+    },
+  ),
+  flipScenarios: FIXTURE_FLIP_SCENARIOS,
+  exam: {
+    questionIds: ['q1', 'q2', 'q3'],
+    durationSeconds: 300,
+  },
+};

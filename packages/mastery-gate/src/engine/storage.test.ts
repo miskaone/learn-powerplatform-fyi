@@ -1,5 +1,9 @@
 import { test, expect } from 'bun:test';
-import { createEmptyLedger, recordAttempt } from './ledger';
+import {
+  createEmptyLedger,
+  MAX_LEARNER_NAME_LENGTH,
+  recordAttempt,
+} from './ledger';
 import { createHintState } from './hints';
 import { gradeAnswer } from './grading';
 import { fixtureQuestion } from './fixtures';
@@ -11,6 +15,7 @@ import {
   saveState,
 } from './storage';
 import type { LocalStorageLike, PersistedState } from './storage';
+import type { DrillResultRecord, DrillSessionState, Ledger } from '../schema';
 
 test('MemoryStorageAdapter get/set/remove semantics', () => {
   const adapter = new MemoryStorageAdapter();
@@ -251,6 +256,134 @@ test('LocalStorageAdapter with no backing argument uses memory mode without thro
   expect(adapter.getItem('k')).toBe('v');
   adapter.removeItem('k');
   expect(adapter.getItem('k')).toBe(null);
+});
+
+function oldFormatLedger(): Record<string, unknown> {
+  return {
+    attempts: [],
+    misconceptionFires: {},
+    scores: {
+      recall: 0,
+      connections: 0,
+      application: 0,
+      transfer: 0,
+    },
+    coachNotes: [],
+    phase: 'lesson',
+  };
+}
+
+test('old-format persisted state without the five new ledger fields loads with defaults', () => {
+  const adapter = new MemoryStorageAdapter();
+  adapter.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      ledger: oldFormatLedger(),
+      hints: createHintState(),
+    }),
+  );
+  const loaded = loadState(adapter);
+  expect(loaded === null).toBe(false);
+  if (loaded === null) {
+    return;
+  }
+  expect(loaded.ledger.drillResults).toEqual([]);
+  expect(loaded.ledger.activeDrill).toBe(null);
+  expect(loaded.ledger.exam).toBe(null);
+  expect(loaded.ledger.debrief).toBe(null);
+  expect(loaded.ledger.learnerName).toBe(null);
+});
+
+test('tampered activeDrill or drillResults dimension rejects the whole state', () => {
+  const good = (): Record<string, unknown> => ({
+    version: 1,
+    ledger: createEmptyLedger(),
+    hints: createHintState(),
+    lastGrade: null,
+  });
+
+  const badRound = good();
+  (badRound.ledger as { activeDrill: unknown }).activeDrill = {
+    scenarioId: 'sample-flip-ui',
+    round: 'x',
+    usedAssumptionIds: [],
+    currentAssumptionId: null,
+    prediction: null,
+  };
+  const roundAdapter = new MemoryStorageAdapter();
+  roundAdapter.setItem(STORAGE_KEY, JSON.stringify(badRound));
+  expect(loadState(roundAdapter)).toBe(null);
+
+  const badDimension = good();
+  (badDimension.ledger as { drillResults: unknown[] }).drillResults = [
+    {
+      scenarioId: 'sample-flip-ui',
+      assumptionId: 'ui-root',
+      prediction: 'Power Pages',
+      reason: 'external',
+      outcomeId: 'ui-pages',
+      outcomeComponent: 'Power Pages',
+      predictionWasCorrect: true,
+      dimension: 'recall',
+      timestamp: 1,
+    },
+  ];
+  const dimensionAdapter = new MemoryStorageAdapter();
+  dimensionAdapter.setItem(STORAGE_KEY, JSON.stringify(badDimension));
+  expect(loadState(dimensionAdapter)).toBe(null);
+});
+
+test('learnerName longer than 40 chars is clamped on load, not rejected', () => {
+  const adapter = new MemoryStorageAdapter();
+  const ledger = createEmptyLedger();
+  ledger.learnerName = 'N'.repeat(MAX_LEARNER_NAME_LENGTH + 12);
+  adapter.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      ledger,
+      hints: createHintState(),
+      lastGrade: null,
+    }),
+  );
+  const loaded = loadState(adapter);
+  expect(loaded === null).toBe(false);
+  expect(loaded?.ledger.learnerName).toBe('N'.repeat(MAX_LEARNER_NAME_LENGTH));
+});
+
+test('full round-trip of drillResults, activeDrill, and learnerName is deep-equal after clamping', () => {
+  const adapter = new MemoryStorageAdapter();
+  const record: DrillResultRecord = {
+    scenarioId: 'sample-flip-ui',
+    assumptionId: 'ui-root',
+    prediction: 'Power Pages',
+    reason: 'external users',
+    outcomeId: 'ui-pages',
+    outcomeComponent: 'Power Pages',
+    predictionWasCorrect: true,
+    dimension: 'transfer',
+    timestamp: 42,
+  };
+  const session: DrillSessionState = {
+    scenarioId: 'sample-flip-ui',
+    round: 1,
+    usedAssumptionIds: [],
+    currentAssumptionId: 'ui-root',
+    prediction: { text: 'Power Pages', reason: 'external users' },
+  };
+  const ledger: Ledger = createEmptyLedger();
+  ledger.drillResults = [record];
+  ledger.activeDrill = session;
+  ledger.learnerName = 'Ada Lovelace';
+  const state: PersistedState = {
+    version: 1,
+    ledger,
+    hints: createHintState(),
+    lastGrade: null,
+  };
+  saveState(adapter, state);
+  expect(loadState(adapter)).toEqual(state);
 });
 
 test('saveState/loadState round-trip through a throwing-then-degraded LocalStorageAdapter', () => {

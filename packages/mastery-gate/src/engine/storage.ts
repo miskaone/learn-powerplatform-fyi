@@ -1,13 +1,25 @@
 import type {
   AttemptRecord,
+  DebriefSegment,
+  DebriefSegmentKind,
+  DebriefState,
+  DrillResultRecord,
+  DrillSessionState,
+  ExamState,
+  ExamVerdict,
   Ledger,
   RubricScore,
   StorageAdapter,
   ToolPhase,
 } from '../schema';
+import { MAX_SCRIPT_LINE_LENGTH } from '../schema';
 import type { GradeResult } from './grading';
 import type { HintState } from './hints';
-import { clampCoachNotes } from './ledger';
+import { clampCoachNotes, MAX_LEARNER_NAME_LENGTH } from './ledger';
+import {
+  MAX_PREDICTION_LENGTH,
+  MAX_PREDICTION_REASON_LENGTH,
+} from './drill';
 
 export const STORAGE_KEY = 'mastery-gate:v1';
 
@@ -229,6 +241,269 @@ function validateAttempt(value: unknown): AttemptRecord | null {
   };
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  if (!isRecord(value)) {
+    return false;
+  }
+  for (const key of Object.keys(value)) {
+    if (typeof value[key] !== 'string') {
+      return false;
+    }
+  }
+  return true;
+}
+
+function copyStringRecord(record: Record<string, string>): Record<string, string> {
+  const copy: Record<string, string> = {};
+  for (const key of Object.keys(record)) {
+    copy[key] = record[key];
+  }
+  return copy;
+}
+
+function validateDrillResult(value: unknown): DrillResultRecord | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const {
+    scenarioId,
+    assumptionId,
+    prediction,
+    reason,
+    outcomeId,
+    outcomeComponent,
+    predictionWasCorrect,
+    dimension,
+    timestamp,
+  } = value;
+  if (
+    typeof scenarioId !== 'string' ||
+    typeof assumptionId !== 'string' ||
+    typeof prediction !== 'string' ||
+    typeof reason !== 'string' ||
+    typeof outcomeId !== 'string' ||
+    typeof outcomeComponent !== 'string' ||
+    typeof predictionWasCorrect !== 'boolean' ||
+    dimension !== 'transfer' ||
+    !isFiniteNumber(timestamp)
+  ) {
+    return null;
+  }
+  return {
+    scenarioId,
+    assumptionId,
+    prediction: prediction.slice(0, MAX_PREDICTION_LENGTH),
+    reason: reason.slice(0, MAX_PREDICTION_REASON_LENGTH),
+    outcomeId,
+    outcomeComponent,
+    predictionWasCorrect,
+    dimension: 'transfer',
+    timestamp,
+  };
+}
+
+function validateActiveDrill(value: unknown): DrillSessionState | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const {
+    scenarioId,
+    round,
+    usedAssumptionIds,
+    currentAssumptionId,
+    prediction,
+  } = value;
+  if (
+    typeof scenarioId !== 'string' ||
+    !Number.isInteger(round) ||
+    typeof round !== 'number' ||
+    round < 1 ||
+    !isStringArray(usedAssumptionIds) ||
+    (currentAssumptionId !== null && typeof currentAssumptionId !== 'string')
+  ) {
+    return null;
+  }
+
+  let clonedPrediction: { text: string; reason: string } | null = null;
+  if (prediction !== null) {
+    if (!isRecord(prediction)) {
+      return null;
+    }
+    if (typeof prediction.text !== 'string' || typeof prediction.reason !== 'string') {
+      return null;
+    }
+    clonedPrediction = {
+      text: prediction.text.slice(0, MAX_PREDICTION_LENGTH),
+      reason: prediction.reason.slice(0, MAX_PREDICTION_REASON_LENGTH),
+    };
+  }
+
+  return {
+    scenarioId,
+    round,
+    usedAssumptionIds: usedAssumptionIds.slice(),
+    currentAssumptionId,
+    prediction: clonedPrediction,
+  };
+}
+
+function validateExamVerdict(value: unknown): ExamVerdict | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const { questionId, chosenOptionId, correct, misconceptionId, concepts } = value;
+  if (
+    typeof questionId !== 'string' ||
+    (chosenOptionId !== null && typeof chosenOptionId !== 'string') ||
+    typeof correct !== 'boolean' ||
+    (misconceptionId !== null && typeof misconceptionId !== 'string') ||
+    !isStringArray(concepts)
+  ) {
+    return null;
+  }
+  return {
+    questionId,
+    chosenOptionId,
+    correct,
+    misconceptionId,
+    concepts: concepts.slice(),
+  };
+}
+
+function validateExam(value: unknown): ExamState | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const {
+    startedAt,
+    durationSeconds,
+    questionIds,
+    answers,
+    submitted,
+    submittedAt,
+    verdicts,
+  } = value;
+  if (
+    !isFiniteNumber(startedAt) ||
+    !isFiniteNumber(durationSeconds) ||
+    !isStringArray(questionIds) ||
+    !isStringRecord(answers) ||
+    typeof submitted !== 'boolean' ||
+    (submittedAt !== null && !isFiniteNumber(submittedAt)) ||
+    !Array.isArray(verdicts)
+  ) {
+    return null;
+  }
+  const validatedVerdicts: ExamVerdict[] = [];
+  for (const verdict of verdicts) {
+    const validated = validateExamVerdict(verdict);
+    if (validated === null) {
+      return null;
+    }
+    validatedVerdicts.push(validated);
+  }
+  return {
+    startedAt,
+    durationSeconds,
+    questionIds: questionIds.slice(),
+    answers: copyStringRecord(answers),
+    submitted,
+    submittedAt,
+    verdicts: validatedVerdicts,
+  };
+}
+
+const DEBRIEF_KINDS: readonly DebriefSegmentKind[] = [
+  'title',
+  'misconception',
+  'rubric',
+  'drill',
+];
+
+function isDebriefKind(value: unknown): value is DebriefSegmentKind {
+  return (
+    typeof value === 'string' &&
+    (DEBRIEF_KINDS as readonly string[]).includes(value)
+  );
+}
+
+function validateDebriefSegment(value: unknown): DebriefSegment | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const { id, kind, scriptLine, audioAsset, misconceptionId } = value;
+  if (
+    typeof id !== 'string' ||
+    !isDebriefKind(kind) ||
+    typeof scriptLine !== 'string' ||
+    (audioAsset !== null && typeof audioAsset !== 'string')
+  ) {
+    return null;
+  }
+  if (misconceptionId !== undefined && typeof misconceptionId !== 'string') {
+    return null;
+  }
+  const segment: DebriefSegment = {
+    id,
+    kind,
+    scriptLine: scriptLine.slice(0, MAX_SCRIPT_LINE_LENGTH),
+    audioAsset,
+  };
+  if (misconceptionId !== undefined) {
+    segment.misconceptionId = misconceptionId;
+  }
+  return segment;
+}
+
+function validateDebrief(value: unknown): DebriefState | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const { playlist, currentIndex } = value;
+  if (!Array.isArray(playlist) || !Number.isInteger(currentIndex)) {
+    return null;
+  }
+  if (typeof currentIndex !== 'number' || currentIndex < 0) {
+    return null;
+  }
+  const validatedPlaylist: DebriefSegment[] = [];
+  for (const segment of playlist) {
+    const validated = validateDebriefSegment(segment);
+    if (validated === null) {
+      return null;
+    }
+    validatedPlaylist.push(validated);
+  }
+  if (currentIndex >= validatedPlaylist.length) {
+    return null;
+  }
+  return {
+    playlist: validatedPlaylist,
+    currentIndex,
+  };
+}
+
+function validateLearnerName(value: unknown): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  return value.slice(0, MAX_LEARNER_NAME_LENGTH);
+}
+
 function validateLedger(value: unknown): Ledger | null {
   if (!isRecord(value)) {
     return null;
@@ -269,6 +544,61 @@ function validateLedger(value: unknown): Ledger | null {
   if (!isToolPhase(phase)) {
     return null;
   }
+
+  let drillResults: DrillResultRecord[] = [];
+  if (value.drillResults !== undefined) {
+    if (!Array.isArray(value.drillResults)) {
+      return null;
+    }
+    drillResults = [];
+    for (const entry of value.drillResults) {
+      const validated = validateDrillResult(entry);
+      if (validated === null) {
+        return null;
+      }
+      drillResults.push(validated);
+    }
+  }
+
+  let activeDrill: DrillSessionState | null = null;
+  if (value.activeDrill !== undefined && value.activeDrill !== null) {
+    const validated = validateActiveDrill(value.activeDrill);
+    if (validated === null) {
+      return null;
+    }
+    activeDrill = validated;
+  }
+
+  let exam: ExamState | null = null;
+  if (value.exam !== undefined && value.exam !== null) {
+    const validated = validateExam(value.exam);
+    if (validated === null) {
+      return null;
+    }
+    exam = validated;
+  }
+
+  let debrief: DebriefState | null = null;
+  if (value.debrief !== undefined && value.debrief !== null) {
+    const validated = validateDebrief(value.debrief);
+    if (validated === null) {
+      return null;
+    }
+    debrief = validated;
+  }
+
+  let learnerName: string | null = null;
+  if (value.learnerName !== undefined) {
+    if (value.learnerName !== null && typeof value.learnerName !== 'string') {
+      return null;
+    }
+    const validated = validateLearnerName(value.learnerName);
+    if (validated === undefined && value.learnerName !== undefined) {
+      return null;
+    }
+    learnerName = validated === undefined ? null : validated;
+  }
+
   return {
     attempts: validatedAttempts,
     misconceptionFires: { ...misconceptionFires },
@@ -276,6 +606,11 @@ function validateLedger(value: unknown): Ledger | null {
     // Tampered/oversized persisted notes are clamped, not rejected.
     coachNotes: clampCoachNotes(coachNotes as string[]),
     phase,
+    drillResults,
+    activeDrill,
+    exam,
+    debrief,
+    learnerName,
   };
 }
 

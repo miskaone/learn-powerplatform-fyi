@@ -166,12 +166,33 @@ function startRuntimeDetection(
   return stop;
 }
 
-/** Drill/exam/debrief phases are quarantined so the UI never feeds them to sync. */
-export function registrySnapshot(input: {
-  phase: "lesson" | "practice" | "remediation";
-  gatePassed: boolean;
-  misconceptionFires: Record<string, number>;
-}): RegistrySnapshot {
+/**
+ * Drill/exam/debrief tools stay off the live surface until the host opts
+ * them in (QUARANTINED_TOOLS unchanged in this slice), but the snapshot
+ * itself is now truthful when a facade is supplied.
+ */
+export function registrySnapshot(
+  input: {
+    phase: "lesson" | "practice" | "remediation";
+    gatePassed: boolean;
+    misconceptionFires: Record<string, number>;
+  },
+  facade?: EngineFacade,
+): RegistrySnapshot {
+  if (facade) {
+    const s = facade.getRegistrySnapshot();
+    return {
+      phase:
+        s.phase === "drill" || s.phase === "exam" || s.phase === "debrief"
+          ? s.phase
+          : input.phase,
+      gatePassed: s.gatePassed,
+      repeatedMisconceptionIds: s.repeatedMisconceptionIds,
+      predictionCommitted: s.predictionCommitted,
+      examSubmitted: s.examSubmitted,
+      moduleComplete: s.moduleComplete,
+    };
+  }
   return {
     phase: input.phase,
     gatePassed: input.gatePassed,

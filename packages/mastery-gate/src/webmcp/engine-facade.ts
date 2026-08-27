@@ -117,6 +117,15 @@ export interface AdvanceSegmentResultPublic {
   currentSegmentId: string | null;
 }
 
+export interface RegistrySnapshot {
+  phase: ToolPhase;
+  gatePassed: boolean;
+  repeatedMisconceptionIds: string[];
+  predictionCommitted: boolean;
+  examSubmitted: boolean;
+  moduleComplete: boolean;
+}
+
 /**
  * Public engine interface the WebMCP tools delegate through.
  * Implementations must not expose answer-key or distractor-map fields.
@@ -158,4 +167,6 @@ export interface EngineFacade {
   composeDebrief(segments: DebriefSegment[]): ComposeDebriefResultPublic;
   getNarrationScript(): NarrationCue[];
   advanceSegment(segmentId: string): AdvanceSegmentResultPublic;
+  /** Registry sync input derived from real engine state — the single source for dynamic tool registration. */
+  getRegistrySnapshot(): RegistrySnapshot;
 }

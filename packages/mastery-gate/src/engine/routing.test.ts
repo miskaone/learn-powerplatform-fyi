@@ -1,6 +1,7 @@
 import { test, expect } from 'bun:test';
 import { gradeAnswer } from './grading';
 import {
+  cloneLedger,
   createEmptyLedger,
   recordAttempt,
 } from './ledger';
@@ -12,13 +13,14 @@ const q1 = fixtureQuestion('q1');
 const q3 = fixtureQuestion('q3');
 
 function withScores(ledger: Ledger, scores: RubricScores): Ledger {
-  return {
-    attempts: ledger.attempts,
-    misconceptionFires: ledger.misconceptionFires,
-    scores,
-    coachNotes: ledger.coachNotes,
-    phase: ledger.phase,
+  const next = cloneLedger(ledger);
+  next.scores = {
+    recall: scores.recall,
+    connections: scores.connections,
+    application: scores.application,
+    transfer: scores.transfer,
   };
+  return next;
 }
 
 test('routing (a) first miss → hint', () => {

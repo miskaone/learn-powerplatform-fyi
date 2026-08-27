@@ -3,9 +3,8 @@ import type { EngineFacade } from "@learn/mastery-gate/webmcp";
 /**
  * Wraps the engine facade so every successful mutating call notifies the
  * host (registry re-sync + UI refresh). Notify fires AFTER the inner call
- * returns — a method that throws (e.g. NotImplementedError while a Day-2
- * state machine is pending) must NOT notify, so agent-driven failures never
- * trigger a phantom resync.
+ * returns — a method that throws must NOT notify, so agent-driven failures
+ * never trigger a phantom resync.
  */
 export class NotifyingFacade implements EngineFacade {
   constructor(
@@ -89,6 +88,7 @@ export class NotifyingFacade implements EngineFacade {
   }
 
   getExamStatus() {
+    // Expiry also materializes on the next mutating call or poll refresh.
     return this.inner.getExamStatus();
   }
 
@@ -126,5 +126,9 @@ export class NotifyingFacade implements EngineFacade {
     const result = this.inner.advanceSegment(segmentId);
     this.notify();
     return result;
+  }
+
+  getRegistrySnapshot() {
+    return this.inner.getRegistrySnapshot();
   }
 }

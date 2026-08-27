@@ -1,5 +1,4 @@
-import type { ToolPhase } from '../schema';
-import type { EngineFacade } from './engine-facade';
+import type { EngineFacade, RegistrySnapshot } from './engine-facade';
 import type { ModelContextLike, ToolDescriptor, ToolResponse } from './model-context';
 import { textResponse } from './model-context';
 import {
@@ -11,15 +10,6 @@ import {
 import { createToolset } from './tools';
 
 export type RevocationMode = 'deregister' | 'refusal';
-
-export interface RegistrySnapshot {
-  phase: ToolPhase;
-  gatePassed: boolean;
-  repeatedMisconceptionIds: string[];
-  predictionCommitted: boolean;
-  examSubmitted: boolean;
-  moduleComplete: boolean;
-}
 
 export interface ToolRegistryOptions {
   revocationMode?: RevocationMode;

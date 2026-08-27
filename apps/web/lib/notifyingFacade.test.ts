@@ -1,9 +1,13 @@
 import { expect, test } from "bun:test";
-import {
-  NotImplementedError,
-  type EngineFacade,
-} from "@learn/mastery-gate/webmcp";
+import type { EngineFacade } from "@learn/mastery-gate/webmcp";
 import { NotifyingFacade } from "./notifyingFacade";
+
+class InnerError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InnerError";
+  }
+}
 
 const STATE = {
   scores: { recall: 0, connections: 0, application: 0, transfer: 0 },
@@ -84,6 +88,14 @@ function succeedingFacade(): EngineFacade {
     }),
     getNarrationScript: () => [],
     advanceSegment: (segmentId) => ({ ok: true, currentSegmentId: segmentId }),
+    getRegistrySnapshot: () => ({
+      phase: "practice",
+      gatePassed: false,
+      repeatedMisconceptionIds: [],
+      predictionCommitted: false,
+      examSubmitted: false,
+      moduleComplete: false,
+    }),
   };
 }
 
@@ -118,17 +130,17 @@ test("every mutating facade method notifies exactly once on success", () => {
   }
 });
 
-test("a facade method that throws NotImplementedError does NOT notify", () => {
+test("a facade method that throws does NOT notify", () => {
   for (const [name, invoke] of MUTATING_METHODS) {
     let notifications = 0;
     const inner = succeedingFacade();
     (inner as Record<string, unknown>)[name as string] = () => {
-      throw new NotImplementedError(String(name));
+      throw new InnerError(String(name));
     };
     const facade = new NotifyingFacade(inner, () => {
       notifications += 1;
     });
-    expect(() => invoke(facade)).toThrow(NotImplementedError);
+    expect(() => invoke(facade)).toThrow(InnerError);
     expect(`${String(name)}:${notifications}`).toBe(`${String(name)}:0`);
   }
 });
@@ -149,5 +161,16 @@ test("read-only facade methods never notify", () => {
   facade.getExamDebrief();
   facade.getFiredMisconceptionIds();
   facade.getNarrationScript();
+  facade.getRegistrySnapshot();
+  expect(notifications).toBe(0);
+});
+
+test("getRegistrySnapshot passes through without notifying", () => {
+  let notifications = 0;
+  const inner = succeedingFacade();
+  const facade = new NotifyingFacade(inner, () => {
+    notifications += 1;
+  });
+  expect(facade.getRegistrySnapshot()).toEqual(inner.getRegistrySnapshot());
   expect(notifications).toBe(0);
 });

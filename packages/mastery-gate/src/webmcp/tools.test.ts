@@ -194,6 +194,14 @@ function createStubEngine(options?: {
       ok: true,
       currentSegmentId: segmentId,
     }),
+    getRegistrySnapshot: () => ({
+      phase: 'practice',
+      gatePassed: false,
+      repeatedMisconceptionIds: [],
+      predictionCommitted: false,
+      examSubmitted: false,
+      moduleComplete: false,
+    }),
   };
 
   return { engine, log };
