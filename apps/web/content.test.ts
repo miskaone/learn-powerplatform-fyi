@@ -63,6 +63,9 @@ test("the agent-less mastery demo submission passes the verbatim-corpus check", 
       ]),
     },
   );
+  // Rubric scoring requires at least one graded attempt on the ledger.
+  const first = manifest.questions[0];
+  facade.submitAnswer(first.id, first.correctOptionId);
   const entry = { score: 3 as const, evidenceQuote: DEMO_MASTERY_QUOTE };
   const verdict = facade.scoreRubric({
     recall: entry,

@@ -28,17 +28,84 @@ test('MemoryStorageAdapter get/set/remove semantics', () => {
 test('save/load roundtrip is deep-equal', () => {
   const adapter = new MemoryStorageAdapter();
   const q1 = fixtureQuestion('q1');
+  const grade = gradeAnswer(q1, 'q1-b');
   const state: PersistedState = {
     version: 1,
-    ledger: recordAttempt(
-      createEmptyLedger(),
-      gradeAnswer(q1, 'q1-b'),
-      42,
-    ),
+    ledger: recordAttempt(createEmptyLedger(), grade, 42),
     hints: createHintState(),
+    lastGrade: grade,
   };
   saveState(adapter, state);
   expect(loadState(adapter)).toEqual(state);
+});
+
+test('legacy payload without lastGrade loads with lastGrade null', () => {
+  const adapter = new MemoryStorageAdapter();
+  adapter.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      ledger: createEmptyLedger(),
+      hints: createHintState(),
+    }),
+  );
+  const loaded = loadState(adapter);
+  expect(loaded === null).toBe(false);
+  expect(loaded?.lastGrade).toBe(null);
+});
+
+test('version-1 record with a wrong-shaped ledger returns null instead of crashing later', () => {
+  // Cross-review MAJOR (2026-08-27): {"version":1,"ledger":{},"hints":{}}
+  // previously type-asserted through and crashed getCurrentQuestion.
+  const adapter = new MemoryStorageAdapter();
+  adapter.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ version: 1, ledger: {}, hints: {} }),
+  );
+  expect(loadState(adapter)).toBe(null);
+});
+
+test('ledger field-by-field validation rejects malformed payloads', () => {
+  const good = (): Record<string, unknown> => ({
+    version: 1,
+    ledger: createEmptyLedger(),
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  const mutate = (fn: (s: Record<string, unknown>) => void) => {
+    const s = good();
+    fn(s);
+    return s;
+  };
+  const cases: Array<Record<string, unknown>> = [
+    mutate((s) => {
+      (s.ledger as { scores: Record<string, unknown> }).scores.recall = 9;
+    }),
+    mutate((s) => {
+      (s.ledger as { scores: Record<string, unknown> }).scores.transfer =
+        'four';
+    }),
+    mutate((s) => {
+      (s.ledger as Record<string, unknown>).attempts = [{ questionId: 42 }];
+    }),
+    mutate((s) => {
+      (s.ledger as Record<string, unknown>).phase = 'bogus';
+    }),
+    mutate((s) => {
+      (s.ledger as Record<string, unknown>).coachNotes = [1, 2];
+    }),
+    mutate((s) => {
+      s.hints = { tiersIssued: { q1: 'two' } };
+    }),
+    mutate((s) => {
+      s.lastGrade = { questionId: 'q1' };
+    }),
+  ];
+  for (const payload of cases) {
+    const adapter = new MemoryStorageAdapter();
+    adapter.setItem(STORAGE_KEY, JSON.stringify(payload));
+    expect(loadState(adapter)).toBe(null);
+  }
 });
 
 test('corrupt JSON returns null', () => {
@@ -204,6 +271,7 @@ test('saveState/loadState round-trip through a throwing-then-degraded LocalStora
     version: 1,
     ledger: recordAttempt(createEmptyLedger(), gradeAnswer(q1, 'q1-b'), 42),
     hints: createHintState(),
+    lastGrade: null,
   };
   saveState(adapter, state);
   expect(adapter.isDegraded).toBe(true);

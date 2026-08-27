@@ -130,9 +130,10 @@ export interface EngineFacade {
   /**
    * Engine routing verdict. `'continue'` covers correct+confident / no-attempt
    * states the five-row routing table does not define (matches the engine's
-   * RoutingVerdict union).
+   * RoutingVerdict union). `confidence: 'low'` after a correct answer routes
+   * to `go_deeper` (routing table row 4).
    */
-  requestNextAction(): NextAction | 'continue';
+  requestNextAction(confidence?: 'low' | 'high'): NextAction | 'continue';
   prescribeDrill(): DrillPrescriptionPublic;
   scoreRubric(submission: RubricSubmission): RubricVerdictPublic;
   logCoachingNote(note: string): void;

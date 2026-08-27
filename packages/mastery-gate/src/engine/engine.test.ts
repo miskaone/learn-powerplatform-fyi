@@ -64,6 +64,7 @@ test('full loop on the fixture manifest', () => {
     FIXTURE_MANIFEST,
     new MemoryStorageAdapter(),
   );
+  closed.submitAnswer('q1-a');
   const closedScore = closed.scoreRubric(passingSubmission(2));
   expect(closedScore.ok).toBe(true);
   expect(closed.requestNextAction() === 'advance').toBe(false);
@@ -129,6 +130,49 @@ test('submitAnswer throws when no current question remains', () => {
   }
   expect(exhausted.questionId).toBe('');
   expect(exhausted.reason).toBe('ladder-exhausted');
+});
+
+test('scoreRubric rejects any submission before the first graded attempt', () => {
+  // Cross-review BLOCKER (2026-08-27): a cold ledger must never accept a
+  // rubric — the gate cannot be self-awarded before a single answer lands.
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST,
+    new MemoryStorageAdapter(),
+  );
+  const verdict = engine.scoreRubric(passingSubmission(3));
+  expect(verdict.ok).toBe(false);
+  if (!verdict.ok) {
+    expect(verdict.errors.join(';')).toContain('no-attempts');
+  }
+  expect(engine.getLearnerState().gatePassed).toBe(false);
+  expect(engine.requestNextAction() === 'advance').toBe(false);
+});
+
+test('routing verdict survives a reload: hint offer persists with the ledger', () => {
+  // Cross-review MAJOR (2026-08-27): lastGrade was in-memory only, so a
+  // reload silently dropped mid-flight remediation (ISC-18 for routing).
+  const adapter = new MemoryStorageAdapter();
+  const engine = new MasteryEngine(FIXTURE_MANIFEST, adapter, {
+    now: () => 1000,
+  });
+  engine.submitAnswer('q1-b');
+  expect(engine.requestNextAction()).toBe('hint');
+  const reloaded = new MasteryEngine(FIXTURE_MANIFEST, adapter, {
+    now: () => 2000,
+  });
+  expect(reloaded.requestNextAction()).toBe('hint');
+});
+
+test('engine constructs fresh over a wrong-shaped persisted record', () => {
+  const adapter = new MemoryStorageAdapter();
+  adapter.setItem(
+    'mastery-gate:v1',
+    JSON.stringify({ version: 1, ledger: {}, hints: {} }),
+  );
+  const engine = new MasteryEngine(FIXTURE_MANIFEST, adapter);
+  expect(engine.getLearnerState().attemptsCount).toBe(0);
+  const current = engine.getCurrentQuestion();
+  expect(current?.id).toBe('q1');
 });
 
 test('requestHint persists granted tiers', () => {

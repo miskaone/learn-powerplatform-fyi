@@ -187,14 +187,17 @@ export function createToolset(
     ),
     request_next_action: descriptor(
       'request_next_action',
-      'Ask the engine which pedagogical move to take next.',
-      emptySchema(),
+      'Ask the engine which pedagogical move to take next. Pass confidence "low" after a correct answer the learner was unsure about.',
+      closedObject(
+        { confidence: { type: 'string', enum: ['low', 'high'] } },
+        [],
+      ),
       async (input) => {
-        const parsed = parseEmpty(input);
+        const parsed = parseConfidence(input);
         if (!parsed.ok) {
           return parsed.response;
         }
-        return textResponse(engine.requestNextAction());
+        return textResponse(engine.requestNextAction(parsed.value));
       },
     ),
     prescribe_drill: descriptor(
@@ -515,6 +518,23 @@ function readObject(input: unknown): Record<string, unknown> | null {
     return input;
   }
   return null;
+}
+
+function parseConfidence(
+  input: unknown,
+): ParseResult<'low' | 'high' | undefined> {
+  const obj = readObject(input);
+  if (obj === null) {
+    return fail('expected an object');
+  }
+  const confidence = obj['confidence'];
+  if (confidence === undefined) {
+    return ok(undefined);
+  }
+  if (confidence !== 'low' && confidence !== 'high') {
+    return fail('confidence must be "low" or "high"');
+  }
+  return ok(confidence);
 }
 
 function parseEmpty(input: unknown): ParseResult<Record<string, never>> {

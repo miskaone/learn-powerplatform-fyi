@@ -33,6 +33,7 @@ const SAMPLE_SCORES = {
 interface EngineLog {
   submitAnswer: { questionId: string; optionId: string } | null;
   scoreRubric: RubricSubmission | null;
+  nextActionConfidence: 'low' | 'high' | 'unset' | null;
   composeDebrief: DebriefSegment[] | null;
   navigateToAnchor: string | null;
 }
@@ -47,6 +48,7 @@ function createStubEngine(options?: {
   const log: EngineLog = {
     submitAnswer: null,
     scoreRubric: null,
+    nextActionConfidence: null,
     composeDebrief: null,
     navigateToAnchor: null,
   };
@@ -92,7 +94,10 @@ function createStubEngine(options?: {
       hint: `Look at the sandbox for ${questionId}`,
       refusal: null,
     }),
-    requestNextAction: () => 'hint',
+    requestNextAction: (confidence) => {
+      log.nextActionConfidence = confidence ?? 'unset';
+      return confidence === 'low' ? 'go_deeper' : 'hint';
+    },
     prescribeDrill: () => ({
       drillKind: 'failure_case',
       targetDimension: 'application',
@@ -298,6 +303,26 @@ test('score_rubric clamps out-of-range scores to 0..4 before delegating', async 
     expect(log.scoreRubric.application.score).toBe(2);
     expect(log.scoreRubric.transfer.score).toBe(3);
   }
+});
+
+test('request_next_action passes validated confidence through to the engine', async () => {
+  const { engine, log } = createStubEngine();
+  const tools = createToolset(engine);
+
+  const plain = await tools.request_next_action.execute({});
+  expect(payloadOf(plain)).toBe('hint');
+  expect(log.nextActionConfidence).toBe('unset');
+
+  const low = await tools.request_next_action.execute({ confidence: 'low' });
+  expect(payloadOf(low)).toBe('go_deeper');
+  expect(log.nextActionConfidence).toBe('low');
+
+  log.nextActionConfidence = null;
+  const invalid = await tools.request_next_action.execute({
+    confidence: 'yolo',
+  });
+  expect(asRecord(payloadOf(invalid))['error']).toBe('invalid_input');
+  expect(log.nextActionConfidence).toBe(null);
 });
 
 test('compose_debrief rejects a misconception segment whose id never fired', async () => {

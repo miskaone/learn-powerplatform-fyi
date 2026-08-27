@@ -1,4 +1,11 @@
-import type { Ledger, StorageAdapter } from '../schema';
+import type {
+  AttemptRecord,
+  Ledger,
+  RubricScore,
+  StorageAdapter,
+  ToolPhase,
+} from '../schema';
+import type { GradeResult } from './grading';
 import type { HintState } from './hints';
 
 export const STORAGE_KEY = 'mastery-gate:v1';
@@ -7,6 +14,12 @@ export interface PersistedState {
   version: 1;
   ledger: Ledger;
   hints: HintState;
+  /**
+   * Routing input for requestNextAction. Persisted so the hint/review/coach
+   * verdict survives a page reload alongside the attempt that produced it
+   * (older records lack the field; it loads as null).
+   */
+  lastGrade: GradeResult | null;
 }
 
 export class MemoryStorageAdapter implements StorageAdapter {
@@ -134,18 +147,161 @@ export function loadState(adapter: StorageAdapter): PersistedState | null {
     if (parsed.version !== 1) {
       return null;
     }
-    if (!isRecord(parsed.ledger) || !isRecord(parsed.hints)) {
+    const ledger = validateLedger(parsed.ledger);
+    const hints = validateHints(parsed.hints);
+    if (ledger === null || hints === null) {
       return null;
     }
+    // Absent in records written before lastGrade was persisted; treat as null.
+    const rawLastGrade = parsed.lastGrade;
+    let lastGrade: GradeResult | null = null;
+    if (rawLastGrade !== undefined && rawLastGrade !== null) {
+      lastGrade = validateGradeResult(rawLastGrade);
+      if (lastGrade === null) {
+        return null;
+      }
+    }
 
-    return {
-      version: 1,
-      ledger: parsed.ledger as unknown as Ledger,
-      hints: parsed.hints as unknown as HintState,
-    };
+    return { version: 1, ledger, hints, lastGrade };
   } catch {
     return null;
   }
+}
+
+const TOOL_PHASES: readonly ToolPhase[] = [
+  'lesson',
+  'practice',
+  'remediation',
+  'drill',
+  'exam',
+  'debrief',
+];
+
+function isRubricScore(value: unknown): value is RubricScore {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= 4
+  );
+}
+
+function isToolPhase(value: unknown): value is ToolPhase {
+  return (
+    typeof value === 'string' && (TOOL_PHASES as readonly string[]).includes(value)
+  );
+}
+
+function isNumberRecord(value: unknown): value is Record<string, number> {
+  if (!isRecord(value)) {
+    return false;
+  }
+  for (const key of Object.keys(value)) {
+    if (typeof value[key] !== 'number' || !Number.isFinite(value[key])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateAttempt(value: unknown): AttemptRecord | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const { questionId, optionId, correct, misconceptionId, timestamp } = value;
+  if (
+    typeof questionId !== 'string' ||
+    typeof optionId !== 'string' ||
+    typeof correct !== 'boolean' ||
+    (misconceptionId !== null && typeof misconceptionId !== 'string') ||
+    typeof timestamp !== 'number' ||
+    !Number.isFinite(timestamp)
+  ) {
+    return null;
+  }
+  return {
+    questionId,
+    optionId,
+    correct,
+    misconceptionId: misconceptionId ?? null,
+    timestamp,
+  };
+}
+
+function validateLedger(value: unknown): Ledger | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const { attempts, misconceptionFires, scores, coachNotes, phase } = value;
+  if (!Array.isArray(attempts)) {
+    return null;
+  }
+  const validatedAttempts: AttemptRecord[] = [];
+  for (const attempt of attempts) {
+    const validated = validateAttempt(attempt);
+    if (validated === null) {
+      return null;
+    }
+    validatedAttempts.push(validated);
+  }
+  if (!isNumberRecord(misconceptionFires)) {
+    return null;
+  }
+  if (!isRecord(scores)) {
+    return null;
+  }
+  const { recall, connections, application, transfer } = scores;
+  if (
+    !isRubricScore(recall) ||
+    !isRubricScore(connections) ||
+    !isRubricScore(application) ||
+    !isRubricScore(transfer)
+  ) {
+    return null;
+  }
+  if (
+    !Array.isArray(coachNotes) ||
+    coachNotes.some((note) => typeof note !== 'string')
+  ) {
+    return null;
+  }
+  if (!isToolPhase(phase)) {
+    return null;
+  }
+  return {
+    attempts: validatedAttempts,
+    misconceptionFires: { ...misconceptionFires },
+    scores: { recall, connections, application, transfer },
+    coachNotes: coachNotes.slice() as string[],
+    phase,
+  };
+}
+
+function validateHints(value: unknown): HintState | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const tiersIssued = value.tiersIssued;
+  if (!isNumberRecord(tiersIssued)) {
+    return null;
+  }
+  return { tiersIssued: { ...tiersIssued } };
+}
+
+function validateGradeResult(value: unknown): GradeResult | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const { questionId, optionId, correct, misconceptionId } = value;
+  if (
+    typeof questionId !== 'string' ||
+    typeof optionId !== 'string' ||
+    typeof correct !== 'boolean' ||
+    (misconceptionId !== null && typeof misconceptionId !== 'string')
+  ) {
+    return null;
+  }
+  return { questionId, optionId, correct, misconceptionId: misconceptionId ?? null };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

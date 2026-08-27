@@ -18,12 +18,20 @@ function makeFacade(navigate?: (anchor: string) => boolean) {
   };
 }
 
+// Evidence must come from corpus lines the tool surface never emits:
+// objective summaries (and host-supplied lesson bodies) — never question
+// prompts, option texts, or misconception fields (cross-review BLOCKER).
 const VERBATIM = {
-  recall: FIXTURE_MANIFEST.questions[0].prompt,
-  connections: FIXTURE_MANIFEST.questions[1].prompt,
-  application: FIXTURE_MANIFEST.questions[2].options[1].text,
-  transfer: FIXTURE_MANIFEST.questions[3].options[0].text,
+  recall: FIXTURE_MANIFEST.objectives[0].summary,
+  connections: FIXTURE_MANIFEST.objectives[1].summary,
+  application: FIXTURE_MANIFEST.objectives[0].summary,
+  transfer: FIXTURE_MANIFEST.objectives[1].summary,
 } as const;
+
+/** Rubric scoring requires at least one graded attempt on the ledger. */
+function primeAttempt(facade: MasteryEngineFacade): void {
+  facade.submitAnswer('q1', 'q1-a');
+}
 
 function rubric(
   recall: number,
@@ -110,6 +118,7 @@ describe('MasteryEngineFacade', () => {
 
   test('scoreRubric maps evidenceQuote to the engine quote key and enforces the gate', () => {
     const { facade } = makeFacade();
+    primeAttempt(facade);
     const refused = facade.scoreRubric(rubric(3, 3, 3, 2));
     expect(refused.accepted).toBe(true);
     expect(refused.gatePassed).toBe(false);
@@ -119,6 +128,7 @@ describe('MasteryEngineFacade', () => {
 
   test('scoreRubric surfaces engine validation errors on empty quotes', () => {
     const { facade } = makeFacade();
+    primeAttempt(facade);
     const submission = rubric(3, 3, 3, 3);
     submission.recall = { score: 3, evidenceQuote: '   ' };
     const verdict = facade.scoreRubric(submission);
@@ -128,6 +138,7 @@ describe('MasteryEngineFacade', () => {
 
   test('scoreRubric rejects fabricated quotes that are not in the corpus', () => {
     const { facade } = makeFacade();
+    primeAttempt(facade);
     const fabricated = 'xxxxxxxxxxxx';
     const verdict = facade.scoreRubric(
       rubric(4, 4, 4, 4, {
@@ -144,6 +155,7 @@ describe('MasteryEngineFacade', () => {
 
   test('scoreRubric rejects quotes laundered through log_coaching_note', () => {
     const { facade } = makeFacade();
+    primeAttempt(facade);
     const laundered = 'this sentence exists only in an agent-authored note';
     facade.logCoachingNote(laundered);
     const verdict = facade.scoreRubric(
@@ -159,8 +171,51 @@ describe('MasteryEngineFacade', () => {
     expect(verdict.rejectionReason).toContain('verbatim');
   });
 
+  test('scoreRubric rejects quotes harvested from tool output (prompts, options, misconceptions, titles)', () => {
+    // Cross-review BLOCKER (2026-08-27): get_current_question hands the agent
+    // the prompt and option texts; quoting them back must never count as
+    // evidence, or the gate is self-serviceable at 4/4/4/4.
+    const { facade } = makeFacade();
+    primeAttempt(facade);
+    const harvested = [
+      FIXTURE_MANIFEST.questions[0].prompt,
+      FIXTURE_MANIFEST.questions[0].options[1].text,
+      FIXTURE_MANIFEST.misconceptions[0].contrast,
+      FIXTURE_MANIFEST.objectives[0].title,
+    ];
+    for (const quote of harvested) {
+      const verdict = facade.scoreRubric(
+        rubric(4, 4, 4, 4, {
+          recall: quote,
+          connections: quote,
+          application: quote,
+          transfer: quote,
+        }),
+      );
+      expect(verdict.accepted).toBe(false);
+      expect(verdict.gatePassed).toBe(false);
+    }
+  });
+
+  test('scoreRubric rejects any submission before the first graded attempt', () => {
+    const { facade } = makeFacade();
+    const verdict = facade.scoreRubric(rubric(4, 4, 4, 4));
+    expect(verdict.accepted).toBe(false);
+    expect(verdict.gatePassed).toBe(false);
+    expect(verdict.rejectionReason).toContain('no-attempts');
+  });
+
+  test('requestNextAction routes correct + low confidence to go_deeper through the facade', () => {
+    const { facade } = makeFacade();
+    facade.submitAnswer('q1', 'q1-a');
+    expect(facade.requestNextAction('low')).toBe('go_deeper');
+    expect(facade.requestNextAction('high')).toBe('continue');
+    expect(facade.requestNextAction()).toBe('continue');
+  });
+
   test('scoreRubric accepts verbatim corpus quotes and opens the gate at 3/3/3/3', () => {
     const { facade } = makeFacade();
+    primeAttempt(facade);
     const verdict = facade.scoreRubric(rubric(3, 3, 3, 3));
     expect(verdict.accepted).toBe(true);
     expect(verdict.gatePassed).toBe(true);
@@ -168,6 +223,7 @@ describe('MasteryEngineFacade', () => {
 
   test('scoreRubric accepts verbatim quotes but keeps the gate shut at 3/3/3/2', () => {
     const { facade } = makeFacade();
+    primeAttempt(facade);
     const verdict = facade.scoreRubric(rubric(3, 3, 3, 2));
     expect(verdict.accepted).toBe(true);
     expect(verdict.gatePassed).toBe(false);
@@ -175,6 +231,7 @@ describe('MasteryEngineFacade', () => {
 
   test('prescribeDrill targets the weakest dimension deterministically', () => {
     const { facade } = makeFacade();
+    primeAttempt(facade);
     facade.scoreRubric(rubric(4, 3, 3, 1));
     const drill = facade.prescribeDrill();
     expect(drill.targetDimension).toBe('transfer');
@@ -220,6 +277,7 @@ describe('MasteryEngineFacade', () => {
       advanced: false,
       nextObjectiveId: null,
     });
+    primeAttempt(facade);
     facade.scoreRubric(rubric(3, 3, 3, 3));
     const result = facade.advanceModule();
     expect(result.advanced).toBe(true);

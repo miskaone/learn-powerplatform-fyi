@@ -62,8 +62,8 @@ class NotifyingFacade implements EngineFacade {
     return result;
   }
 
-  requestNextAction() {
-    return this.inner.requestNextAction();
+  requestNextAction(confidence?: "low" | "high") {
+    return this.inner.requestNextAction(confidence);
   }
 
   prescribeDrill() {
@@ -147,7 +147,8 @@ export interface MasteryStack {
   watcher: ToolSurfaceWatcher | null;
   agentRuntimeDetected: boolean;
   toolMeta: Record<string, { description: string; dynamic: boolean }>;
-  storageDegraded: boolean;
+  /** Live view of the adapter's degradation flag — flips mid-session on quota/ITP failures. */
+  readonly storageDegraded: boolean;
 }
 
 export function createMasteryStack(onEngineMutation: () => void): MasteryStack {
@@ -182,7 +183,11 @@ export function createMasteryStack(onEngineMutation: () => void): MasteryStack {
     watcher,
     agentRuntimeDetected: ctx !== null,
     toolMeta,
-    storageDegraded: adapter.isDegraded,
+    // Getter, not a snapshot: degradation that starts mid-session (quota,
+    // Safari ITP eviction) must surface on the next render.
+    get storageDegraded(): boolean {
+      return adapter.isDegraded;
+    },
   };
 }
 

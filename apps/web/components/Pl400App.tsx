@@ -83,6 +83,7 @@ export function Pl400App() {
   const [nextAction, setNextAction] = useState<NextAction | "continue" | null>(
     null,
   );
+  const [rubricNotice, setRubricNotice] = useState<string | null>(null);
   const { flashes, flash } = useToolRosterHighlights();
 
   const stackRef = useRef<MasteryStack | null>(null);
@@ -253,6 +254,7 @@ export function Pl400App() {
       setVerdict(null);
       setHint(null);
       setHintRefusal(null);
+      refreshFromEngine();
       return;
     }
     if (action === "advance") {
@@ -268,12 +270,25 @@ export function Pl400App() {
     if (!currentStack) {
       return;
     }
-    currentStack.facade.scoreRubric({
+    const verdict = currentStack.facade.scoreRubric({
       recall: MASTERY_EVIDENCE,
       connections: MASTERY_EVIDENCE,
       application: MASTERY_EVIDENCE,
       transfer: MASTERY_EVIDENCE,
     });
+    setRubricNotice(
+      verdict.accepted
+        ? null
+        : `Rubric rejected by the engine: ${verdict.rejectionReason ?? "unknown"}`,
+    );
+  }
+
+  function handleLowConfidence() {
+    const currentStack = stackRef.current;
+    if (!currentStack) {
+      return;
+    }
+    setNextAction(currentStack.facade.requestNextAction("low"));
   }
 
   function handleResetSession() {
@@ -285,6 +300,7 @@ export function Pl400App() {
     setVerdict(null);
     setHint(null);
     setHintRefusal(null);
+    setRubricNotice(null);
     practiceStartedRef.current = false;
     uiPhaseRef.current = "lesson";
     setPracticeStarted(false);
@@ -374,6 +390,13 @@ export function Pl400App() {
                 <button
                   type="button"
                   className="pl400-btn"
+                  onClick={handleLowConfidence}
+                >
+                  I wasn&apos;t sure — go deeper
+                </button>
+                <button
+                  type="button"
+                  className="pl400-btn"
                   onClick={() => {
                     setVerdict(null);
                     setHint(null);
@@ -437,6 +460,11 @@ export function Pl400App() {
                   Reset session
                 </button>
               </div>
+              {rubricNotice ? (
+                <div className="pl400-banner pl400-banner-info" role="status">
+                  {rubricNotice}
+                </div>
+              ) : null}
               {stack?.storageDegraded ? (
                 <p className="muted">
                   localStorage unavailable — progress is in-memory only.

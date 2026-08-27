@@ -154,8 +154,8 @@ export class MasteryEngineFacade implements EngineFacade {
     };
   }
 
-  requestNextAction(): NextAction | 'continue' {
-    return this.engine.requestNextAction();
+  requestNextAction(confidence?: 'low' | 'high'): NextAction | 'continue' {
+    return this.engine.requestNextAction(confidence);
   }
 
   prescribeDrill(): DrillPrescriptionPublic {
@@ -301,30 +301,23 @@ export class MasteryEngineFacade implements EngineFacade {
   }
 
   private buildEvidenceCorpus(): string {
+    // Corpus rule: nothing the tool surface itself emits may count as
+    // evidence, or the agent can harvest its own "verbatim quotes" and
+    // self-award the gate (cross-review BLOCKER, 2026-08-27). Excluded:
+    // question prompts and option texts (get_current_question), misconception
+    // names/contrasts/seeds (get_misconception_brief, tier-2 hints), and
+    // objective titles (get_current_context.sectionTitle). Admitted: objective
+    // summaries and the host-supplied corpus (lesson body text the learner
+    // reads on the page). Also excluded: coachingNotes — agent-authored, so
+    // admitting them would let an agent launder fabricated evidence through
+    // log_coaching_note and then quote it back "verbatim".
     const lines: string[] = [];
     for (const objective of this.manifest.objectives) {
-      lines.push(objective.title);
       lines.push(objective.summary);
-    }
-    for (const question of this.manifest.questions) {
-      lines.push(question.prompt);
-      for (const option of question.options) {
-        lines.push(option.text);
-      }
-    }
-    for (const misconception of this.manifest.misconceptions) {
-      lines.push(misconception.name);
-      lines.push(misconception.contrast);
-      for (const seed of misconception.socraticSeeds) {
-        lines.push(seed);
-      }
     }
     for (const extra of this.evidenceCorpus) {
       lines.push(extra);
     }
-    // Deliberately excluded: coachingNotes. They are agent-authored, so
-    // admitting them would let an agent launder fabricated evidence through
-    // log_coaching_note and then quote it back "verbatim".
     return lines.join('\n');
   }
 

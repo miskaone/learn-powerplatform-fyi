@@ -48,7 +48,7 @@ export class MasteryEngine {
   private readonly now: () => number;
   private ledger: Ledger;
   private hints: HintState;
-  /** In-memory only; not written through the storage adapter. */
+  /** Persisted with the ledger so routing verdicts survive a page reload. */
   private lastGrade: GradeResult | null;
 
   constructor(
@@ -63,11 +63,12 @@ export class MasteryEngine {
     if (persisted) {
       this.ledger = persisted.ledger;
       this.hints = persisted.hints;
+      this.lastGrade = persisted.lastGrade;
     } else {
       this.ledger = createEmptyLedger();
       this.hints = createHintState();
+      this.lastGrade = null;
     }
-    this.lastGrade = null;
   }
 
   getCurrentQuestion(): QuestionPublic | null {
@@ -130,6 +131,17 @@ export class MasteryEngine {
   }
 
   scoreRubric(input: unknown, corpus?: string): RubricValidationResult {
+    // Attempt-count precondition: mastery evidence cannot exist before a
+    // single graded attempt, so an agent cannot self-award the gate from a
+    // cold ledger (cross-review BLOCKER, 2026-08-27).
+    if (this.ledger.attempts.length === 0) {
+      return {
+        ok: false,
+        errors: [
+          'no-attempts: rubric scoring requires at least one graded attempt on the ledger',
+        ],
+      };
+    }
     const result = validateRubricSubmission(input, corpus);
     if (!result.ok) {
       return result;
@@ -198,6 +210,7 @@ export class MasteryEngine {
       version: 1,
       ledger: this.ledger,
       hints: this.hints,
+      lastGrade: this.lastGrade,
     });
   }
 }
