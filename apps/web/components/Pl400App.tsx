@@ -15,6 +15,7 @@ import {
   getSharedMasteryStack,
   registrySnapshot,
   subscribeEngineMutations,
+  subscribeRuntimeDetected,
   wouldRegisterToolNames,
   type MasteryStack,
 } from "../lib/masteryStack";
@@ -168,15 +169,30 @@ export function Pl400App() {
       refreshFromEngine();
     });
     let off: (() => void) | undefined;
-    if (s.watcher) {
-      off = s.watcher.onChange((names) => {
-        handleRosterNamesRef.current(names);
-      });
-      s.watcher.start();
-    }
+    const wireWatcher = () => {
+      if (!s.watcher) return;
+      try {
+        off?.();
+        off = s.watcher.onChange((names) => {
+          handleRosterNamesRef.current(names);
+        });
+        s.watcher.start();
+      } catch (error) {
+        console.error("[mastery-gate] watcher wiring failed", error);
+      }
+    };
+    wireWatcher();
+    // ChatGPT injects document.modelContext on its own schedule — when the
+    // runtime shows up late, bind the freshly created registry/watcher and
+    // resync so the roster flips from "intended" to live.
+    const offRuntime = subscribeRuntimeDetected(() => {
+      wireWatcher();
+      refreshFromEngine();
+    });
     refreshFromEngine();
     return () => {
       unsubscribe();
+      offRuntime();
       off?.();
       s.watcher?.stop();
     };
