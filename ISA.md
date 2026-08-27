@@ -5,10 +5,10 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 6/61
+progress: 19/61
 mode: build
 started: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-27
 ---
 
 # ISA — Mastery Gate (learn.powerplatform.fyi)
@@ -118,16 +118,16 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 
 ### Engine (`packages/mastery-gate`)
 
-- [ ] ISC-11: Engine package contains no React imports and no network calls (static probe)
-- [ ] ISC-12: Grading is deterministic — identical answer sequences produce identical verdicts (property test)
-- [ ] ISC-13: Schema validation proves every distractor in the bank carries a named misconception id
-- [ ] ISC-14: Rubric scores four dimensions (Recall, Connections, Application, Transfer) 0–4 and the gate opens only when every dimension ≥3 (unit tests, including the 3/3/3/2 refusal case)
-- [ ] ISC-15: Engine public API exposes no averaged mastery number (API surface probe)
-- [ ] ISC-16: Routing table verified row by row — first miss→hint, second miss→review, repeated misconception→coach, correct+low-confidence→go_deeper, gate-pass→advance (one unit test per row)
-- [ ] ISC-17: Hint ladder refuses tier-2 before a genuine first attempt (unit test)
-- [ ] ISC-18: Learner state survives page reload via localStorage (browser test)
+- [x] ISC-11: Engine package contains no React imports and no network calls (static probe)
+- [x] ISC-12: Grading is deterministic — identical answer sequences produce identical verdicts (property test)
+- [x] ISC-13: Schema validation proves every distractor in the bank carries a named misconception id
+- [x] ISC-14: Rubric scores four dimensions (Recall, Connections, Application, Transfer) 0–4 and the gate opens only when every dimension ≥3 (unit tests, including the 3/3/3/2 refusal case)
+- [x] ISC-15: Engine public API exposes no averaged mastery number (API surface probe)
+- [x] ISC-16: Routing table verified row by row — first miss→hint, second miss→review, repeated misconception→coach, correct+low-confidence→go_deeper, gate-pass→advance (one unit test per row)
+- [x] ISC-17: Hint ladder refuses tier-2 before a genuine first attempt (unit test)
+- [x] ISC-18: Learner state survives page reload via localStorage (browser test)
 - [ ] ISC-19: `bun test` green across the engine package in the cold clone
-- [ ] ISC-20: Tool-registry state machine registers/retracts the correct tool set for each phase transition (unit test per transition)
+- [x] ISC-20: Tool-registry state machine registers/retracts the correct tool set for each phase transition (unit test per transition)
 
 ### WebMCP tool surface
 
@@ -140,7 +140,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [ ] ISC-27: `reveal_outcome` registers only after `commit_prediction` lands — commit-then-reveal enforced by tool availability (test)
 - [ ] ISC-28: `start_exam` revokes the coaching toolset per the ISC-4 verdict (deregistration observed in `getTools()`, or every coaching tool returns proctor-refusal states)
 - [ ] ISC-29: `get_exam_debrief` registers only after `submit_exam` (test)
-- [ ] ISC-30: `score_rubric` rejects submissions missing verbatim evidence quotes and clamps out-of-range scores (unit tests)
+- [x] ISC-30: `score_rubric` rejects submissions missing verbatim evidence quotes and clamps out-of-range scores (unit tests)
 
 ### UI (`/pl-400`)
 
@@ -174,9 +174,9 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 
 - [ ] ISC-50: Anti: no answer-key material is reachable through any registered tool response (schema audit + adversarial runtime probe asking for answers via every tool)
 - [ ] ISC-51: Anti: zero commits land in `miskaone/powerplatform-fyi` for this feature (git log probe on the flagship repo)
-- [ ] ISC-52: Anti: no server API routes, account code, or LLM-proxy code exists in the repo (static probe)
-- [ ] ISC-53: Anti: no drag-drop canvas and no free-text NLP scoring component exists in the repo (static probe + review)
-- [ ] ISC-54: Anti: no credential, API token, or account id is committed (git grep over tracked files)
+- [x] ISC-52: Anti: no server API routes, account code, or LLM-proxy code exists in the repo (static probe)
+- [x] ISC-53: Anti: no drag-drop canvas and no free-text NLP scoring component exists in the repo (static probe + review)
+- [x] ISC-54: Anti: no credential, API token, or account id is committed (git grep over tracked files)
 - [ ] ISC-55: Antecedent: the three-beat demo script is written and each beat reproduced twice consecutively in rehearsal before recording day (Sep 2)
 
 ### Mastery Debrief (Day-6 graft — conditional on MSP green at the checkpoint)
@@ -275,6 +275,32 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   767f44a3-42ff-434c-9b29-1ff304ce9386 verified at learn.powerplatform.fyi. Merged
   build/day1-overnight into main (fast-forward) as the deploy trigger, per owner
   authorization.
+- **2026-08-27** — Wiring stage shipped and hardened through adversarial cross-review.
+  Stage 1 (`ded2922`): UI wired to the real engine + WebMCP registry per spike-verdict law
+  (document-first shim, getTools polling, drain-first revocation), `mockState.ts` retired,
+  LocalStorageAdapter with probe-write + memory fallback, agent-less parity via the same
+  NotifyingFacade. Stage 2 (`f3f263f`, cross-review fixes): **(BLOCKER)** the mastery gate
+  was self-serviceable — the agent could quote `get_current_question`'s own prompt back
+  through `score_rubric` as "verbatim evidence" and award 4/4/4/4 with zero answers; fixed
+  by excluding every tool-emitted string (prompts, option texts, misconception fields,
+  objective titles) from the evidence corpus AND adding an engine precondition that rejects
+  any rubric before the first graded attempt on the ledger. **(MAJOR)** `loadState` now
+  validates the persisted ledger/hints/lastGrade field-by-field and returns null on
+  mismatch (a tampered `mastery-gate:v1` no longer white-screens /pl-400).
+  **(MAJOR)** `lastGrade` persists with the ledger, so hint/review/coach routing survives
+  reload (ISC-18 covers routing, not just attempts). **(MAJOR)** `confidence` plumbed
+  end-to-end (facade → adapter → `request_next_action` input schema → UI "I wasn't sure —
+  go deeper" button), making the `go_deeper` routing row reachable on both surfaces
+  (ISC-16 true end-to-end). **(MINOR)** `storageDegraded` is a live getter, so mid-session
+  quota/ITP degradation surfaces in the UI. Earlier-round findings (tier-2 hint answer
+  oracle, drain-timeout abort violating the drain-first law) were already fixed in
+  `ded2922`. Four of the review's nine findings were lost to a truncated handoff; an
+  independent audit of the diff (hints, registry, prerendered HTML answer-key scan,
+  toolchange-dependency grep) found no residuals. Gate at ship: 166 tests green, tsc
+  clean, static export clean (no answer-key strings in out/), content validation OK.
+  Deployed to production via fast-forward of main. Package-level probes ran for
+  ISC-11…18, 20, 30, 52…54; ISC-21…29 browser probes stay open for the ChatGPT
+  in-app-browser pass.
 - **2026-08-26** — Spike verdicts (ChatGPT in-app browser, live probe at /spike, evidence in
   `docs/spike-verdicts.md`): `document.modelContext` only (`navigator` absent); Chromium 151 base;
   no `toolchange`/`addEventListener` surface — agent notification + `getTools()` polling is the
