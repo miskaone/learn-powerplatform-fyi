@@ -22,7 +22,11 @@ function wait(ms: number): Promise<void> {
   });
 }
 
-test('events mode reports events and notifies on register without waiting', () => {
+// getTools() is a Promise on real runtimes; every read is awaited and the
+// FIRST read emits (the UI wants the initial roster without waiting for a
+// change). Tests below encode that contract.
+
+test('events mode: initial emission on start, then notifies on register', async () => {
   const ctx = new MockModelContext();
   const watcher = new ToolSurfaceWatcher(ctx);
   expect(watcher.mode).toBe('events');
@@ -32,15 +36,20 @@ test('events mode reports events and notifies on register without waiting', () =
     seen.push(names);
   });
   watcher.start();
+  await wait(5);
+  expect(seen).toEqual([[]]);
+
   ctx.registerTool(makeTool('alpha'));
-  expect(seen).toEqual([['alpha']]);
+  await wait(5);
+  expect(seen).toEqual([[], ['alpha']]);
 
   watcher.stop();
   ctx.registerTool(makeTool('beta'));
-  expect(seen).toEqual([['alpha']]);
+  await wait(5);
+  expect(seen).toEqual([[], ['alpha']]);
 });
 
-test('events mode unsubscribe removes only that callback', () => {
+test('events mode unsubscribe removes only that callback', async () => {
   const ctx = new MockModelContext();
   const watcher = new ToolSurfaceWatcher(ctx);
   const first: string[][] = [];
@@ -52,10 +61,12 @@ test('events mode unsubscribe removes only that callback', () => {
     second.push(names);
   });
   watcher.start();
+  await wait(5);
   unsubscribeFirst();
   ctx.registerTool(makeTool('alpha'));
-  expect(first).toEqual([]);
-  expect(second).toEqual([['alpha']]);
+  await wait(5);
+  expect(first).toEqual([[]]); // initial emission only, before unsubscribe
+  expect(second).toEqual([[], ['alpha']]);
   watcher.stop();
 });
 
@@ -71,7 +82,7 @@ test('polling mode reports polling and notifies on the next tick', async () => {
   watcher.start();
   ctx.registerTool(makeTool('alpha'));
   await wait(40);
-  expect(seen).toEqual([['alpha']]);
+  expect(seen.at(-1)).toEqual(['alpha']);
 
   const callsAfterFirstChange = seen.length;
   watcher.stop();
@@ -80,7 +91,7 @@ test('polling mode reports polling and notifies on the next tick', async () => {
   expect(seen.length).toBe(callsAfterFirstChange);
 });
 
-test('refresh detects a change with no start', () => {
+test('refresh detects a change with no start', async () => {
   const ctx = new EventlessMockModelContext();
   const watcher = new ToolSurfaceWatcher(ctx, { pollIntervalMs: 5 });
   const seen: string[][] = [];
@@ -88,11 +99,11 @@ test('refresh detects a change with no start', () => {
     seen.push(names);
   });
   ctx.registerTool(makeTool('alpha'));
-  watcher.refresh();
+  await watcher.refresh();
   expect(seen).toEqual([['alpha']]);
 });
 
-test('constructor snapshot means refresh is a no-op when tools have not changed', () => {
+test('refresh is a no-op when tools have not changed since the last read', async () => {
   const ctx = new EventlessMockModelContext();
   ctx.registerTool(makeTool('alpha'));
   const watcher = new ToolSurfaceWatcher(ctx, { pollIntervalMs: 5 });
@@ -100,8 +111,9 @@ test('constructor snapshot means refresh is a no-op when tools have not changed'
   watcher.onChange((names) => {
     seen.push(names);
   });
-  watcher.refresh();
-  expect(seen).toEqual([]);
+  await watcher.refresh();
+  await watcher.refresh();
+  expect(seen).toEqual([['alpha']]);
 });
 
 test('double start does not create a second interval', async () => {
@@ -115,7 +127,8 @@ test('double start does not create a second interval', async () => {
   watcher.start();
   ctx.registerTool(makeTool('alpha'));
   await wait(40);
-  expect(calls).toBe(1);
+  // initial emission + the alpha change; a duplicated interval would add more
+  expect(calls).toBe(2);
   watcher.stop();
 });
 
@@ -130,11 +143,51 @@ test('polling mode detects abort unregistration on the next tick', async () => {
   watcher.start();
   ctx.registerTool(makeTool('alpha'), { signal: controller.signal });
   await wait(40);
-  expect(seen).toEqual([['alpha']]);
+  expect(seen.at(-1)).toEqual(['alpha']);
   controller.abort();
   await wait(40);
   expect(seen.at(-1)).toEqual([]);
   watcher.stop();
+});
+
+test('promise-returning getTools is awaited, never mapped over (2026-08-27 production crash)', async () => {
+  // The exact failure shape: a runtime whose getTools() returns a Promise.
+  // The old sync contract ran `.map` on the Promise and threw
+  // "e.getTools.map is not a function" on every poll tick, uncaught.
+  let reads = 0;
+  const ctx = {
+    registerTool: () => Promise.resolve(),
+    getTools: () => {
+      reads += 1;
+      return Promise.resolve([makeTool('alpha'), makeTool('beta')]);
+    },
+  };
+  const watcher = new ToolSurfaceWatcher(ctx, { pollIntervalMs: 5 });
+  expect(watcher.mode).toBe('polling');
+  const seen: string[][] = [];
+  watcher.onChange((names) => {
+    seen.push(names);
+  });
+  await watcher.refresh();
+  expect(seen).toEqual([['alpha', 'beta']]);
+  expect(reads).toBe(1);
+});
+
+test('a rejecting getTools surfaces through onError, never as an uncaught throw', async () => {
+  const errors: unknown[] = [];
+  const ctx = {
+    registerTool: () => {},
+    getTools: () => Promise.reject(new Error('runtime hiccup')),
+  };
+  const watcher = new ToolSurfaceWatcher(ctx, {
+    pollIntervalMs: 5,
+    onError: (error) => {
+      errors.push(error);
+    },
+  });
+  await watcher.refresh();
+  expect(errors).toHaveLength(1);
+  expect(String(errors[0])).toContain('runtime hiccup');
 });
 
 test('roster ordering: watcher and registry.getRegisteredNames agree on canonical declaration order', async () => {
@@ -173,7 +226,7 @@ test('roster ordering: watcher and registry.getRegisteredNames agree on canonica
     examSubmitted: false,
     moduleComplete: true,
   });
-  watcher.refresh();
+  await watcher.refresh();
 
   const registryOrder = registry.getRegisteredNames();
   const watcherOrder = seen.at(-1);

@@ -173,7 +173,15 @@ export class ToolRegistry {
       }
       const controller = new AbortController();
       this.controllers.set(name, controller);
-      this.ctx.registerTool(descriptor, { signal: controller.signal });
+      // registerTool returns a Promise on real runtimes — a rejection must
+      // surface through the logger, never as an unhandled rejection, and a
+      // failed registration must not leave a phantom controller behind.
+      void Promise.resolve(
+        this.ctx.registerTool(descriptor, { signal: controller.signal }),
+      ).catch((error) => {
+        this.controllers.delete(name);
+        this.logger(`registerTool(${name}) rejected: ${String(error)}`);
+      });
     }
 
     const revocations: Promise<void>[] = [];

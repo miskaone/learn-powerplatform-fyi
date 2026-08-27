@@ -32,7 +32,7 @@ test('registerTool then getTools/getToolNames reflect the tool; callTool execute
   const tool = makeTool('echo', response);
   ctx.registerTool(tool);
   expect(ctx.getToolNames()).toEqual(['echo']);
-  expect(ctx.getTools()).toEqual([tool]);
+  expect(await ctx.getTools()).toEqual([tool]);
   expect(ctx.hasTool('echo')).toBe(true);
   const result = await ctx.callTool('echo', { q: 1 });
   expect(result).toBe(response);
@@ -49,7 +49,7 @@ test('duplicate registration throws', () => {
   ).toBe(true);
 });
 
-test('aborting a registration signal unregisters the tool and fires toolchange once more', () => {
+test('aborting a registration signal unregisters the tool and fires toolchange once more', async () => {
   const ctx = new MockModelContext();
   const controller = new AbortController();
   ctx.registerTool(makeTool('echo'), { signal: controller.signal });
@@ -57,7 +57,7 @@ test('aborting a registration signal unregisters the tool and fires toolchange o
   expect(ctx.hasTool('echo')).toBe(true);
   controller.abort();
   expect(ctx.hasTool('echo')).toBe(false);
-  expect(ctx.getTools()).toEqual([]);
+  expect(await ctx.getTools()).toEqual([]);
   expect(ctx.toolchangeCount).toBe(2);
 });
 

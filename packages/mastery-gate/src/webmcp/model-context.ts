@@ -21,8 +21,18 @@ export interface ToolRegistrationOptions {
 }
 
 export interface ModelContextLike {
-  registerTool(tool: ToolDescriptor, options?: ToolRegistrationOptions): void;
-  getTools(): ToolDescriptor[];
+  /**
+   * Real runtimes (ChatGPT's injected implementation, Chrome's origin trial)
+   * return Promises from both methods — verified live 2026-08-27, where a
+   * synchronous `getTools(): ToolDescriptor[]` contract let `.map` run on a
+   * Promise and crashed /pl-400 on every poll tick. Both shapes are accepted;
+   * consumers must `await Promise.resolve(...)`.
+   */
+  registerTool(
+    tool: ToolDescriptor,
+    options?: ToolRegistrationOptions,
+  ): void | Promise<void>;
+  getTools(): ToolDescriptor[] | Promise<ToolDescriptor[]>;
   addEventListener?(type: 'toolchange', listener: () => void): void;
   removeEventListener?(type: 'toolchange', listener: () => void): void;
 }

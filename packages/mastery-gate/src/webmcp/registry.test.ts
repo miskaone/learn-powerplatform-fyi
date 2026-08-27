@@ -309,7 +309,7 @@ test('registry: exam deregister mode mass-revokes coaching tools then restores a
   await registry.sync(snap({ ...RICH_FLAGS, phase: 'exam' }));
   const examOnly = sortedNames(['get_exam_status', 'submit_exam']);
   expect(sortedNames(ctx.getToolNames())).toEqual(examOnly);
-  expect(sortedNames(ctx.getTools().map((tool) => tool.name))).toEqual(examOnly);
+  expect(sortedNames((await ctx.getTools()).map((tool) => tool.name))).toEqual(examOnly);
   await registry.sync(snap({ ...RICH_FLAGS, phase: 'exam', examSubmitted: true }));
   expect(ctx.getToolNames()).toContain('get_exam_debrief');
   expect(sortedNames(ctx.getToolNames())).toEqual(

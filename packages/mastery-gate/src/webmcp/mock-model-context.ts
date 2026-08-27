@@ -35,7 +35,17 @@ export class EventlessMockModelContext implements ModelContextLike {
     this.onToolsChanged();
   }
 
-  getTools(): ToolDescriptor[] {
+  /**
+   * Promise-returning, matching real runtimes (ChatGPT injected, Chrome
+   * origin trial). Tests must await — a sync mock here previously let the
+   * un-awaited `.map`-on-a-Promise crash reach production unseen.
+   */
+  getTools(): Promise<ToolDescriptor[]> {
+    return Promise.resolve([...this.tools.values()]);
+  }
+
+  /** Synchronous escape hatch for test assertions. */
+  getToolsSync(): ToolDescriptor[] {
     return [...this.tools.values()];
   }
 
