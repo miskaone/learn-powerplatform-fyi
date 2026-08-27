@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 19/61
+progress: 20/61
 mode: build
 started: 2026-08-26
 updated: 2026-08-27
@@ -131,7 +131,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 
 ### WebMCP tool surface
 
-- [ ] ISC-21: All ten static tools registered on page load, enumerable via `getTools()` (get_learner_state, get_current_context, navigate_to_anchor, log_coaching_note, get_current_question, submit_answer, get_hint, request_next_action, prescribe_drill, score_rubric)
+- [x] ISC-21: All ten static tools registered on page load, enumerable via `getTools()` (get_learner_state, get_current_context, navigate_to_anchor, log_coaching_note, get_current_question, submit_answer, get_hint, request_next_action, prescribe_drill, score_rubric)
 - [ ] ISC-22: `get_current_question` response schema structurally lacks any answer-key or distractor-map field (schema test + runtime audit)
 - [ ] ISC-23: `submit_answer` on a miss returns the named misconception id and never the correct answer (test)
 - [ ] ISC-24: `advance_module` absent from `getTools()` while any rubric dimension <3
@@ -310,3 +310,9 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   (never abort mid-execution; Chromium <153 kills in-flight calls), refusal fallback retained
   behind the registry interface. Shim namespace preference flips to document-first. Chrome-side
   ISC-1 still pending.
+- **2026-08-27** — ISC-21 verified in the primary judge environment: ChatGPT's live WebMCP
+  discovery on production enumerated all ten static tools, matching `tool-names.ts` declaration
+  order. Preceded by two production defects found and fixed same-day: the modelContext injection
+  race (late-binding detection, `c66a380`) and the sync `getTools()` contract crash
+  (Promise-normalized reads + truthful mocks, `6099cb0`) — root-caused by injecting a
+  promise-returning mock runtime into a clean browser against the live site.
