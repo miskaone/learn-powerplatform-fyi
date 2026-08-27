@@ -1,182 +1,1379 @@
 {
   "courseId": "pl-400",
-  "title": "PL-400 Mastery Gate — SAMPLE — replace with authored content",
+  "title": "PL-400 Mastery Gate",
   "objectives": [
     {
-      "id": "objective-1-placeholder",
-      "title": "Objective 1 — SAMPLE — replace with authored content",
-      "summary": "Placeholder coverage of the sample concept for the first objective. SAMPLE — replace with authored content",
-      "questionIds": ["sample-q-obj1-1", "sample-q-obj1-2"]
+      "id": "custom-connectors-azure-integration",
+      "title": "Custom Connectors & Azure Integration",
+      "summary": "Ordering an Entra-Graph custom connector integration (register, permission, consent, connect, call), separating Dataverse event delivery from Azure Function ETL compute, and reasoning about the effective DLP policy that governs which connectors an app or flow may combine.",
+      "questionIds": [
+        "ml13-q1",
+        "ml13-q2",
+        "ml13-q3",
+        "ml13-q4",
+        "ml13-q5",
+        "ml13-q6",
+        "ml13-q7",
+        "ml11-q1",
+        "ml11-q2",
+        "ml11-q3",
+        "ml11-q4",
+        "ml11-q5",
+        "ml11-q6",
+        "ml11-q7",
+        "ml09-q1",
+        "ml09-q2",
+        "ml09-q3",
+        "ml09-q4",
+        "ml09-q5",
+        "ml09-q6",
+        "ml09-q7"
+      ]
     },
     {
-      "id": "objective-2-placeholder",
-      "title": "Objective 2 — SAMPLE — replace with authored content",
-      "summary": "Placeholder coverage of the sample concept for the second objective. SAMPLE — replace with authored content",
-      "questionIds": ["sample-q-obj2-1", "sample-q-obj2-2"]
+      "id": "dataverse-extensibility-platform-limits",
+      "title": "Dataverse Extensibility & Platform Limits",
+      "summary": "Designing a Dataverse document architecture within platform storage limits (SharePoint binaries, alternate-key matching, recoverable batch compute) and building delegable canvas-app queries that respect delegation limits with correct date-window boundaries.",
+      "questionIds": [
+        "ml12-q1",
+        "ml12-q2",
+        "ml12-q3",
+        "ml12-q4",
+        "ml12-q5",
+        "ml12-q6",
+        "ml14-q1",
+        "ml14-q2",
+        "ml14-q3",
+        "ml14-q4",
+        "ml14-q5",
+        "ml14-q6",
+        "ml14-q7"
+      ]
     }
   ],
   "questions": [
     {
-      "id": "sample-q-obj1-1",
-      "objectiveId": "objective-1-placeholder",
-      "concepts": ["sample-concept"],
-      "prompt": "SAMPLE — replace with authored content. Which statement best describes the sample concept?",
+      "id": "ml13-q1",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "app-registration",
+        "graph-permission",
+        "consent"
+      ],
+      "dimension": "recall",
+      "prompt": "Which order correctly prepares a Canvas app to call Graph through a custom connector on behalf of its signed-in user?",
       "options": [
         {
-          "id": "sample-q-obj1-1-a",
-          "text": "The sample concept is the named idea this placeholder item is checking."
+          "id": "ml13-q1-a",
+          "text": "Register → Permission → Consent → Connect → Call"
         },
         {
-          "id": "sample-q-obj1-1-b",
-          "text": "The sample concept is interchangeable with any nearby term.",
-          "misconceptionId": "sample-mc-collapse"
+          "id": "ml13-q1-b",
+          "text": "Consent → Register → Call → Permission → Connect",
+          "misconceptionId": "oauth-chain-unordered"
         },
         {
-          "id": "sample-q-obj1-1-c",
-          "text": "The sample concept can be skipped when the wording feels familiar.",
-          "misconceptionId": "sample-mc-skip"
+          "id": "ml13-q1-c",
+          "text": "Connect → Register → Consent → Permission → Call",
+          "misconceptionId": "oauth-chain-unordered"
         },
         {
-          "id": "sample-q-obj1-1-d",
-          "text": "The sample concept is a label that never needs a contrast.",
-          "misconceptionId": "sample-mc-label-only"
+          "id": "ml13-q1-d",
+          "text": "Call → Connect → Permission → Consent → Register",
+          "misconceptionId": "oauth-chain-unordered"
         }
       ],
-      "correctOptionId": "sample-q-obj1-1-a",
-      "rationale": "SAMPLE — replace with authored content. The correct choice restates the sample concept without collapsing it into a neighboring idea.",
-      "remediationAnchor": "sample-concept"
+      "correctOptionId": "ml13-q1-a",
+      "rationale": "The registration gives the connector identity; permissions are requested on it; consent approves them; connector configuration uses that identity; then the app calls it.",
+      "remediationAnchor": "entra-graph-connector-order-rule"
     },
     {
-      "id": "sample-q-obj1-2",
-      "objectiveId": "objective-1-placeholder",
-      "concepts": ["sample-concept", "sample-contrast"],
-      "prompt": "SAMPLE — replace with authored content. Why does the sample concept need an explicit contrast?",
+      "id": "ml13-q2",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "graph-permission",
+        "consent"
+      ],
+      "dimension": "connections",
+      "prompt": "Why must consent follow Graph permission configuration?",
       "options": [
         {
-          "id": "sample-q-obj1-2-a",
-          "text": "A contrast keeps the sample concept from being confused with a neighboring idea."
+          "id": "ml13-q2-a",
+          "text": "Consent creates the app registration",
+          "misconceptionId": "auth-controls-conflated"
         },
         {
-          "id": "sample-q-obj1-2-b",
-          "text": "A contrast is optional once the sample concept has a name.",
-          "misconceptionId": "sample-mc-no-contrast"
+          "id": "ml13-q2-b",
+          "text": "Consent assigns the user a directory role",
+          "misconceptionId": "auth-controls-conflated"
         },
         {
-          "id": "sample-q-obj1-2-c",
-          "text": "The sample concept collapses into whichever nearby term is more popular.",
-          "misconceptionId": "sample-mc-collapse"
+          "id": "ml13-q2-c",
+          "text": "Consent creates the Canvas app",
+          "misconceptionId": "auth-controls-conflated"
         },
         {
-          "id": "sample-q-obj1-2-d",
-          "text": "The sample concept can be skipped if the contrast is already obvious.",
-          "misconceptionId": "sample-mc-skip"
+          "id": "ml13-q2-d",
+          "text": "Consent approves requested access; without a request there is nothing to approve"
         }
       ],
-      "correctOptionId": "sample-q-obj1-2-a",
-      "rationale": "SAMPLE — replace with authored content. The sample concept stays usable only when its contrast is named.",
-      "remediationAnchor": "sample-model-driven"
+      "correctOptionId": "ml13-q2-d",
+      "rationale": "Permission and consent are separate: permissions declare what the application requests, while consent authorizes that request.",
+      "remediationAnchor": "entra-graph-connector-order-rule"
     },
     {
-      "id": "sample-q-obj2-1",
-      "objectiveId": "objective-2-placeholder",
-      "concepts": ["sample-concept", "sample-application"],
-      "prompt": "SAMPLE — replace with authored content. How should a learner apply the sample concept in this second objective?",
+      "id": "ml13-q3",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "graph-permission",
+        "canvas-app"
+      ],
+      "dimension": "connections",
+      "prompt": "What permission mode best fits a Canvas app checking the currently logged-in user's membership through Graph?",
       "options": [
         {
-          "id": "sample-q-obj2-1-a",
-          "text": "Restate the sample concept, then check it against the situation before choosing."
+          "id": "ml13-q3-a",
+          "text": "No OAuth permissions",
+          "misconceptionId": "oauth-chain-unordered"
         },
         {
-          "id": "sample-q-obj2-1-b",
-          "text": "Skip the sample concept and choose the first familiar term.",
-          "misconceptionId": "sample-mc-skip"
+          "id": "ml13-q3-b",
+          "text": "Dataverse table permissions",
+          "misconceptionId": "auth-controls-conflated"
         },
         {
-          "id": "sample-q-obj2-1-c",
-          "text": "Treat the sample concept as a label with no work behind it.",
-          "misconceptionId": "sample-mc-label-only"
+          "id": "ml13-q3-c",
+          "text": "Delegated permissions"
         },
         {
-          "id": "sample-q-obj2-1-d",
-          "text": "Drop the contrast and let neighboring ideas stand in.",
-          "misconceptionId": "sample-mc-no-contrast"
+          "id": "ml13-q3-d",
+          "text": "Application permissions",
+          "misconceptionId": "permission-mode-ignores-actor"
         }
       ],
-      "correctOptionId": "sample-q-obj2-1-a",
-      "rationale": "SAMPLE — replace with authored content. Applying the sample concept means checking it, not substituting a nearby term.",
-      "remediationAnchor": "sample-canvas-guided"
+      "correctOptionId": "ml13-q3-c",
+      "rationale": "The connector is acting on behalf of a signed-in user. Application permissions are for app-only background/daemon work.",
+      "remediationAnchor": "entra-graph-connector-order-rule"
     },
     {
-      "id": "sample-q-obj2-2",
-      "objectiveId": "objective-2-placeholder",
-      "concepts": ["sample-concept", "sample-connections"],
-      "prompt": "SAMPLE — replace with authored content. How does the sample concept connect across the two placeholder objectives?",
+      "id": "ml13-q4",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "connector"
+      ],
+      "dimension": "application",
+      "prompt": "What does the custom connector contribute to this design?",
       "options": [
         {
-          "id": "sample-q-obj2-2-a",
-          "text": "The sample concept is the same idea in both objectives; only the situation changes."
+          "id": "ml13-q4-a",
+          "text": "Replacement for server-side authorization",
+          "misconceptionId": "component-role-collapse"
         },
         {
-          "id": "sample-q-obj2-2-b",
-          "text": "Each objective invents a new sample concept with no shared meaning.",
-          "misconceptionId": "sample-mc-collapse"
+          "id": "ml13-q4-b",
+          "text": "A reusable OAuth/Graph operation contract that the Canvas app can call"
         },
         {
-          "id": "sample-q-obj2-2-c",
-          "text": "The sample concept is only a heading label and does not transfer.",
-          "misconceptionId": "sample-mc-label-only"
+          "id": "ml13-q4-c",
+          "text": "Automatic assignment of Global Administrator to every user",
+          "misconceptionId": "auth-controls-conflated"
         },
         {
-          "id": "sample-q-obj2-2-d",
-          "text": "Connections do not need a contrast between the two objectives.",
-          "misconceptionId": "sample-mc-no-contrast"
+          "id": "ml13-q4-d",
+          "text": "Replacement for consent",
+          "misconceptionId": "component-role-collapse"
         }
       ],
-      "correctOptionId": "sample-q-obj2-2-a",
-      "rationale": "SAMPLE — replace with authored content. The sample concept transfers; the surrounding situation is what changes.",
-      "remediationAnchor": "sample-concept-connections"
+      "correctOptionId": "ml13-q4-b",
+      "rationale": "The connector encapsulates OAuth and API plumbing. It does not grant directory roles, consent, or protected-operation authorization.",
+      "remediationAnchor": "entra-graph-connector-order-scenario"
+    },
+    {
+      "id": "ml13-q5",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "consent",
+        "graph-permission",
+        "server-authorization"
+      ],
+      "dimension": "application",
+      "prompt": "Which statement distinguishes role, permission, and consent correctly?",
+      "options": [
+        {
+          "id": "ml13-q5-a",
+          "text": "Role is user authority; permission is app-requested API access; consent approves that request"
+        },
+        {
+          "id": "ml13-q5-b",
+          "text": "All three are the same tenant setting",
+          "misconceptionId": "auth-controls-conflated"
+        },
+        {
+          "id": "ml13-q5-c",
+          "text": "Consent assigns every user the role",
+          "misconceptionId": "auth-controls-conflated"
+        },
+        {
+          "id": "ml13-q5-d",
+          "text": "A Graph permission automatically shares the Canvas app",
+          "misconceptionId": "auth-controls-conflated"
+        }
+      ],
+      "correctOptionId": "ml13-q5-a",
+      "rationale": "These are separate controls and must not be collapsed into one authorization concept.",
+      "remediationAnchor": "entra-graph-connector-order-scenario"
+    },
+    {
+      "id": "ml13-q6",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "server-authorization",
+        "canvas-app"
+      ],
+      "dimension": "application",
+      "prompt": "A Canvas app hides its user-management screen for non-admins. What additional control is required?",
+      "options": [
+        {
+          "id": "ml13-q6-a",
+          "text": "Nothing; hidden UI is enforcement",
+          "misconceptionId": "client-side-is-server-side"
+        },
+        {
+          "id": "ml13-q6-b",
+          "text": "Make every user a Global Administrator",
+          "misconceptionId": "auth-controls-conflated"
+        },
+        {
+          "id": "ml13-q6-c",
+          "text": "Store the role in a screen variable only",
+          "misconceptionId": "client-side-is-server-side"
+        },
+        {
+          "id": "ml13-q6-d",
+          "text": "The protected API/backend independently validates authorization"
+        }
+      ],
+      "correctOptionId": "ml13-q6-d",
+      "rationale": "Client-side navigation is not a security boundary. The protected operation must enforce authorization.",
+      "remediationAnchor": "entra-graph-connector-order-scenario"
+    },
+    {
+      "id": "ml13-q7",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "graph-permission",
+        "consent"
+      ],
+      "dimension": "transfer",
+      "prompt": "What changes if a nightly background job, with no signed-in user, calls Graph?",
+      "options": [
+        {
+          "id": "ml13-q7-a",
+          "text": "Remove consent",
+          "misconceptionId": "oauth-chain-unordered"
+        },
+        {
+          "id": "ml13-q7-b",
+          "text": "Call Graph directly from a Canvas screen",
+          "misconceptionId": "client-side-is-server-side"
+        },
+        {
+          "id": "ml13-q7-c",
+          "text": "Evaluate application permissions and app-only authorization instead of delegated user access"
+        },
+        {
+          "id": "ml13-q7-d",
+          "text": "Keep delegated permissions because every API needs a user",
+          "misconceptionId": "permission-mode-ignores-actor"
+        }
+      ],
+      "correctOptionId": "ml13-q7-c",
+      "rationale": "No signed-in user changes the runtime identity model. Background jobs normally use app-only/application permissions, with corresponding consent and least-privilege design.",
+      "remediationAnchor": "entra-graph-connector-order-production"
+    },
+    {
+      "id": "ml11-q1",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "custom-compute",
+        "delivery-mechanism"
+      ],
+      "dimension": "recall",
+      "prompt": "In a Webhook + Azure Function integration, which component performs custom transformation logic?",
+      "options": [
+        {
+          "id": "ml11-q1-a",
+          "text": "Azure Function"
+        },
+        {
+          "id": "ml11-q1-b",
+          "text": "Webhook",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q1-c",
+          "text": "Dataverse Web API",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q1-d",
+          "text": "Web resource",
+          "misconceptionId": "client-side-is-server-side"
+        }
+      ],
+      "correctOptionId": "ml11-q1-a",
+      "rationale": "The webhook delivers a Dataverse event to an external endpoint. The Azure Function is the custom compute layer that maps, validates, cleanses, or converts the payload/data.",
+      "remediationAnchor": "webhook-function-etl-boundary-rule"
+    },
+    {
+      "id": "ml11-q2",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "event-origin",
+        "delivery-mechanism"
+      ],
+      "dimension": "connections",
+      "prompt": "What is the normal direction of a Dataverse webhook?",
+      "options": [
+        {
+          "id": "ml11-q2-a",
+          "text": "External legacy application → Dataverse scheduler",
+          "misconceptionId": "trigger-ignores-origin"
+        },
+        {
+          "id": "ml11-q2-b",
+          "text": "Browser web resource → server-side migration job",
+          "misconceptionId": "client-side-is-server-side"
+        },
+        {
+          "id": "ml11-q2-c",
+          "text": "Microsoft Graph → any arbitrary legacy system",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q2-d",
+          "text": "Dataverse server event → external handler"
+        }
+      ],
+      "correctOptionId": "ml11-q2-d",
+      "rationale": "Dataverse webhooks send server events outward as POST JSON payloads to an external web application. That direction is the production-design check that qualifies the exam answer.",
+      "remediationAnchor": "webhook-function-etl-boundary-rule"
+    },
+    {
+      "id": "ml11-q3",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "web-resource",
+        "dataverse-api"
+      ],
+      "dimension": "connections",
+      "prompt": "Why is Web Resource + Dataverse Web API a poor fit for a transformation-heavy background migration?",
+      "options": [
+        {
+          "id": "ml11-q3-a",
+          "text": "The Dataverse Web API cannot create or update rows",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q3-b",
+          "text": "Web resources run as Azure Functions automatically",
+          "misconceptionId": "client-side-is-server-side"
+        },
+        {
+          "id": "ml11-q3-c",
+          "text": "The web resource is browser-processed UI code, while the Web API is a data endpoint rather than an ETL engine"
+        },
+        {
+          "id": "ml11-q3-d",
+          "text": "Web resources cannot contain JavaScript",
+          "misconceptionId": "client-side-is-server-side"
+        }
+      ],
+      "correctOptionId": "ml11-q3-c",
+      "rationale": "Web resources are static HTML, JavaScript, CSS, image, and related browser assets used to extend model-driven apps. The Web API can perform data operations, but neither component independently supplies a reliable server-side ETL pipeline.",
+      "remediationAnchor": "webhook-function-etl-boundary-rule"
+    },
+    {
+      "id": "ml11-q4",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "delivery-mechanism",
+        "custom-compute"
+      ],
+      "dimension": "application",
+      "prompt": "An Account update in Dataverse must invoke custom code that enriches the data and writes selected results to another system. Which trace best fits?",
+      "options": [
+        {
+          "id": "ml11-q4-a",
+          "text": "Account update → Microsoft Graph → arbitrary legacy application",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q4-b",
+          "text": "Dataverse Account update → registered webhook → Azure Function handler → external/Dataverse API calls"
+        },
+        {
+          "id": "ml11-q4-c",
+          "text": "Account update → web resource server code → automatic background load",
+          "misconceptionId": "client-side-is-server-side"
+        },
+        {
+          "id": "ml11-q4-d",
+          "text": "Account update → custom connector definition with no caller → migration completes",
+          "misconceptionId": "component-role-collapse"
+        }
+      ],
+      "correctOptionId": "ml11-q4-b",
+      "rationale": "This is a Dataverse-originated event. Register a webhook step, host the handler such as an Azure Function, and let the Function perform custom processing and necessary API calls.",
+      "remediationAnchor": "webhook-function-etl-boundary-scenario"
+    },
+    {
+      "id": "ml11-q5",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "custom-connector"
+      ],
+      "dimension": "application",
+      "prompt": "What is the most accurate role of a custom connector in an integration design?",
+      "options": [
+        {
+          "id": "ml11-q5-a",
+          "text": "It defines how apps, flows, and other supported consumers call an API's operations and security"
+        },
+        {
+          "id": "ml11-q5-b",
+          "text": "It automatically schedules and reconciles every legacy-data migration",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q5-c",
+          "text": "It is a model-driven app browser UI file",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q5-d",
+          "text": "It is the Dataverse server event that POSTs to an endpoint",
+          "misconceptionId": "component-role-collapse"
+        }
+      ],
+      "correctOptionId": "ml11-q5-a",
+      "rationale": "Custom connectors describe API operations, data structures, and authentication for consumers such as Power Apps and Power Automate. They can be part of a design but are not synonymous with a webhook, Function, or ETL orchestration runtime.",
+      "remediationAnchor": "webhook-function-etl-boundary-scenario"
+    },
+    {
+      "id": "ml11-q6",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "service-bus",
+        "delivery-mechanism"
+      ],
+      "dimension": "application",
+      "prompt": "A Dataverse event stream could overwhelm a direct HTTP handler and requires durable buffering. Which integration comparison matters most?",
+      "options": [
+        {
+          "id": "ml11-q6-a",
+          "text": "Replace the Function with a web resource because web resources run offline",
+          "misconceptionId": "client-side-is-server-side"
+        },
+        {
+          "id": "ml11-q6-b",
+          "text": "Use Microsoft Graph because it queues Dataverse events",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q6-c",
+          "text": "Use a custom connector because it guarantees durable event delivery",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q6-d",
+          "text": "Consider Azure Service Bus because it provides queuing for high-scale processing"
+        }
+      ],
+      "correctOptionId": "ml11-q6-d",
+      "rationale": "Microsoft documents Azure Service Bus as providing a full queuing mechanism for high-scale Dataverse event processing. Direct webhooks scale only to the capacity of the receiving hosted service.",
+      "remediationAnchor": "webhook-function-etl-boundary-scenario"
+    },
+    {
+      "id": "ml11-q7",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "event-origin",
+        "custom-compute"
+      ],
+      "dimension": "transfer",
+      "prompt": "What changes when the requirement becomes a nightly one-time-style pull from legacy systems into Dataverse, with no Dataverse event starting the work?",
+      "options": [
+        {
+          "id": "ml11-q7-a",
+          "text": "Move the migration into a web resource so it runs in the model-driven browser",
+          "misconceptionId": "client-side-is-server-side"
+        },
+        {
+          "id": "ml11-q7-b",
+          "text": "Use Microsoft Graph regardless of what the legacy source exposes",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml11-q7-c",
+          "text": "Use a timer, pipeline, dataflow, or equivalent external trigger; retain an Azure Function only where custom transformation is needed"
+        },
+        {
+          "id": "ml11-q7-d",
+          "text": "Register a Dataverse webhook because every Dataverse migration begins with a server event",
+          "misconceptionId": "trigger-ignores-origin"
+        }
+      ],
+      "correctOptionId": "ml11-q7-c",
+      "rationale": "The delivery/orchestration mechanism must match the origin. A Dataverse webhook is outbound notification from a Dataverse event; a scheduled legacy migration needs a scheduler or pipeline outside that event path. Custom compute may still be an Azure Function.",
+      "remediationAnchor": "webhook-function-etl-boundary-production"
+    },
+    {
+      "id": "ml09-q1",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "blocked-precedence"
+      ],
+      "dimension": "recall",
+      "prompt": "Across multiple applicable data policies, which connector classification has unconditional precedence?",
+      "options": [
+        {
+          "id": "ml09-q1-a",
+          "text": "Blocked"
+        },
+        {
+          "id": "ml09-q1-b",
+          "text": "Business",
+          "misconceptionId": "labels-are-ranks"
+        },
+        {
+          "id": "ml09-q1-c",
+          "text": "Non-Business",
+          "misconceptionId": "labels-are-ranks"
+        },
+        {
+          "id": "ml09-q1-d",
+          "text": "The classification in the newest policy",
+          "misconceptionId": "policy-precedence-instinct"
+        }
+      ],
+      "correctOptionId": "ml09-q1-a",
+      "rationale": "If any applicable tenant-level or environment-level policy marks a connector Blocked, no app or flow can use that connector in the environment. Other Business or Non-Business classifications do not override it.",
+      "remediationAnchor": "dlp-effective-policy-intersection-rule"
+    },
+    {
+      "id": "ml09-q2",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "classification-fingerprint"
+      ],
+      "dimension": "recall",
+      "prompt": "What does a Business or Non-Business classification primarily establish?",
+      "options": [
+        {
+          "id": "ml09-q2-a",
+          "text": "A ranking of connector security quality",
+          "misconceptionId": "labels-are-ranks"
+        },
+        {
+          "id": "ml09-q2-b",
+          "text": "A license tier for the connector",
+          "misconceptionId": "labels-are-ranks"
+        },
+        {
+          "id": "ml09-q2-c",
+          "text": "A precedence rule based on policy creation time",
+          "misconceptionId": "policy-precedence-instinct"
+        },
+        {
+          "id": "ml09-q2-d",
+          "text": "A data-sharing boundary that controls which connectors may be used together"
+        }
+      ],
+      "correctOptionId": "ml09-q2-d",
+      "rationale": "Business and Non-Business are separation groups. The important question is whether connectors remain grouped together across every applicable policy, not whether one label sounds more trusted.",
+      "remediationAnchor": "dlp-effective-policy-intersection-rule"
+    },
+    {
+      "id": "ml09-q3",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "classification-fingerprint",
+        "coexistence-test"
+      ],
+      "dimension": "connections",
+      "prompt": "Policy A groups SharePoint and Salesforce as Business. Policy B groups SharePoint as Business and Salesforce as Non-Business. Why can they not coexist in one flow?",
+      "options": [
+        {
+          "id": "ml09-q3-a",
+          "text": "Policy B is necessarily newer than Policy A",
+          "misconceptionId": "policy-precedence-instinct"
+        },
+        {
+          "id": "ml09-q3-b",
+          "text": "SharePoint can never be combined with Salesforce",
+          "misconceptionId": "single-policy-view"
+        },
+        {
+          "id": "ml09-q3-c",
+          "text": "Their complete fingerprints differ: [Business, Business] versus [Business, Non-Business]"
+        },
+        {
+          "id": "ml09-q3-d",
+          "text": "Non-Business connectors are always blocked",
+          "misconceptionId": "labels-are-ranks"
+        }
+      ],
+      "correctOptionId": "ml09-q3-c",
+      "rationale": "The policies are intersected. Sharing a group under Policy A is insufficient because Policy B separates the connectors. Non-Business is not itself Blocked.",
+      "remediationAnchor": "dlp-effective-policy-intersection-rule"
+    },
+    {
+      "id": "ml09-q4",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "coexistence-test",
+        "policy-fragmentation"
+      ],
+      "dimension": "connections",
+      "prompt": "Three applicable policies classify Outlook as [Business, Business, Business] and SharePoint as [Business, Business, Non-Business]. What is the effective relationship?",
+      "options": [
+        {
+          "id": "ml09-q4-a",
+          "text": "The tenant-level classification must be discarded",
+          "misconceptionId": "policy-precedence-instinct"
+        },
+        {
+          "id": "ml09-q4-b",
+          "text": "They occupy different effective groups and cannot be mixed in one resource"
+        },
+        {
+          "id": "ml09-q4-c",
+          "text": "They are compatible because two of three policies agree",
+          "misconceptionId": "single-policy-view"
+        },
+        {
+          "id": "ml09-q4-d",
+          "text": "SharePoint is Blocked because one position is Non-Business",
+          "misconceptionId": "labels-are-ranks"
+        }
+      ],
+      "correctOptionId": "ml09-q4-b",
+      "rationale": "Compatibility requires equality at every position; this is not majority voting. Non-Business means a different group, not Blocked, and applicable tenant/environment classifications are not discarded by scope hierarchy.",
+      "remediationAnchor": "dlp-effective-policy-intersection-rule"
+    },
+    {
+      "id": "ml09-q5",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "enforcement-surface"
+      ],
+      "dimension": "application",
+      "prompt": "A maker adds a conflicting connector pair to a cloud flow and selects Save. Which outcome best matches Power Automate design-time enforcement?",
+      "options": [
+        {
+          "id": "ml09-q5-a",
+          "text": "The flow can be saved but is marked Suspended and will not execute until the violation is resolved"
+        },
+        {
+          "id": "ml09-q5-b",
+          "text": "The flow runs once and is then permanently deleted",
+          "misconceptionId": "design-time-only-enforcement"
+        },
+        {
+          "id": "ml09-q5-c",
+          "text": "The newest policy is ignored until the next solution import",
+          "misconceptionId": "policy-precedence-instinct"
+        },
+        {
+          "id": "ml09-q5-d",
+          "text": "Only the connector action fails while the rest of the flow executes",
+          "misconceptionId": "design-time-only-enforcement"
+        }
+      ],
+      "correctOptionId": "ml09-q5-a",
+      "rationale": "Power Automate can save the flow, but a data-policy violation causes it to be marked Suspended and prevents execution until the maker resolves the conflict.",
+      "remediationAnchor": "dlp-effective-policy-intersection-scenario"
+    },
+    {
+      "id": "ml09-q6",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "enforcement-surface"
+      ],
+      "dimension": "application",
+      "prompt": "An existing flow became noncompliant after an admin changed a policy, but its status has not changed immediately. What is the best first interpretation?",
+      "options": [
+        {
+          "id": "ml09-q6-a",
+          "text": "DLP applies only during design and can never affect an existing flow",
+          "misconceptionId": "design-time-only-enforcement"
+        },
+        {
+          "id": "ml09-q6-b",
+          "text": "The environment-level policy automatically canceled the tenant-level policy",
+          "misconceptionId": "policy-precedence-instinct"
+        },
+        {
+          "id": "ml09-q6-c",
+          "text": "A saved flow is permanently exempt from later policy changes",
+          "misconceptionId": "design-time-only-enforcement"
+        },
+        {
+          "id": "ml09-q6-d",
+          "text": "Runtime suspension uses a background polling process, so enforcement status may take time to update"
+        }
+      ],
+      "correctOptionId": "ml09-q6-d",
+      "rationale": "Existing resources are evaluated against the latest applicable policies, but the flow/app suspension process works in polling mode. A short delay alone does not prove that the policy is ineffective.",
+      "remediationAnchor": "dlp-effective-policy-intersection-scenario"
+    },
+    {
+      "id": "ml09-q7",
+      "objectiveId": "custom-connectors-azure-integration",
+      "concepts": [
+        "applicable-policy-set",
+        "classification-fingerprint"
+      ],
+      "dimension": "transfer",
+      "prompt": "A flow uses SharePoint [Business, Business] and Salesforce [Business, Non-Business]. What changes if Policy B is narrowed so it no longer applies to the flow's environment, while Policy A still applies and neither connector is Blocked?",
+      "options": [
+        {
+          "id": "ml09-q7-a",
+          "text": "Salesforce remains Blocked because Non-Business is irreversible",
+          "misconceptionId": "labels-are-ranks"
+        },
+        {
+          "id": "ml09-q7-b",
+          "text": "Policy A is ignored because it has fewer classifications",
+          "misconceptionId": "policy-precedence-instinct"
+        },
+        {
+          "id": "ml09-q7-c",
+          "text": "The remaining fingerprints both become [Business], so this particular DLP grouping conflict is removed"
+        },
+        {
+          "id": "ml09-q7-d",
+          "text": "Nothing changes because every policy ever created remains permanent",
+          "misconceptionId": "single-policy-view"
+        }
+      ],
+      "correctOptionId": "ml09-q7-c",
+      "rationale": "Scope determines which policies participate. Once Policy B no longer applies, both connectors have the same remaining fingerprint under Policy A. That removes this grouping conflict, although authorization, connection health, and other applicable controls still require separate validation.",
+      "remediationAnchor": "dlp-effective-policy-intersection-production"
+    },
+    {
+      "id": "ml12-q1",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "sharepoint-content",
+        "dataverse-attachments"
+      ],
+      "dimension": "recall",
+      "prompt": "Which component should store the large collection of customer documents for native model-driven record-context document management?",
+      "options": [
+        {
+          "id": "ml12-q1-a",
+          "text": "SharePoint"
+        },
+        {
+          "id": "ml12-q1-b",
+          "text": "Dataverse Notes",
+          "misconceptionId": "capability-equals-fit"
+        },
+        {
+          "id": "ml12-q1-c",
+          "text": "Dataverse Web API",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml12-q1-d",
+          "text": "Azure Function memory",
+          "misconceptionId": "component-role-collapse"
+        }
+      ],
+      "correctOptionId": "ml12-q1-a",
+      "rationale": "SharePoint stores and manages documents in the context of model-driven app records. The Web API matches business records; Notes are not the best large-repository choice.",
+      "remediationAnchor": "bulk-document-migration-rule"
+    },
+    {
+      "id": "ml12-q2",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "migration-compute",
+        "customer-record",
+        "sharepoint-content"
+      ],
+      "dimension": "connections",
+      "prompt": "What is the correct responsibility split in the selected architecture?",
+      "options": [
+        {
+          "id": "ml12-q2-a",
+          "text": "Web API migrates and stores every file; SharePoint only authenticates",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml12-q2-b",
+          "text": "Notes store binaries; C# is only a UI extension",
+          "misconceptionId": "capability-equals-fit"
+        },
+        {
+          "id": "ml12-q2-c",
+          "text": "Power Automate supplies all required checkpointing automatically",
+          "misconceptionId": "flow-scales-to-bulk"
+        },
+        {
+          "id": "ml12-q2-d",
+          "text": "C# migrates; Web API matches Dataverse customers; SharePoint stores files"
+        }
+      ],
+      "correctOptionId": "ml12-q2-d",
+      "rationale": "Separate compute, business-record lookup, and document storage. The source system, Dataverse, and SharePoint each have distinct responsibilities.",
+      "remediationAnchor": "bulk-document-migration-rule"
+    },
+    {
+      "id": "ml12-q3",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "customer-record"
+      ],
+      "dimension": "application",
+      "prompt": "The Oracle customer number is stable but the Dataverse account GUID is unknown. What is the strongest matching design?",
+      "options": [
+        {
+          "id": "ml12-q3-a",
+          "text": "Create a new account for every document",
+          "misconceptionId": "identity-by-name"
+        },
+        {
+          "id": "ml12-q3-b",
+          "text": "Put the Oracle number in a browser web resource",
+          "misconceptionId": "client-side-is-server-side"
+        },
+        {
+          "id": "ml12-q3-c",
+          "text": "Define/use a Dataverse alternate key and query it through the Web API or SDK"
+        },
+        {
+          "id": "ml12-q3-d",
+          "text": "Match only on account name",
+          "misconceptionId": "identity-by-name"
+        }
+      ],
+      "correctOptionId": "ml12-q3-c",
+      "rationale": "Alternate keys support integration operations when the primary GUID is not known. A stable external ID avoids fragile name matching.",
+      "remediationAnchor": "bulk-document-migration-scenario"
+    },
+    {
+      "id": "ml12-q4",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "migration-compute",
+        "ongoing-automation"
+      ],
+      "dimension": "application",
+      "prompt": "Why is a C# console application preferred over a cloud flow for this stated initial migration?",
+      "options": [
+        {
+          "id": "ml12-q4-a",
+          "text": "It automatically gives every user SharePoint access",
+          "misconceptionId": "auth-controls-conflated"
+        },
+        {
+          "id": "ml12-q4-b",
+          "text": "It gives explicit batching, checkpoint, retry, logging, and reconciliation control"
+        },
+        {
+          "id": "ml12-q4-c",
+          "text": "Cloud flows can never call SharePoint",
+          "misconceptionId": "flow-scales-to-bulk"
+        },
+        {
+          "id": "ml12-q4-d",
+          "text": "Only console apps can call the Dataverse Web API",
+          "misconceptionId": "component-role-collapse"
+        }
+      ],
+      "correctOptionId": "ml12-q4-b",
+      "rationale": "The requirement is high-volume and initial. Code provides direct operational control; this does not mean flows are impossible or never appropriate.",
+      "remediationAnchor": "bulk-document-migration-scenario"
+    },
+    {
+      "id": "ml12-q5",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "blob-storage",
+        "sharepoint-content"
+      ],
+      "dimension": "connections",
+      "prompt": "Why is Azure Blob Storage not the best selected answer here?",
+      "options": [
+        {
+          "id": "ml12-q5-a",
+          "text": "It lacks SharePoint's standard model-driven document-management experience without custom UI/integration"
+        },
+        {
+          "id": "ml12-q5-b",
+          "text": "Blob Storage cannot store documents",
+          "misconceptionId": "capability-equals-fit"
+        },
+        {
+          "id": "ml12-q5-c",
+          "text": "Blob Storage always consumes Dataverse database capacity",
+          "misconceptionId": "capability-equals-fit"
+        },
+        {
+          "id": "ml12-q5-d",
+          "text": "Blob Storage cannot be accessed from C#",
+          "misconceptionId": "capability-equals-fit"
+        }
+      ],
+      "correctOptionId": "ml12-q5-a",
+      "rationale": "Blob Storage is technically capable, but standard Dynamics/model-driven customer-document experience points to SharePoint integration unless the team deliberately builds the custom layer.",
+      "remediationAnchor": "bulk-document-migration-rule"
+    },
+    {
+      "id": "ml12-q6",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "ongoing-automation",
+        "sharepoint-content",
+        "customer-record"
+      ],
+      "dimension": "transfer",
+      "prompt": "What changes if new documents arrive one at a time after migration in a modest-volume business process?",
+      "options": [
+        {
+          "id": "ml12-q6-a",
+          "text": "Move all documents into Notes",
+          "misconceptionId": "capability-equals-fit"
+        },
+        {
+          "id": "ml12-q6-b",
+          "text": "Replace SharePoint with the Dataverse Web API",
+          "misconceptionId": "component-role-collapse"
+        },
+        {
+          "id": "ml12-q6-c",
+          "text": "Remove customer matching because the process is ongoing",
+          "misconceptionId": "identity-by-name"
+        },
+        {
+          "id": "ml12-q6-d",
+          "text": "Power Automate may now be a reasonable orchestrator, while SharePoint storage and Dataverse customer matching remain separate concerns"
+        }
+      ],
+      "correctOptionId": "ml12-q6-d",
+      "rationale": "The workload shape changes the orchestration choice. It does not change SharePoint's document role or the need to associate a document with the correct Dataverse customer.",
+      "remediationAnchor": "bulk-document-migration-production"
+    },
+    {
+      "id": "ml14-q1",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "gallery-table",
+        "lookup-record"
+      ],
+      "dimension": "recall",
+      "prompt": "Which function returns the collection of matching records a gallery Items property needs?",
+      "options": [
+        {
+          "id": "ml14-q1-a",
+          "text": "Filter"
+        },
+        {
+          "id": "ml14-q1-b",
+          "text": "LookUp",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q1-c",
+          "text": "DateDiff",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q1-d",
+          "text": "Set",
+          "misconceptionId": "return-shape-confusion"
+        }
+      ],
+      "correctOptionId": "ml14-q1-a",
+      "rationale": "Filter returns a table containing every record that satisfies the condition. LookUp returns one record; DateDiff returns a number; Set changes state but returns no value.",
+      "remediationAnchor": "delegable-date-window-gallery-rule"
+    },
+    {
+      "id": "ml14-q2",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "server-predicate",
+        "date-boundary"
+      ],
+      "dimension": "connections",
+      "prompt": "Why can storing the DateAdd result in DateDuration help with the stated delegation warning?",
+      "options": [
+        {
+          "id": "ml14-q2-a",
+          "text": "It makes all Power Fx functions delegable",
+          "misconceptionId": "delegation-assumed"
+        },
+        {
+          "id": "ml14-q2-b",
+          "text": "It converts Shipping Date into a text column",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q2-c",
+          "text": "It makes LookUp return a table",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q2-d",
+          "text": "It leaves a simple column-to-scalar predicate for the connector to evaluate if supported"
+        }
+      ],
+      "correctOptionId": "ml14-q2-d",
+      "rationale": "The intended pattern calculates a scalar once, then sends Shipping Date <= DateDuration. Delegation still must be verified for the actual data source and column.",
+      "remediationAnchor": "delegable-date-window-gallery-rule"
+    },
+    {
+      "id": "ml14-q3",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "date-boundary"
+      ],
+      "dimension": "recall",
+      "prompt": "What kind of value does DateDiff(Now(), Today(), Minutes) return?",
+      "options": [
+        {
+          "id": "ml14-q3-a",
+          "text": "A table of orders",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q3-b",
+          "text": "The current time",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q3-c",
+          "text": "A number of minutes"
+        },
+        {
+          "id": "ml14-q3-d",
+          "text": "A future date",
+          "misconceptionId": "return-shape-confusion"
+        }
+      ],
+      "correctOptionId": "ml14-q3-c",
+      "rationale": "DateDiff returns a whole number of the requested units between two date/time values. It cannot supply a date boundary for Shipping Date.",
+      "remediationAnchor": "delegable-date-window-gallery-rule"
+    },
+    {
+      "id": "ml14-q4",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "set-global"
+      ],
+      "dimension": "application",
+      "prompt": "Where is the correct place to execute Set(DateDuration, DateAdd(Today(), 7, Days))?",
+      "options": [
+        {
+          "id": "ml14-q4-a",
+          "text": "Inside LookUp so it returns a table",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q4-b",
+          "text": "Screen.OnVisible or another behavior property"
+        },
+        {
+          "id": "ml14-q4-c",
+          "text": "Gallery.Items as a separate statement",
+          "misconceptionId": "behavior-in-data-property"
+        },
+        {
+          "id": "ml14-q4-d",
+          "text": "A gallery template label's Text property",
+          "misconceptionId": "behavior-in-data-property"
+        }
+      ],
+      "correctOptionId": "ml14-q4-b",
+      "rationale": "Set is a behavior function and has no return value. Run it from a behavior property, then reference DateDuration from Gallery.Items.",
+      "remediationAnchor": "delegable-date-window-gallery-scenario"
+    },
+    {
+      "id": "ml14-q5",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "date-boundary",
+        "set-global",
+        "gallery-table"
+      ],
+      "dimension": "application",
+      "prompt": "Which pair is the keyed answer for the exam scenario?",
+      "options": [
+        {
+          "id": "ml14-q5-a",
+          "text": "Set(DateDuration, DateAdd(Today(), 7, Days)); then Filter(Orders, 'Shipping Date' <= DateDuration)"
+        },
+        {
+          "id": "ml14-q5-b",
+          "text": "Set(DateDuration, DateDiff(Now(), Today(), Minutes)); then LookUp(Orders, 'Shipping Date' = DateDuration)",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q5-c",
+          "text": "Filter(Orders, 'Shipping Date' = Today()); then Set(Orders, DateDuration)",
+          "misconceptionId": "behavior-in-data-property"
+        },
+        {
+          "id": "ml14-q5-d",
+          "text": "LookUp(Orders, 'Shipping Date' <= DateDuration); then DateAdd(Orders, 7, Days)",
+          "misconceptionId": "return-shape-confusion"
+        }
+      ],
+      "correctOptionId": "ml14-q5-a",
+      "rationale": "This pair creates the future cutoff and returns all orders through it. It is the keyed MeasureUp solution; production wording may require a lower boundary too.",
+      "remediationAnchor": "delegable-date-window-gallery-scenario"
+    },
+    {
+      "id": "ml14-q6",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "server-predicate"
+      ],
+      "dimension": "connections",
+      "prompt": "Why is a delegation warning a correctness concern for a large Orders source?",
+      "options": [
+        {
+          "id": "ml14-q6-a",
+          "text": "The gallery will show every row twice",
+          "misconceptionId": "delegation-assumed"
+        },
+        {
+          "id": "ml14-q6-b",
+          "text": "DateAdd will change into DateDiff",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q6-c",
+          "text": "Set variables are automatically deleted",
+          "misconceptionId": "behavior-in-data-property"
+        },
+        {
+          "id": "ml14-q6-d",
+          "text": "Power Apps can evaluate the filter over only a limited local subset, omitting qualifying rows"
+        }
+      ],
+      "correctOptionId": "ml14-q6-d",
+      "rationale": "When delegation is not possible, Power Apps retrieves a limited set of records and evaluates locally. The gallery can therefore look plausible while missing results.",
+      "remediationAnchor": "delegable-date-window-gallery-rule"
+    },
+    {
+      "id": "ml14-q7",
+      "objectiveId": "dataverse-extensibility-platform-limits",
+      "concepts": [
+        "date-window",
+        "server-predicate"
+      ],
+      "dimension": "transfer",
+      "prompt": "The requirement changes: Shipping Date is a date-time column, and the gallery must include every order from today through the end of the seventh day. What is the strongest pattern?",
+      "options": [
+        {
+          "id": "ml14-q7-a",
+          "text": "Use LookUp with Shipping Date = EndExclusive",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q7-b",
+          "text": "Use DateDiff as the Shipping Date value",
+          "misconceptionId": "return-shape-confusion"
+        },
+        {
+          "id": "ml14-q7-c",
+          "text": "Set StartDate to Today and EndExclusive to DateAdd(StartDate, 8, Days), then Filter with Shipping Date >= StartDate && Shipping Date < EndExclusive"
+        },
+        {
+          "id": "ml14-q7-d",
+          "text": "Keep only Shipping Date <= DateAdd(Today(), 7, Days)",
+          "misconceptionId": "one-sided-window"
+        }
+      ],
+      "correctOptionId": "ml14-q7-c",
+      "rationale": "An exclusive boundary at the start of day eight includes the entire seventh day without relying on an ambiguous end-of-day timestamp. Confirm that the predicates delegate for the real source.",
+      "remediationAnchor": "delegable-date-window-gallery-production"
     }
   ],
   "misconceptions": [
     {
-      "id": "sample-mc-collapse",
-      "name": "Collapsing the sample concept — SAMPLE — replace with authored content",
-      "contrast": "The sample concept is distinct from neighboring ideas. SAMPLE — replace with authored content",
+      "id": "oauth-chain-unordered",
+      "name": "OAuth chain as a checklist",
+      "contrast": "Consent approves an already-requested permission, and each stage of Register, Permission, Consent, Connect, Call depends on the one before it. The chain is a dependency order, not an unordered setup checklist.",
       "socraticSeeds": [
-        "What nearby term did you treat as the same as the sample concept?",
-        "What would stop working if those two ideas were actually the same?"
+        "Which stage produces the thing that consent approves?",
+        "What breaks first if you try to grant consent before any permission is requested?"
       ],
-      "anchor": "sample-concept"
+      "anchor": "entra-graph-connector-order-rule"
     },
     {
-      "id": "sample-mc-skip",
-      "name": "Skipping the sample concept — SAMPLE — replace with authored content",
-      "contrast": "Familiar wording is not a reason to skip the check. SAMPLE — replace with authored content",
+      "id": "permission-mode-ignores-actor",
+      "name": "Permission mode chosen by data sensitivity",
+      "contrast": "A signed-in Canvas user normally implies delegated access; application permissions fit unattended daemon and background processes. The caller identity, not how privileged the data feels, selects the permission mode.",
       "socraticSeeds": [
-        "What felt familiar enough that the sample concept seemed skippable?",
-        "What would you check if the wording were less familiar?"
+        "Who is present at runtime when this call executes?",
+        "Does privileged data change who the caller is?"
       ],
-      "anchor": "sample-model-driven"
+      "anchor": "entra-graph-connector-order-production"
     },
     {
-      "id": "sample-mc-label-only",
-      "name": "Label-only sample concept — SAMPLE — replace with authored content",
-      "contrast": "A name without a contrast is not yet the sample concept. SAMPLE — replace with authored content",
+      "id": "auth-controls-conflated",
+      "name": "Role, permission, and consent collapsed",
+      "contrast": "A directory role is assigned to a user; a Graph permission is requested by an app; consent approves the app request. They are separate controls and must not be merged into one authorization concept.",
       "socraticSeeds": [
-        "If you only have the name, what can you not yet decide?",
-        "What work does the sample concept do beyond labeling?"
+        "Which of these belongs to the user, and which to the app?",
+        "What exactly does consent approve?"
       ],
-      "anchor": "sample-concept-connections"
+      "anchor": "entra-graph-connector-order-production"
     },
     {
-      "id": "sample-mc-no-contrast",
-      "name": "Missing contrast — SAMPLE — replace with authored content",
-      "contrast": "The sample concept is defined by what it is not. SAMPLE — replace with authored content",
+      "id": "client-side-is-server-side",
+      "name": "Client code as a server boundary",
+      "contrast": "Hiding a screen or running browser JavaScript is user experience, not enforcement or compute. Web resources have no server-side execution capability, and a protected operation must validate authorization independently even if a user bypasses client navigation.",
       "socraticSeeds": [
-        "What is the sample concept being distinguished from?",
-        "What decision becomes ambiguous without that contrast?"
+        "If a user bypasses the app navigation, what still stops the operation?",
+        "Where does this code actually execute?"
       ],
-      "anchor": "sample-power-pages"
+      "anchor": "entra-graph-connector-order-production"
+    },
+    {
+      "id": "component-role-collapse",
+      "name": "One component absorbs every job",
+      "contrast": "A webhook is event delivery; the Azure Function is custom compute; the Web API loads data; a custom connector describes how consumers call an API. No component absorbs its neighbor’s job, and the first component in a diagram is not automatically the one doing the processing.",
+      "socraticSeeds": [
+        "Which single job does this component actually own?",
+        "Which component in your design is quietly doing two jobs?"
+      ],
+      "anchor": "webhook-function-etl-boundary-rule"
+    },
+    {
+      "id": "trigger-ignores-origin",
+      "name": "Trigger chosen without naming the event origin",
+      "contrast": "Dataverse webhooks originate from Dataverse server events and send them outward. A scheduled pull from legacy systems needs a timer, pipeline, dataflow, or source-side trigger; the delivery mechanism must match where the event starts.",
+      "socraticSeeds": [
+        "Which system creates the event that starts this work?",
+        "What fires first on the night this migration runs?"
+      ],
+      "anchor": "webhook-function-etl-boundary-scenario"
+    },
+    {
+      "id": "flow-scales-to-bulk",
+      "name": "Cloud flow as a bulk migration engine",
+      "contrast": "A high-volume initial migration needs controlled batching, checkpoints, retries, reconciliation, and restartability that a purpose-built batch application handles more directly. Cloud flows fit modest, event-driven ongoing workloads.",
+      "socraticSeeds": [
+        "What happens to this run at file 40,000 of 100,000 when a call fails?",
+        "How does this workload resume after a failure?"
+      ],
+      "anchor": "bulk-document-migration-scenario"
+    },
+    {
+      "id": "policy-precedence-instinct",
+      "name": "One policy wins by precedence",
+      "contrast": "Power Platform evaluates all applicable data policies together. Neither nearest scope nor most-recent edit creates an override: Blocked takes precedence, and Business/Non-Business groupings intersect across every applicable policy.",
+      "socraticSeeds": [
+        "Which policies participate for this environment, and what says one of them outranks another?",
+        "What result do you get if no policy wins and all of them apply?"
+      ],
+      "anchor": "dlp-effective-policy-intersection-rule"
+    },
+    {
+      "id": "labels-are-ranks",
+      "name": "Business as a permission rank",
+      "contrast": "Business and Non-Business are separation groups, not allow-and-deny levels or quality ratings. Compatibility depends on whether two connectors stay grouped together under every applicable policy, and Non-Business is not Blocked.",
+      "socraticSeeds": [
+        "Is Business allowing something, or grouping something?",
+        "What would “more permissive” even mean for a data-boundary label?"
+      ],
+      "anchor": "dlp-effective-policy-intersection-rule"
+    },
+    {
+      "id": "single-policy-view",
+      "name": "One policy view looks conclusive",
+      "contrast": "Two unblocked connectors must share the same classification fingerprint across all applicable policies. Sharing a group in one policy, or in a majority of policies, is insufficient: a mismatch in any single policy separates them.",
+      "socraticSeeds": [
+        "Which other policies also classify these two connectors?",
+        "What does the full fingerprint look like, position by position?"
+      ],
+      "anchor": "dlp-effective-policy-intersection-scenario"
+    },
+    {
+      "id": "design-time-only-enforcement",
+      "name": "DLP checks only at save time",
+      "contrast": "Data policies are enforced at runtime too: existing apps and flows can become noncompliant after a policy change, a violating flow saves but is marked Suspended and will not execute, and suspension uses background polling so it may not be instantaneous.",
+      "socraticSeeds": [
+        "What happens to a flow that was compliant when it was saved?",
+        "If the status has not changed yet, has enforcement actually failed?"
+      ],
+      "anchor": "dlp-effective-policy-intersection-production"
+    },
+    {
+      "id": "capability-equals-fit",
+      "name": "It can store the bytes, so it fits",
+      "contrast": "Raw capability is not fit. Blob Storage needs a custom record-to-blob experience, and Notes consume Dataverse capacity and lack document-management strengths; SharePoint provides the standard document experience in model-driven record context.",
+      "socraticSeeds": [
+        "What experience must users get when they open the record?",
+        "What does this choice cost in capacity or custom UI to reach that experience?"
+      ],
+      "anchor": "bulk-document-migration-rule"
+    },
+    {
+      "id": "identity-by-name",
+      "name": "Record matching on mutable names",
+      "contrast": "An alternate key on a stable source identifier resolves the right record when the Dataverse GUID is unknown. Display names are mutable and fragile, and dropping the match entirely orphans documents from their business records.",
+      "socraticSeeds": [
+        "What happens when two accounts share a name, or one is renamed?",
+        "Which identifier survives every rename?"
+      ],
+      "anchor": "bulk-document-migration-production"
+    },
+    {
+      "id": "return-shape-confusion",
+      "name": "Function chosen by keyword, not return type",
+      "contrast": "Filter returns a table of all matching rows; LookUp returns one record; DateAdd returns a date/time; DateDiff returns a number of units; Set returns no value. The return type decides where each function can be used.",
+      "socraticSeeds": [
+        "What type of value does this property need?",
+        "What exactly does that function hand back?"
+      ],
+      "anchor": "delegable-date-window-gallery-rule"
+    },
+    {
+      "id": "behavior-in-data-property",
+      "name": "Set inside a data formula",
+      "contrast": "Set is a behavior-only function with no return value, and its variable does not automatically recalculate. Gallery.Items is a data formula that must evaluate to a table: run Set from a behavior property and reference the variable.",
+      "socraticSeeds": [
+        "Does this property run actions, or evaluate to a value?",
+        "What would Gallery.Items display if its formula returns nothing?"
+      ],
+      "anchor": "delegable-date-window-gallery-scenario"
+    },
+    {
+      "id": "delegation-assumed",
+      "name": "Delegation as a generic function property",
+      "contrast": "Delegation is connector-, operator-, and column-type-specific. A delegation warning means the app may evaluate the predicate over a limited local subset and silently omit qualifying rows; it must be verified against the actual data source.",
+      "socraticSeeds": [
+        "Which connector, operator, and column type is this predicate actually hitting?",
+        "How would you notice if qualifying rows were missing?"
+      ],
+      "anchor": "delegable-date-window-gallery-production"
+    },
+    {
+      "id": "one-sided-window",
+      "name": "An upper bound treated as a window",
+      "contrast": "An upper bound alone admits every older row. A true next-seven-days window needs both boundaries, and for date-time data an exclusive next-day upper bound is what covers all of day seven.",
+      "socraticSeeds": [
+        "What is the oldest order this filter admits?",
+        "Which orders on day seven itself does your boundary include?"
+      ],
+      "anchor": "delegable-date-window-gallery-production"
     }
   ]
 }
