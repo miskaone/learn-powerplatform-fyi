@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 20/61
+progress: 25/61
 mode: build
 started: 2026-08-26
 updated: 2026-08-27
@@ -155,12 +155,12 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 
 ### Content (two objectives)
 
-- [ ] ISC-39: Exactly two PL-400 objectives instrumented, named in the content manifest
-- [ ] ISC-40: ≥25 questions across the two objectives
-- [ ] ISC-41: Schema validation passes bank-wide — every question carries objectiveId, concepts[], misconception-keyed distractors, and authored rationale
-- [ ] ISC-42: Every remediation anchor resolves to a real section id (link-check script)
+- [x] ISC-39: Exactly two PL-400 objectives instrumented, named in the content manifest
+- [x] ISC-40: ≥25 questions across the two objectives
+- [x] ISC-41: Schema validation passes bank-wide — every question carries objectiveId, concepts[], misconception-keyed distractors, and authored rationale
+- [x] ISC-42: Every remediation anchor resolves to a real section id (link-check script)
 - [ ] ISC-43: Two Flip-Condition scenarios encoded as decision tables with unit tests and lesson citations
-- [ ] ISC-44: Support Ticket Lab fallback decision recorded in Decisions if the PL-400 series is not ported by end of Day 1
+- [x] ISC-44: Support Ticket Lab fallback decision recorded in Decisions if the PL-400 series is not ported by end of Day 1
 
 ### Submission package
 
@@ -316,3 +316,12 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   race (late-binding detection, `c66a380`) and the sync `getTools()` contract crash
   (Promise-normalized reads + truthful mocks, `6099cb0`) — root-caused by injecting a
   promise-returning mock runtime into a clean browser against the live site.
+- **2026-08-27** — ISC-44 resolved by PORT, not fallback: the authored PL-400 lesson specs
+  (Codex outputs, 2026-08-23) were found with dimension-tagged questions and whyTempting/whyWrong
+  distractor anatomy. Ported ML-13/11/09 (custom connectors & Azure integration) and ML-12/14
+  (Dataverse extensibility & platform limits) — a substitution from the briefed ML-01/03/04/06/07,
+  which never received structured specs (HTML only). 34 questions, 17-misconception taxonomy
+  (three shared across lessons), answer-position rotation, dimension-routed remediation anchors.
+  Owner ratified the taxonomy at 17 (rejected both candidate merges) on 2026-08-27; review record
+  in docs/content-port-review.md. Queued: dimension field on Question (schema.ts, post-lane),
+  second flip scenario (ISC-43).
