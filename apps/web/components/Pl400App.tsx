@@ -1,501 +1,173 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { NextAction, QuestionPublic, RubricScores } from "@learn/mastery-gate/schema";
+import { useEffect } from "react";
+import Link from "next/link";
+import type { RubricDimension } from "@learn/mastery-gate/schema";
 import "../app/pl-400/pl400.css";
-import { scrollToSection } from "../lib/anchor";
-import {
-  DEFAULT_SCORES,
-  DEMO_MASTERY_QUOTE,
-  lessonSections,
-  manifest,
-} from "../lib/content";
+import { manifest } from "../lib/content";
+// Slim index only — the full teaching catalog (lessonPages) is server-side
+// and must not enter client bundles (cross-review finding 8).
+import { lessonIndex } from "../lib/lessonIndex";
 import { flipPreviewScenario } from "../lib/flipPreview";
-import {
-  getSharedMasteryStack,
-  registrySnapshot,
-  subscribeEngineMutations,
-  subscribeRuntimeDetected,
-  wouldRegisterToolNames,
-  type MasteryStack,
-} from "../lib/masteryStack";
-import { syncRegistryRoster } from "../lib/rosterSync";
-import type { ToolRosterEntry, UiVerdict } from "../lib/types";
+import { lessonProgress, type MasteryStack } from "../lib/masteryStack";
 import { ExamModePanel } from "./ExamModePanel";
 import { FlipConditionDrill } from "./FlipConditionDrill";
-import { NextActionButton } from "./NextActionButton";
-import { QuizCard } from "./QuizCard";
+import { PracticePanel } from "./PracticePanel";
 import { RubricPanel } from "./RubricPanel";
-import { ToolRoster, useToolRosterHighlights } from "./ToolRoster";
+import { StartCoaching } from "./StartCoaching";
+import { ToolRoster } from "./ToolRoster";
+import { useMasteryGate } from "./useMasteryGate";
 
-const NEXT_ACTIONS: readonly NextAction[] = [
-  "hint",
-  "review",
-  "coach",
-  "go_deeper",
-  "advance",
+const DIMENSIONS: { key: RubricDimension; label: string }[] = [
+  { key: "recall", label: "Recall" },
+  { key: "connections", label: "Connections" },
+  { key: "application", label: "Application" },
+  { key: "transfer", label: "Transfer" },
 ];
-
-const MASTERY_EVIDENCE = {
-  score: 3 as const,
-  evidenceQuote: DEMO_MASTERY_QUOTE,
-};
-
-type UiPhase = "lesson" | "practice" | "remediation";
-
-type LearnerView = {
-  scores: RubricScores;
-  misconceptionFires: Record<string, number>;
-  gatePassed: boolean;
-  attemptCount: number;
-};
-
-function isNextAction(value: NextAction | "continue" | null): value is NextAction {
-  return (NEXT_ACTIONS as readonly string[]).includes(value ?? "");
-}
 
 function noop(): void {}
 
-function hintRefusalMessage(refusal: string): string {
-  if (refusal === "tier2-requires-attempt") {
-    return "Hint ladder: tier-2 refuses before a genuine first attempt — submit an answer first.";
-  }
-  if (refusal === "ladder-exhausted") {
-    return "Hint ladder exhausted for this question.";
-  }
-  return refusal;
-}
-
 export function Pl400App() {
-  const [stack, setStack] = useState<MasteryStack | null>(null);
-  const [learner, setLearner] = useState<LearnerView>({
-    scores: DEFAULT_SCORES,
-    misconceptionFires: {},
-    gatePassed: false,
-    attemptCount: 0,
-  });
-  const [question, setQuestion] = useState<QuestionPublic | null>(null);
-  const [verdict, setVerdict] = useState<UiVerdict | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
-  const [hintRefusal, setHintRefusal] = useState<string | null>(null);
-  const [uiPhase, setUiPhase] = useState<UiPhase>("lesson");
-  const [practiceStarted, setPracticeStarted] = useState(false);
-  const [rosterNames, setRosterNames] = useState<string[]>([]);
-  const [advancedBanner, setAdvancedBanner] = useState(false);
-  const [nextAction, setNextAction] = useState<NextAction | "continue" | null>(
-    null,
-  );
-  const [rubricNotice, setRubricNotice] = useState<string | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const { flashes, flash } = useToolRosterHighlights();
-
-  const stackRef = useRef<MasteryStack | null>(null);
-  const uiPhaseRef = useRef<UiPhase>(uiPhase);
-  const practiceStartedRef = useRef(practiceStarted);
-  const rosterNamesRef = useRef<string[]>(rosterNames);
-  const handleRosterNamesRef = useRef<(next: string[]) => void>(() => {});
-
-  uiPhaseRef.current = uiPhase;
-  practiceStartedRef.current = practiceStarted;
-  rosterNamesRef.current = rosterNames;
-
-  const handleRosterNames = useCallback(
-    (next: string[]) => {
-      const previous = rosterNamesRef.current;
-      const previousSet = new Set(previous);
-      const nextSet = new Set(next);
-      for (const name of next) {
-        if (!previousSet.has(name)) {
-          flash(name, "register");
-        }
-      }
-      for (const name of previous) {
-        if (!nextSet.has(name)) {
-          flash(name, "revoke");
-        }
-      }
-      rosterNamesRef.current = next;
-      setRosterNames(next);
-    },
-    [flash],
-  );
-  handleRosterNamesRef.current = handleRosterNames;
-
-  const refreshFromEngine = useCallback(() => {
-    const s = stackRef.current;
-    if (!s) {
-      return;
-    }
-    const state = s.facade.getLearnerState();
-    setLearner({
-      scores: state.scores,
-      misconceptionFires: state.misconceptionFires,
-      gatePassed: state.gatePassed,
-      attemptCount: state.attemptCount,
-    });
-    setQuestion(s.facade.getCurrentQuestion());
-    setNextAction(s.facade.requestNextAction());
-    const phase = practiceStartedRef.current ? uiPhaseRef.current : "lesson";
-    const snapshot = registrySnapshot({
-      phase,
-      gatePassed: state.gatePassed,
-      misconceptionFires: state.misconceptionFires,
-    });
-    if (s.registry) {
-      void syncRegistryRoster(s.registry, snapshot, {
-        onNames: (names) => {
-          handleRosterNamesRef.current(names);
-        },
-        onSyncError: (notice) => {
-          setSyncError(notice);
-        },
-        onSyncOk: () => {
-          setSyncError(null);
-        },
-        afterSync: () => {
-          s.watcher?.refresh();
-        },
-      });
-    } else {
-      handleRosterNamesRef.current(wouldRegisterToolNames(snapshot));
-    }
-  }, []);
+  const gate = useMasteryGate();
+  const stack: MasteryStack | null = gate.stack;
 
   useEffect(() => {
-    const s = getSharedMasteryStack();
-    stackRef.current = s;
-    setStack(s);
-    const unsubscribe = subscribeEngineMutations(() => {
-      refreshFromEngine();
-    });
-    let off: (() => void) | undefined;
-    const wireWatcher = () => {
-      if (!s.watcher) return;
-      try {
-        off?.();
-        off = s.watcher.onChange((names) => {
-          handleRosterNamesRef.current(names);
-        });
-        s.watcher.start();
-      } catch (error) {
-        console.error("[mastery-gate] watcher wiring failed", error);
-      }
-    };
-    wireWatcher();
-    // ChatGPT injects document.modelContext on its own schedule — when the
-    // runtime shows up late, bind the freshly created registry/watcher and
-    // resync so the roster flips from "intended" to live.
-    const offRuntime = subscribeRuntimeDetected(() => {
-      wireWatcher();
-      refreshFromEngine();
-    });
-    refreshFromEngine();
-    return () => {
-      unsubscribe();
-      offRuntime();
-      off?.();
-      s.watcher?.stop();
-    };
-  }, [refreshFromEngine]);
+    if (stack == null) {
+      return;
+    }
+    stack.setActiveLesson(null);
+  }, [stack]);
 
-  function handleBeginPractice() {
-    practiceStartedRef.current = true;
-    uiPhaseRef.current = "practice";
-    setPracticeStarted(true);
-    setUiPhase("practice");
-    refreshFromEngine();
-  }
-
-  function handleSubmitAnswer(optionId: string) {
-    const current = question;
-    const currentStack = stackRef.current;
-    if (!current || !currentStack) {
-      return;
-    }
-    try {
-      const result = currentStack.facade.submitAnswer(current.id, optionId);
-      const brief = result.misconceptionId
-        ? currentStack.facade.getMisconceptionBrief(result.misconceptionId)
-        : null;
-      setVerdict({
-        questionId: result.questionId,
-        correct: result.correct,
-        misconceptionId: result.misconceptionId,
-        misconceptionName: result.misconceptionId
-          ? (brief?.name ?? null)
-          : null,
-        attemptNumber: result.attemptNumber,
-        attemptsRemaining: result.attemptsRemaining,
-      });
-      setHint(null);
-      setHintRefusal(null);
-    } catch (error) {
-      if (error instanceof RangeError) {
-        refreshFromEngine();
-        return;
-      }
-      throw error;
-    }
-  }
-
-  function handleHint() {
-    const current = question;
-    const currentStack = stackRef.current;
-    if (!current || !currentStack) {
-      return;
-    }
-    const result = currentStack.facade.getHint(current.id);
-    if (result.granted && result.hint) {
-      setHint(result.hint);
-      setHintRefusal(null);
-      return;
-    }
-    setHint(null);
-    setHintRefusal(hintRefusalMessage(result.refusal ?? "hint refused"));
-  }
-
-  function handleNextAction(action: NextAction) {
-    const currentStack = stackRef.current;
-    if (!currentStack) {
-      return;
-    }
-    if (action === "hint") {
-      handleHint();
-      return;
-    }
-    if (action === "review" || action === "coach") {
-      const anchor =
-        (verdict?.misconceptionId
-          ? currentStack.facade.getMisconceptionBrief(verdict.misconceptionId)
-              ?.anchor
-          : undefined) ?? lessonSections[0].id;
-      scrollToSection(anchor);
-      uiPhaseRef.current = "remediation";
-      setUiPhase("remediation");
-      refreshFromEngine();
-      return;
-    }
-    if (action === "go_deeper") {
-      setVerdict(null);
-      setHint(null);
-      setHintRefusal(null);
-      refreshFromEngine();
-      return;
-    }
-    if (action === "advance") {
-      const result = currentStack.facade.advanceModule();
-      if (result.advanced) {
-        setAdvancedBanner(true);
-      }
-    }
-  }
-
-  function handleMasterRubric() {
-    const currentStack = stackRef.current;
-    if (!currentStack) {
-      return;
-    }
-    const verdict = currentStack.facade.scoreRubric({
-      recall: MASTERY_EVIDENCE,
-      connections: MASTERY_EVIDENCE,
-      application: MASTERY_EVIDENCE,
-      transfer: MASTERY_EVIDENCE,
-    });
-    setRubricNotice(
-      verdict.accepted
-        ? null
-        : `Rubric rejected by the engine: ${verdict.rejectionReason ?? "unknown"}`,
-    );
-  }
-
-  function handleLowConfidence() {
-    const currentStack = stackRef.current;
-    if (!currentStack) {
-      return;
-    }
-    setNextAction(currentStack.facade.requestNextAction("low"));
-  }
-
-  function handleResetSession() {
-    const currentStack = stackRef.current;
-    if (!currentStack) {
-      return;
-    }
-    currentStack.engine.reset();
-    setVerdict(null);
-    setHint(null);
-    setHintRefusal(null);
-    setRubricNotice(null);
-    practiceStartedRef.current = false;
-    uiPhaseRef.current = "lesson";
-    setPracticeStarted(false);
-    setUiPhase("lesson");
-    setAdvancedBanner(false);
-    refreshFromEngine();
-  }
-
-  const rosterTools: ToolRosterEntry[] = rosterNames.map((name) => {
-    const meta = stack?.toolMeta[name];
-    return {
-      name,
-      description: meta?.description ?? "",
-      dynamic: meta?.dynamic ?? false,
-    };
-  });
-
-  const verdictForQuestion =
-    verdict && question && verdict.questionId === question.id ? verdict : null;
-  const showCorrectAdvance =
-    verdict !== null &&
-    verdict.correct &&
-    verdict.questionId !== (question ? question.id : null);
-  const questionIndex = question
-    ? manifest.questions.findIndex((item) => item.id === question.id)
-    : -1;
-  const questionNumber = questionIndex >= 0 ? questionIndex + 1 : 1;
-  const questionCount = manifest.questions.length;
-  const agentDetected = stack?.agentRuntimeDetected === true;
+  const trackQuestionIds = manifest.questions.map((q) => q.id);
 
   return (
     <div className="pl400">
       <header className="pl400-header">
         <h1>PL-400 — Mastery Gate</h1>
         <p>
-          Dataverse plugin execution: the pipeline, images, and the difference
-          between a veto and a side effect. The site grades; the agent coaches
-          through the tools the roster currently permits.
+          Five micro-lessons across two PL-400 objectives — Custom Connectors
+          & Azure Integration, and Dataverse Extensibility & Platform Limits.
+          The site grades; the agent coaches through the tools the roster
+          currently permits.
         </p>
-        <span className="pl400-phase">phase: {uiPhase}</span>
+        <span className="pl400-phase">phase: {gate.uiPhase}</span>
       </header>
 
       <div className="pl400-layout">
         <div className="pl400-main">
-          {lessonSections.map((section) => (
-            <section
-              key={section.id}
-              id={section.id}
-              className="pl400-card pl400-lesson-section"
-            >
-              <h2>{section.title}</h2>
-              {section.body.map((paragraph) => (
-                <p key={paragraph.slice(0, 48)}>{paragraph}</p>
-              ))}
-            </section>
-          ))}
+          <section id="track-overview" className="pl400-card">
+            <h2>Track overview</h2>
+            <div className="pl400-overview-grid">
+              {manifest.objectives.map((objective) => {
+                const progress =
+                  stack == null
+                    ? {
+                        attempted: 0,
+                        correct: 0,
+                        total: objective.questionIds.length,
+                      }
+                    : lessonProgress(stack, objective.questionIds);
+                return (
+                  <article
+                    key={objective.id}
+                    className="pl400-objective-card"
+                  >
+                    <h3>{objective.title}</h3>
+                    <p className="muted">{objective.summary}</p>
+                    <p className="muted">
+                      {progress.correct} of {progress.total} correct ·{" "}
+                      {progress.attempted} attempted
+                    </p>
+                    <div className="pl400-dim-chips">
+                      {DIMENSIONS.map((dimension) => {
+                        const score = gate.learner.scores[dimension.key];
+                        const met = score >= 3;
+                        return (
+                          <span
+                            key={dimension.key}
+                            className={
+                              met
+                                ? "pl400-dim-chip pl400-dim-chip-met"
+                                : "pl400-dim-chip"
+                            }
+                          >
+                            {dimension.label} {score}/4
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            <p className="muted">
+              Rubric dimensions are track-wide — the mastery gate opens only
+              when every dimension is ≥ 3.
+            </p>
+          </section>
+
+          <section id="micro-lessons" className="pl400-card">
+            <h2>Micro-lessons</h2>
+            <p className="muted">
+              Each lesson is a designed deep-dive: scenario first, mechanism
+              second, distractor teardown, drills.
+            </p>
+            <div className="pl400-lesson-links">
+              {lessonIndex.map((p, i) => {
+                const progress =
+                  stack == null
+                    ? {
+                        attempted: 0,
+                        correct: 0,
+                        total: p.questionIds.length,
+                      }
+                    : lessonProgress(stack, p.questionIds);
+                const progressLine =
+                  progress.attempted === 0
+                    ? "not started"
+                    : `${progress.attempted} attempted · ${progress.correct}/${progress.total} correct`;
+                return (
+                  <Link
+                    key={p.slug}
+                    href={`/pl-400/${p.slug}/`}
+                    className="pl400-lesson-link"
+                  >
+                    <span className="pl400-lesson-link-kicker">
+                      {String(i + 1).padStart(2, "0")} · {p.id}
+                    </span>
+                    <span className="pl400-lesson-link-title">{p.title}</span>
+                    <span className="pl400-lesson-link-topic">
+                      {p.topicTitle}
+                    </span>
+                    <span className="pl400-lesson-link-epigraph">
+                      “{p.heroEpigraph}”
+                    </span>
+                    <span className="pl400-lesson-link-progress">
+                      {progressLine}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          <section id="start-coaching" className="pl400-card">
+            <StartCoaching agentDetected={gate.agentDetected} />
+          </section>
 
           <section id="practice" className="pl400-card">
             <h2>Practice</h2>
             <p className="muted">
-              One question at a time. A miss names the misconception — never the
-              correct option.
+              One question at a time. A miss names the misconception — never
+              the correct option. The hub runs the full track loop; each
+              lesson page scopes practice to its own questions.
             </p>
-            {!practiceStarted ? (
-              <button
-                type="button"
-                className="pl400-btn pl400-btn-primary"
-                onClick={handleBeginPractice}
-              >
-                Begin practice
-              </button>
-            ) : null}
-            <div className="pl400-btn-row">
-              <button
-                type="button"
-                className="pl400-btn pl400-btn-muted"
-                onClick={() => scrollToSection(lessonSections[0].id)}
-              >
-                Jump to remediation section
-              </button>
-            </div>
-            {showCorrectAdvance ? (
-              <div className="pl400-banner pl400-banner-success" role="status">
-                {question
-                  ? "Correct — next question loaded."
-                  : "Correct — practice items complete."}
-                <button
-                  type="button"
-                  className="pl400-btn"
-                  onClick={handleLowConfidence}
-                >
-                  I wasn&apos;t sure — go deeper
-                </button>
-                <button
-                  type="button"
-                  className="pl400-btn"
-                  onClick={() => {
-                    setVerdict(null);
-                    setHint(null);
-                  }}
-                >
-                  Clear
-                </button>
-              </div>
-            ) : null}
-            {practiceStarted && question ? (
-              <div style={{ marginTop: "1rem" }}>
-                <QuizCard
-                  question={question}
-                  questionNumber={questionNumber}
-                  questionCount={questionCount}
-                  verdict={verdictForQuestion}
-                  onSubmit={handleSubmitAnswer}
-                  onHint={handleHint}
-                  hint={hint}
-                />
-              </div>
-            ) : null}
-            {hintRefusal ? (
-              <div className="pl400-banner pl400-banner-info" role="status">
-                {hintRefusal}
-              </div>
-            ) : null}
-            {practiceStarted && question === null ? (
-              <p className="muted">Practice items complete.</p>
-            ) : null}
-            {isNextAction(nextAction) ? (
-              <NextActionButton
-                action={nextAction}
-                onActivate={handleNextAction}
-              />
-            ) : null}
-            {advancedBanner ? (
-              <div className="pl400-banner pl400-banner-success" role="status">
-                Module complete.
-              </div>
-            ) : null}
-            <div className="pl400-demo">
-              <span className="pl400-demo-label">Agent-less controls</span>
-              <p className="muted">
-                These buttons drive the same engine facade the WebMCP tools call
-                — nothing here bypasses the gate.
-              </p>
-              <div className="pl400-btn-row">
-                <button
-                  type="button"
-                  className="pl400-btn"
-                  onClick={handleMasterRubric}
-                >
-                  Score rubric at mastery (demo)
-                </button>
-                <button
-                  type="button"
-                  className="pl400-btn"
-                  onClick={handleResetSession}
-                >
-                  Reset session
-                </button>
-              </div>
-              {rubricNotice ? (
-                <div className="pl400-banner pl400-banner-info" role="status">
-                  {rubricNotice}
-                </div>
-              ) : null}
-              {stack?.storageDegraded ? (
-                <p className="muted">
-                  localStorage unavailable — progress is in-memory only.
-                </p>
-              ) : null}
-            </div>
+            <PracticePanel
+              gate={gate}
+              questionIds={trackQuestionIds}
+              scopeLabel={`full track — ${manifest.questions.length} questions`}
+              showDemoRubric
+            />
           </section>
 
           <section id="flip-drill">
@@ -542,21 +214,26 @@ export function Pl400App() {
 
         <aside className="pl400-aside">
           <ToolRoster
-            tools={rosterTools}
-            flashes={flashes}
-            errorNotice={syncError ?? undefined}
+            tools={gate.rosterTools}
+            flashes={gate.flashes}
+            errorNotice={gate.syncError ?? undefined}
             modeLabel={
-              agentDetected
+              gate.agentDetected
                 ? "agent runtime: modelContext detected (getTools polling)"
                 : "no agent runtime detected"
             }
             notice={
-              agentDetected
+              gate.agentDetected
                 ? undefined
                 : "No agent runtime detected — page buttons drive the same engine. Listing the tools that WOULD be registered."
             }
           />
-          <RubricPanel scores={learner.scores} />
+          <RubricPanel scores={gate.learner.scores} />
+          {gate.storageDegraded ? (
+            <p className="muted">
+              localStorage unavailable — progress is in-memory only.
+            </p>
+          ) : null}
         </aside>
       </div>
     </div>

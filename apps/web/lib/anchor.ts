@@ -1,4 +1,13 @@
+import { anchorOwnerSlug } from "./lessonIndex";
+
 const highlightTimers = new WeakMap<Element, number>();
+
+export const NAVIGATE_ANCHOR_EVENT = "mastery-gate:navigate-anchor";
+
+export interface AnchorNavigationDetail {
+  path: string;
+  anchor: string;
+}
 
 /**
  * Scroll a lesson section into view and restart its highlight animation.
@@ -28,5 +37,21 @@ export function scrollToSection(sectionId: string): boolean {
   }, 2000);
   highlightTimers.set(element, timeoutId);
 
+  return true;
+}
+
+export function navigateToAnchor(anchor: string): boolean {
+  if (scrollToSection(anchor)) {
+    return true;
+  }
+  const slug = anchorOwnerSlug(anchor);
+  if (slug === null) {
+    return false;
+  }
+  window.dispatchEvent(
+    new CustomEvent<AnchorNavigationDetail>(NAVIGATE_ANCHOR_EVENT, {
+      detail: { path: `/pl-400/${slug}/`, anchor },
+    }),
+  );
   return true;
 }

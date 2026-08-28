@@ -1,0 +1,4 @@
+{
+  "slug": "entra-graph-connector-order",
+  "expectedAnswer": "Register the Microsoft Entra application → request the required Microsoft Graph API permissions → grant administrator consent when required → create the OAuth custom connector → call the connector from the Canvas app. The app registration supplies the connector identity; permissions declare access; consent approves it; the connector encapsulates Graph/OAuth; the app consumes the connector. Because a user is signed in, this is normally delegated access. A directory role is not a permission grant or consent, and a client-side role check alone is not protected-operation enforcement."
+}

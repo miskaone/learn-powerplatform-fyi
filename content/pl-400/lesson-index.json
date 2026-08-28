@@ -1,0 +1,86 @@
+[
+  {
+    "id": "PL400-ML-13",
+    "slug": "entra-graph-connector-order",
+    "title": "Order an Entra-Graph Connector Integration",
+    "topicTitle": "API Integration & Custom Connectors",
+    "heroEpigraph": "Identity first; approval before access; call last.",
+    "objectiveId": "custom-connectors-azure-integration",
+    "questionIds": [
+      "ml13-q1",
+      "ml13-q2",
+      "ml13-q3",
+      "ml13-q4",
+      "ml13-q5",
+      "ml13-q6",
+      "ml13-q7"
+    ]
+  },
+  {
+    "id": "PL400-ML-11",
+    "slug": "webhook-function-etl-boundary",
+    "title": "Separate Event Delivery from ETL Compute",
+    "topicTitle": "API Integration & Custom Connectors",
+    "heroEpigraph": "A signal starts work; compute changes data.",
+    "objectiveId": "custom-connectors-azure-integration",
+    "questionIds": [
+      "ml11-q1",
+      "ml11-q2",
+      "ml11-q3",
+      "ml11-q4",
+      "ml11-q5",
+      "ml11-q6",
+      "ml11-q7"
+    ]
+  },
+  {
+    "id": "PL400-ML-09",
+    "slug": "dlp-effective-policy-intersection",
+    "title": "Reason About the Effective DLP Policy",
+    "topicTitle": "Power Platform Security & Governance",
+    "heroEpigraph": "A policy is not a vote; it is a boundary.",
+    "objectiveId": "custom-connectors-azure-integration",
+    "questionIds": [
+      "ml09-q1",
+      "ml09-q2",
+      "ml09-q3",
+      "ml09-q4",
+      "ml09-q5",
+      "ml09-q6",
+      "ml09-q7"
+    ]
+  },
+  {
+    "id": "PL400-ML-12",
+    "slug": "bulk-document-migration",
+    "title": "Design a Document Architecture for Dataverse",
+    "topicTitle": "API Integration & Custom Connectors",
+    "heroEpigraph": "Store the file for the work; route the work for the scale.",
+    "objectiveId": "dataverse-extensibility-platform-limits",
+    "questionIds": [
+      "ml12-q1",
+      "ml12-q2",
+      "ml12-q3",
+      "ml12-q4",
+      "ml12-q5",
+      "ml12-q6"
+    ]
+  },
+  {
+    "id": "PL400-ML-14",
+    "slug": "delegable-date-window-gallery",
+    "title": "Build a Delegable Date-Window Gallery",
+    "topicTitle": "Power Apps Component Selection",
+    "heroEpigraph": "Set the boundary once; filter the rows that belong inside it.",
+    "objectiveId": "dataverse-extensibility-platform-limits",
+    "questionIds": [
+      "ml14-q1",
+      "ml14-q2",
+      "ml14-q3",
+      "ml14-q4",
+      "ml14-q5",
+      "ml14-q6",
+      "ml14-q7"
+    ]
+  }
+]

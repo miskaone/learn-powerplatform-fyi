@@ -79,6 +79,7 @@ function createStubEngine(options?: {
       sectionTitle: 'Plugin isolation',
       concepts: ['IOrganizationService'],
       prerequisites: [],
+      lesson: null,
     }),
     getCurrentQuestion: () => question,
     submitAnswer: (questionId, optionId) => {
@@ -90,6 +91,8 @@ function createStubEngine(options?: {
           misconceptionId: 'mc-http-from-plugin',
           attemptNumber: 1,
           attemptsRemaining: 1,
+          rationale: null,
+          remediationAnchor: 'lesson-plugin-services',
         }
       );
     },

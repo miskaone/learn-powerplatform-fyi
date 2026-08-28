@@ -1,0 +1,4 @@
+{
+  "slug": "webhook-function-etl-boundary",
+  "expectedAnswer": "Answer: Webhook + Azure Function. The webhook is the event-delivery mechanism and the Function performs custom transformation before loading Dataverse through the Web API or SDK. Production design must still ask where the event starts. A Dataverse webhook sends Dataverse server events outward to an external handler; it is not normally the trigger for a one-time or scheduled pull from legacy systems. In that migration shape, use a timer, pipeline, dataflow, or source-driven trigger and retain the Function where custom transformation is needed."
+}

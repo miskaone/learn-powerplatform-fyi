@@ -1,0 +1,4 @@
+{
+  "slug": "bulk-document-migration",
+  "expectedAnswer": "The reusable design answer is: SharePoint stores the binary for native model-driven record-context document management; the Dataverse Web API or SDK resolves the account or contact, preferably through a stable external identifier/alternate key; and the workload decides compute. For CompanyA's high-volume initial load, the keyed answer is Console Application (C#), SharePoint, and Dataverse Web API. C# provides batching, retries, checkpoints, logging, and reconciliation. Blob Storage and Power Automate can be valid in other designs, but do not provide this native, recoverable bulk-migration fit; Notes consume Dataverse capacity and are not an enterprise document repository."
+}
