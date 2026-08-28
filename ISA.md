@@ -5,10 +5,10 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 48/76
+progress: 49/77
 mode: build
 started: 2026-08-26
-updated: 2026-08-28
+updated: 2026-08-30
 ---
 
 # ISA — Mastery Gate (learn.powerplatform.fyi)
@@ -207,10 +207,14 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [x] ISC-74: At registration time only (never mid-session churn), `get_hint` and `get_misconception_brief` descriptions gain profile-composed suffixes for returning learners naming their repeated misconceptions (names only — never contrasts, seeds, prompts, or option text), capped at three, absent on a cold profile; the roster meta re-composes at late runtime binding so the on-page descriptions match what registered (unit tests)
 - [x] ISC-75: Memory contract — `get_learner_state` exposes `coachingNotes`; `log_coaching_note` gains validated `kind` observation|preference|context (default observation) and a deterministic answer-cache guard rejecting question/option id patterns (`ml\d+-q\d+(-…)`, plus punctuation-dodging shapes like `ml13.q1`) and verbatim option text case/whitespace/punctuation-insensitively — ≥20-char sliding windows over both a spaced and a squashed (alphanumeric-only) canonical form, with 12–19-char options checked whole so short correct answers cannot be stashed; single common words (<12 chars) and free-prose paraphrase keys are the documented residual, pinned by test alongside "agent skips the interview"; the agreed description surgery on get_learner_state / log_coaching_note / get_hint / get_misconception_brief / set_lesson_aim; kickoff prompt carries the MEMORY clause and the SPACING / DIFFICULTY / TRANSFER technique lines (unit tests + prompt assertions)
 
-### Grounding pass (approved 2026-08-29)
+### Coach grounding (approved 2026-08-29; criteria restated 2026-08-30 after cross-review)
 
-- [x] ISC-76: `get_lesson_brief` hands the agent the authored teaching material for the active lesson — title/topic, heroEpigraph, governingRule, examClue, mnemonic, the scenario PROMPT, concepts[] {label, importance, summary}, productionNuance[], the section anchors WITH their titles, and references — sourced from `lesson-pages.json` through an app-layer `MasteryEngineFacadeOptions.getLessonBrief` provider (the engine package stays content-agnostic), projected field by field, registered in the lesson/practice phases and refused mid-exam AT THE ENGINE as well as deregistered; the payload structurally excludes the scenario expectedAnswer, question rationales, correctOptionId, option→misconception mapping, and the distractor teardown (whyTempting/whyWrong stays behind `get_misconception_brief`) — leak battery over every lesson in the manifest
-- [x] ISC-77: The briefing contract is carried by both the kickoff prompt and the tool descriptions — teach from the authored lesson rather than general knowledge (marking any outside addition as the agent's own), and establish the scenario in one or two sentences before any probing question, never assuming context the learner was not just given; folded into `get_lesson_brief`, `get_current_question`, and `get_hint`, and `get_current_context` now emits sectionTitle-bearing anchors so the agent can name where it is sending the learner (unit tests + prompt assertions)
+The design rule for this whole surface: **the agent gets exactly what a learner reading the
+page gets. No more, no less.** Symmetry, not starvation.
+
+- [x] ISC-76: `get_lesson_brief` hands the agent the authored teaching material for the active lesson — title/topic, heroEpigraph, governingRule, examClue, mnemonic, the scenario prompt, concepts[] {label, importance, summary}, the distractor teardown the page renders ungated in section 05 (choice / whyTempting / whyWrong), the visual walkthrough {type, title, steps[] {label, state, detail}}, productionNuance[], the four targeted drills, the reflection prompts, the section anchors WITH their titles, and references — sourced from `lesson-pages.json` through an app-layer `MasteryEngineFacadeOptions.getLessonBrief` provider (the engine package stays content-agnostic), projected field by field at three independent boundaries (app `toLessonBrief`, stack `copyBrief`, tool `publicLessonBrief`), each mutation-verified to fail on a spread; registered in the lesson/practice phases and refused mid-exam AT THE ENGINE as well as deregistered. `scenarioExpectedAnswer` is commit-gated symmetry, not exclusion: null until the learner commits and the page reveals it, then the same text on their screen, and never prerendered. The payload structurally excludes question rationales, `correctOptionId`, and option→misconception mapping — exclusion battery over every lesson in the manifest, plus a per-lesson symmetry audit walking every string leaf of the lesson catalog in both directions (no authored string missing from the brief; no brief string that does not trace to the lesson)
+- [x] ISC-77: The briefing contract is carried by both the kickoff prompt and the named tool descriptions — teach from the authored lesson rather than general knowledge, with the agent's own additions barred outright while a question is open and marked as its own afterwards; establish the scenario in one or two sentences before any probing question, never assuming context the learner was not just given; and NO RECITING — never restate the governing rule, exam clue, or mnemonic while a question is unanswered, since several of them name the correct option almost verbatim. Folded into `get_lesson_brief`, `get_current_question`, and `get_hint`; `get_lesson_brief` states what it contains and never narrates its gates or names the tool behind them; `get_current_context` emits sectionTitle-bearing anchors so the agent can name where it is sending the learner (unit tests + prompt assertions, including a negative assertion that the brief description does not name `get_misconception_brief`)
+- [x] ISC-78: The brief provider the app actually runs is covered and invariant-guarded: `setLessonBrief(slug, brief)` replaces the brief in place with no question-scope churn (the lesson page sets scope and brief in separate effects, so a scenario reveal cannot release and re-acquire the scope); a brief whose slug does not match the active lesson is refused rather than stored (lesson B's prose can never be served over lesson A's questions); a same-slug `setActiveLesson` replaces a supplied brief instead of discarding it; and stored briefs are defensive copies, so a caller mutating its object afterwards cannot change tool output (unit tests through `stack.facade.getLessonBrief()`, the real path, never a hand-rolled provider)
 
 ## Test Strategy
 
@@ -243,8 +247,9 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 | 66 | unit | readiness thresholds, routing precedence rows, exam-safety; interview contract strings | green | bun test |
 | 70 | unit | toolChangeHint at all four crossings, absent at non-crossings | green | bun test |
 | 71 | review+unit | description audit (before/after in the ACTOR-pass commit); stuck badge renders from getStuckRevocations | recorded | Read + bun test |
-| 76 | unit+leak | per-lesson leak battery over the real manifest (forbidden key names + every withheld string: expectedAnswer, rationales, correctOptionId, option ids, misconception contrast/seeds, distractor teardown); exam-guard test at facade AND tool; registry phase-transition test; mutation-tested (a spread or a widened field fails it) | zero leaks, green | bun test |
-| 77 | unit+file | kickoff prompt GROUND / SCENARIO FIRST clauses; contract strings in get_lesson_brief / get_current_question / get_hint descriptions; titled anchors in get_current_context | present | bun test + Read |
+| 76 | unit+exclusion+audit | per-lesson exclusion battery over the real manifest (forbidden key names + every withheld string: pre-commit expectedAnswer, rationales, correctOptionId, option ids, misconception contrast/seeds); per-lesson two-way symmetry audit walking every string leaf of the lesson catalog (nothing authored missing from the brief; nothing in the brief that does not trace to the lesson), with a documented structural-only exclusion list that fails if a row goes stale; exam-guard test at facade AND tool asserting the widened payload is refused; registry phase-transition test; all three projections mutation-tested (adding a spread at the app, stack, or tool boundary turns a test red — verified by running the mutation) | zero leaks, zero asymmetries, green | bun test |
+| 77 | unit+file | kickoff prompt GROUND / SCENARIO FIRST / NO RECITING clauses; contract strings in get_lesson_brief / get_current_question / get_hint descriptions; negative assertion that get_lesson_brief no longer names get_misconception_brief; titled anchors in get_current_context | present | bun test + Read |
+| 78 | unit | stack-provider battery through `stack.facade.getLessonBrief()` — the real path, never a hand-rolled provider: brief carried end to end, setLessonBrief replaces in place with no scope churn or notification, slug-mismatch refused at both setters, same-slug replacement lands, defensive copy survives caller mutation (mutation-tested: returning the caller's object turns it red) | green | bun test |
 
 ## Features
 
@@ -261,7 +266,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 | Demo video | Three-beat script, rehearsal, record in ChatGPT browser, publish | ISC-46, 55 | Submission package (MSP) | no |
 | ACTOR pass | Aim/compress/run ledger records + inputs, teach-back prompt layer, rubric-interview routing, response hints, description audit, stuck badge | ISC-62…66, 70…71 | Engine core; WebMCP tool surface; state machines | no |
 | Transparency + Memory pass | Your-model panel, export/erase, myth naming, agent report card, profile-annotated descriptions, memory contract + answer-cache guard | ISC-67…69, 73…75 | ACTOR pass; WebMCP tool surface; UI | no |
-| Grounding pass | `get_lesson_brief` + app-layer brief provider, titled section anchors, briefing contract in prompt + descriptions, per-lesson leak battery | ISC-76…77 | WebMCP tool surface; Content port | no |
+| Coach grounding | `get_lesson_brief` + app-layer brief provider, titled section anchors, briefing contract in prompt + descriptions, per-lesson exclusion battery, per-lesson two-way symmetry audit, stack-provider invariants | ISC-76…78 | WebMCP tool surface; Content port | no |
 
 ## Decisions
 
@@ -604,3 +609,74 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   re-verified against a baseline build and is unchanged (lesson-sections.json is the client-side
   evidence corpus — the accepted baseline, not a regression from this pass). ISC-21's "ten static
   tools" reads historically: the static set is now twelve, 24 in total.
+
+- **2026-08-30** — Coach-grounding cross-review disposition (commit on `build/grounding`; ISC-76/77
+  restated, ISC-78 added). Forge's adversarial review of `main...build/grounding` returned REQUEST
+  CHANGES: the "no more" half of the grounding pass held, the "no less" half was broken in four
+  places, one recorded ship gate was false, and the code path the app actually runs had zero
+  coverage. Every finding was reproduced against the real content before it was fixed. **The design
+  rule, now stated once and applied everywhere: the agent gets exactly what a learner reading the
+  page gets. No more, no less. Symmetry, not starvation.** Public page prose is the agent's;
+  anything hidden from the page reader stays redacted. **NO LESS — four asymmetries closed.**
+  (1) The distractor teardown: `LessonPage` renders section 05 unconditionally to every reader with
+  `choice`/`whyTempting`/`whyWrong` for all 22 distractors, and the brief withheld all of it behind
+  a justification that was false twice over — nothing gated it on the page, and
+  `get_misconception_brief` never carried that material (`manifest.misconceptions[]` is
+  `{id,name,contrast,socraticSeeds,anchor}`). Reproduced: `bulk-document-migration`'s distractor
+  "Dataverse Notes" is an exact match for option `ml12-q1-b`, so the coach was coaching that exact
+  miss from `contrast` prose the learner had never seen while the authored teardown sat on screen.
+  Now carried. (2) `visual` {type,title,steps[]} — the mechanism a lesson built on "decide before
+  seeing the mechanism" is organised around; the coach could not walk the reveal the page's own
+  pedagogy centres on. Now carried. (3) `drills` and `reflection[]` — `prescribe_drill` could
+  contradict the four authored drills sitting on the learner's screen. Now carried. (4) The
+  scenario `expectedAnswer`: withholding it pre-commit is right, but the previous pass excluded it
+  *permanently*, so after the page revealed it the learner could ask "why is my answer different?"
+  and the coach was guessing at text on screen. Resolved symmetrically rather than by exclusion —
+  `LessonBriefPublic.scenarioExpectedAnswer` is null until `ScenarioCommit`'s post-commit fetch
+  resolves and calls `onReveal`, which re-projects the brief; it is never prerendered (verified),
+  and the commit gate is still the page's, not the agent's. **FALSE GATE CORRECTED.** The shipping
+  record claimed "per-route prerender grep: zero hits for expectedAnswer text, correctOptionId,
+  whyTempting, whyWrong on all five lesson routes." Re-run against `out/`: `whyTempting`/`whyWrong`
+  hit 4–5 times on every route — `LessonPage` is a client component receiving `LessonPageData` as a
+  prop, so Next serialises the teardown into the RSC flight payload. Not a leak (it is page content
+  the reader sees, which independently proved finding 1), but the gate as recorded could not have
+  passed. The honest gate, re-run this pass and now the recorded one: **zero hits for the scenario
+  expected-answer TEXT, question rationales, `correctOptionId`, option→misconception ids, and
+  misconception contrast/seeds on all five routes** — checked against the real manifest and the real
+  scenario JSON, not against field-name substrings. **COVERAGE.** `masteryStack.ts`'s brief provider
+  (the only wiring production uses) was uncovered — every brief test built `MasteryEngineFacade`
+  directly with a hand-rolled provider — and `setActiveLesson(slug, brief)` never checked
+  `brief.slug === slug`, so lesson B's prose could be served over lesson A's questions with no
+  invariant and no warning. ISC-78 covers the real path through `stack.facade.getLessonBrief()`:
+  a new `setLessonBrief(slug, brief)` replaces the brief in place with no question-scope churn (the
+  lesson page now sets scope and brief in *separate* effects, so a reveal cannot release and
+  re-acquire the scope), both setters refuse a slug-mismatched brief, a same-slug `setActiveLesson`
+  now replaces a supplied brief instead of discarding it, and stored briefs are defensive copies.
+  **CONTRACT.** The briefing contract shipped its own escape hatch — "Anything you add from outside
+  it, mark as your own addition", plus "**prefer** it over your own knowledge" — which authorised
+  the exact behaviour the pass was opened to stop, conditional only on a label. Bounded: nothing of
+  the agent's own while a question is open, marked as its own afterwards; "prefer it over" became
+  "the authored curriculum you teach from". `get_lesson_brief`'s description no longer enumerates
+  what is withheld or names the tool behind the gate (it pointed at a capability that did not
+  exist, and combined with `SECOND_FIRE_HINT` and live `misconceptionFires` it read as an
+  instruction to drive the learner into a second miss to unlock material). And a NO RECITING clause
+  now lands in the kickoff prompt, `get_current_question`, and `get_hint`: 6 of 34 questions have
+  the correct option top-ranked by lexical overlap with the governing rule or exam clue — `ml11-q2`
+  and `ml12-q1` at full token containment — so a coach obeying SCENARIO FIRST could hand over the
+  answer without ever "adding answer information of its own". This is an instruction fix, not a
+  redaction: the learner sees both fields above the practice band, so the brief grants no derivation
+  power the page does not. **ACCEPTED, NOT FIXED (documented).** The brief carries `objectiveId` and
+  `concepts[].id`, which the page never renders — the "more" direction. Kept: they are machine
+  identifiers already public through `get_current_context`, they carry no teaching content, and the
+  agent needs them to scope and route. The symmetry audit is written against prose for that reason,
+  and the two structural-only lesson leaves it excludes (`topic.id`, `questionIds`) are listed with
+  reasons in a table that fails if a row goes stale. **VERIFICATION.** 404 tests green (was 378);
+  tsc clean; static export clean; `validate:content` OK; per-route deep redaction audit clean on all
+  five routes; and a new per-lesson two-way symmetry audit reports **zero prose asymmetries across
+  all five lessons in both directions, pre- and post-commit** (72–83 authored strings per lesson,
+  every one of them reaching the agent, and none reaching it that does not trace to the lesson).
+  All three brief projections — app `toLessonBrief`, stack `copyBrief`, tool `publicLessonBrief` —
+  were mutation-tested by actually inserting a spread and confirming a test turns red; the first
+  attempt at the tool-boundary guard did NOT bite (a real `MasteryEngineFacade` strips the
+  contaminant before `publicLessonBrief` sees it), so that test now drives the toolset through a
+  proxied facade that returns the contaminated brief verbatim.
