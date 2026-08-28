@@ -188,14 +188,14 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [ ] ISC-60: Debrief degrades to the text debrief card when the graft is cut or audio is unavailable, behind one feature flag (flag test)
 - [ ] ISC-61: Anti: the shipped site makes zero runtime calls to ElevenLabs or any TTS/LLM API (static probe + network audit during a full session)
 
-### ACTOR pass (aim / compress / run / own + rubric interview + surface adoption)
+### ACTOR pass (approved 2026-08-27)
 
 - [x] ISC-62: `set_lesson_aim` tool + lesson-page aim input persist a validated, clamped (≤200 chars) aim per lesson on the ledger, exposed via `get_learner_state`, excluded from the rubric evidence corpus, refused mid-exam at the engine (unit tests)
 - [x] ISC-63: Compress-the-rule commit-then-reveal on every lesson page persists the learner's one-line rule per lesson on the ledger, reveals the authored governing rule for comparison, and is ledger-exposed for coach critique (unit tests + page section)
 - [x] ISC-64: Run-commitment field at lesson end persists per lesson with specificity-demanding copy and is ledger-exposed for the future debrief (unit tests + page section)
 - [x] ISC-65: Kickoff prompt and the misconception-brief socratic seeds demand teach-back — the learner explains the concept back in their own words before advancing (prompt text + tool-layer seed, unit test)
 - [x] ISC-66: `request_next_action` returns `rubric_interview` when per-dimension MCQ coverage thresholds are met (≥2 distinct attempted questions per dimension, deterministic) and the gate has not passed — never during an active exam; `score_rubric`'s description, the verdict's guidance, and the kickoff prompt carry the 5–8-question interview contract; the agent-less self-assessment path relabeled honestly (unit tests)
-- [x] ISC-70: Gate-crossing tool responses carry a `toolChangeHint` naming newly available/revoked tools at score_rubric gate-pass, misconception second fire, and exam start/submit — present only at the crossing; the response channel as the only push channel (unit tests)
+- [x] ISC-70: Gate-crossing tool responses carry a `toolChangeHint` naming newly available/revoked tools at score_rubric gate-pass AND gate-regress (transition-aware: no hint on an accepted rescore that leaves the gate open), misconception second fire, and exam start/submit (hint states truthfully that coaching tools return only when the learner leaves the exam screen) — present only at the crossing; the response channel as the only push channel (unit tests)
 - [x] ISC-71: Every tool description states WHEN to call it (audit table in the ACTOR-pass record), and stuck revocations surface as a draining badge in the Tool Roster via getStuckRevocations/onStuckRevocation
 
 ## Test Strategy
@@ -431,3 +431,30 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   discovery mechanism exists in the WebMCP spec). Gates at ship: 312 tests green, tsc clean,
   static export clean, validate:content OK. Browser probes (ISC-38 family) remain open for the
   ChatGPT in-app pass.
+- **2026-08-28** — ACTOR cross-review disposition and ship (`83cd966`, merged to main). Six
+  findings, all resolved or documented: **(MAJOR, fixed + regression)** `EXAM_SUBMIT_HINT` claimed
+  "coaching tools are restored" while phase stays `exam` until the human clicks Return to practice
+  (no tool can trigger `exitExam`) — the one post-exam push the agent gets was actively wrong;
+  hint and `submit_exam` description rewritten truthfully ("coaching tools return only after the
+  learner clicks Return to practice"). **(MINOR, fixed + regressions both directions)**
+  `score_rubric`'s hint is now transition-aware: no hint on an accepted rescore while the gate
+  stays open (was re-emitting the full gate-pass hint), and a NEW `GATE_REGRESS_HINT` fires when
+  an accepted rescore closes the gate and revokes advance_module/start_exam — previously a
+  registration-changing moment with zero push signal. **(LOW, fixed)** hub-stored aims were
+  display-orphaned: the hub now renders the `'track'`-keyed aim via the same LessonAim component
+  (agent-less parity preserved through NotifyingFacade) and `set_lesson_aim`'s description names
+  the track fallback. **(LOW, fixed)** `saveFailureMessage` maps `too-many-entries` at the 24-key
+  cap. **(NIT, doc-fixed)** `clampLessonTextRecord`'s doc comment no longer promises a non-string
+  tolerance the load path pre-empts (load rejects per the ISA contract; the branch is defensive).
+  **(ACCEPTED RESIDUAL, pre-existing, not widened)** the rubric interview is an invitation, not
+  an enforcement: an agent can open the gate through `score_rubric` with one graded attempt and a
+  verbatim quote, zero interview questions asked — engine validation deliberately unchanged per
+  the plan; ISC-50's adversarial probe must record "agent skips the interview entirely" as a
+  known residual. Review confirmed clean: no ledger-field corpus leaks, no hint leaks (second-fire
+  response field-identical to publicVerdict; mid-exam verdict fields null), prompt only
+  strengthened, prerender clean (learner text client-only), all three setters exam-guarded at the
+  engine, routing precedence rows (h)–(l) pinned, all four live dimension counts ≥2 so the
+  interview verdict is reachable in production, and no `/.well-known` manifest anywhere (rejected
+  item respected). Response-hint pattern formally adopted as the agent's only push channel;
+  description audit (all 23 tools state WHEN to call) stands. Gates at ship: 314 tests green,
+  tsc clean both packages, validate:content OK, per-route redaction grep clean on the built HTML.
