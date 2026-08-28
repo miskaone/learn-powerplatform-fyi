@@ -201,11 +201,11 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 ### Transparency + Memory pass (approved 2026-08-28, docs/actor-plan.md §7)
 
 - [x] ISC-67: "Your model" panel on the hub renders every fired misconception WITH its evidencing questions (each linked to its owning lesson), framed as evidence rather than badges, mirroring what `get_learner_state` shows the agent, and visually paired with the erase control (engine `getMisconceptionEvidence` + unit tests + panel; live-browser pass rides the ISC-38 ChatGPT check)
-- [x] ISC-68: One-click JSON export of the complete `mastery-gate:v1` payload (client-side blob, zero network) plus a confirmed one-tap erase that destroys it and reloads — copy states "your data never leaves your browser"
+- [x] ISC-68: One-click JSON export of the complete stored record — the `mastery-gate:v1` payload plus the per-lesson scenario commits, exactly what erase destroys (client-side blob, zero network) — plus a confirmed one-tap erase that destroys it and reloads; copy states "your data never leaves your browser"
 - [x] ISC-69: A correct practice verdict names the distractor-myth it defeats — the learner's own previously fired misconception on that question when one exists, else the first distractor's — selected engine-side, projected field-by-field, absent on misses and mid-exam (unit tests + success-card line on page and tool response)
 - [x] ISC-73: The ledger records the agent's confidence hints (against the outcome each referred to) and rubric proposals (accepted/rejected + resulting gate state) — deterministic bookkeeping that never feeds routing, grading, or the gate; the calibration summary is exposed through `get_learner_state` and rendered as one line in the Your-model panel when data exists (unit tests incl. routing-verdict invariance)
 - [x] ISC-74: At registration time only (never mid-session churn), `get_hint` and `get_misconception_brief` descriptions gain profile-composed suffixes for returning learners naming their repeated misconceptions (names only — never contrasts, seeds, prompts, or option text), capped at three, absent on a cold profile; the roster meta re-composes at late runtime binding so the on-page descriptions match what registered (unit tests)
-- [x] ISC-75: Memory contract — `get_learner_state` exposes `coachingNotes`; `log_coaching_note` gains validated `kind` observation|preference|context (default observation) and a deterministic answer-cache guard rejecting question/option id patterns (`ml\d+-q\d+(-…)`) and ≥20-char verbatim option-text substrings (case/whitespace-insensitive); the agreed description surgery on get_learner_state / log_coaching_note / get_hint / get_misconception_brief / set_lesson_aim; kickoff prompt carries the MEMORY clause and the SPACING / DIFFICULTY / TRANSFER technique lines (unit tests + prompt assertions)
+- [x] ISC-75: Memory contract — `get_learner_state` exposes `coachingNotes`; `log_coaching_note` gains validated `kind` observation|preference|context (default observation) and a deterministic answer-cache guard rejecting question/option id patterns (`ml\d+-q\d+(-…)`, plus punctuation-dodging shapes like `ml13.q1`) and verbatim option text case/whitespace/punctuation-insensitively — ≥20-char sliding windows over both a spaced and a squashed (alphanumeric-only) canonical form, with 12–19-char options checked whole so short correct answers cannot be stashed; single common words (<12 chars) and free-prose paraphrase keys are the documented residual, pinned by test alongside "agent skips the interview"; the agreed description surgery on get_learner_state / log_coaching_note / get_hint / get_misconception_brief / set_lesson_aim; kickoff prompt carries the MEMORY clause and the SPACING / DIFFICULTY / TRANSFER technique lines (unit tests + prompt assertions)
 
 ## Test Strategy
 
@@ -511,3 +511,36 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   tsc clean both packages, static export clean (prerendered-HTML answer-key scan unchanged from
   baseline; the client-side engine's manifest chunk is by-design), validate:content OK.
   Live-browser confirmation of the panel rides the existing ISC-38 ChatGPT in-app pass.
+- **2026-08-28** — Transparency + Memory cross-review disposition and ship (`8819e48`, merged to
+  main). Three findings, all fixed with regressions: **(MEDIUM, fixed)** the answer-cache guard
+  was weak against its named threat — three reproduced bypasses (short correct options under the
+  20-char window never checked; punctuation insertion breaking the contiguous window; id shapes
+  dodging the hyphen regex). Guard redesigned deterministically: two canonical forms — spaced
+  (lowercase, punctuation collapses to space) and squashed (alphanumerics only, catching MID-word
+  punctuation and spaced-out letters) — each window-checked at ≥20 chars; options normalizing to
+  12–19 chars checked whole (token-bounded in the spaced form, plain inclusion in the squashed
+  form), so "Azure Function" / "A number of minutes" cannot be stashed verbatim; normalized-form
+  id pattern catches `ml13.q1` / `ml13 q1`. Deliberate, test-pinned boundary: single common words
+  under 12 chars ("Blocked", "Filter", "SharePoint") and free-prose paraphrase keys ("the webhook
+  host question wants the serverless answer") remain storable — rejecting every note mentioning a
+  common word would gut the memory feature, and prose/homoglyph/encoding stashes are the same
+  documented residual as "agent skips the interview" (a deterministic guard stops verbatim key
+  stashing, not semantics). Driver's own post-fix adversarial battery (18 cases incl. zero-width
+  joiners, spaced-out letters, real-manifest verbatim runs) behaved as designed. **(LOW-MED,
+  fixed)** reflection editors read by `slug` prop but wrote through the ambient active-lesson key —
+  two sources of truth that only coincided by layout accident; facade setters now take an explicit
+  `lessonKey` (page surfaces pass the slug they render under; tools keep the ambient/track
+  contract), pinned by an override test. **(LOW, fixed)** the export omitted the per-lesson
+  scenario commits that erase destroys, making "the export is the complete record" false; the
+  export (`mastery-gate-export.json`) now bundles the `mastery-gate:v1` payload plus scenario
+  commits, and the panel copy + erase confirmation name scenario predictions (ISC-68 text
+  updated). Review's checked-clean list (corpus laundering, OLM/export key leakage, hint
+  truthfulness at all transitions, ISC-74 description leaks, exam guards, routing invariance,
+  prerender parity, per-dimension interview reachability) stands. Reviewer's minor note on
+  `defeatedMisconception`'s no-prior-miss fallback is spec-conformant per ISC-69 — no action.
+  Id-registry reconciliation is COMPLETE: this pass's items ship as ISC-67…69 + ISC-73…75 (72
+  deliberately unused; ACTOR holds 70/71), the ISA carries all 74 criteria, and no future
+  renumbering is owed. Gates at ship: 356 tests green, tsc clean both packages, validate:content
+  OK, static export clean (per-route redaction grep: prerendered HTML zero answer-key hits;
+  scenario expectedAnswer only in post-commit-fetched JSON; the client-engine manifest chunk is
+  the accepted baseline).
