@@ -1,4 +1,6 @@
 import type {
+  CoachNote,
+  CoachNoteKind,
   ContentManifest,
   DebriefSegment,
   DebriefState,
@@ -6,6 +8,7 @@ import type {
   DrillSessionState,
   ExamState,
   Ledger,
+  Misconception,
   NarrationCue,
   Question,
   QuestionPublic,
@@ -21,6 +24,7 @@ import type { HintResult, HintState } from './hints';
 import { createHintState, requestHint as nextHint } from './hints';
 import {
   attemptCount,
+  clampAgentReportRecords,
   clampCoachNotes,
   cloneLedger,
   createEmptyLedger,
@@ -80,7 +84,30 @@ export interface LearnerStatePublic {
   lessonAims: Record<string, string>;
   ruleCompressions: Record<string, string>;
   runCommitments: Record<string, string>;
+  coachingNotes: CoachNote[];
+  coachCalibration: CoachCalibrationSummary | null;
 }
+
+export interface CoachingNoteResult {
+  stored: boolean;
+  reason: 'exam-active' | 'empty' | 'answer-content' | null;
+}
+
+/** Deterministic calibration summary computed from the report-card records (ISC-73). */
+export interface CoachCalibrationSummary {
+  confidenceHintCount: number;
+  /** high hints whose lastCorrect was true plus low hints whose lastCorrect was false. */
+  confidenceAgreements: number;
+  /** high-confidence hints recorded against a missed answer ("coach said high-confidence on questions missed"). */
+  highConfidenceMisses: number;
+  rubricProposalCount: number;
+  rubricProposalsAccepted: number;
+}
+
+/** Verbatim option-text window length for the coaching-note answer-cache guard. */
+export const ANSWER_TEXT_WINDOW = 20;
+
+const QUESTION_ID_IN_NOTE = /\bml\d+-q\d+(?:-[a-z0-9]+)?\b/i;
 
 export interface LessonTextResult {
   stored: boolean;
@@ -114,6 +141,14 @@ export interface SubmitAnswerResult {
    * miss. Carries no answer-key material (it names a lesson section).
    */
   remediationAnchor: string | null;
+  /**
+   * Present only on a correct practice verdict: the distractor-myth this
+   * correct answer defeats — the learner's own previously fired misconception
+   * on this question when one exists, else the question's first distractor
+   * misconception. Name resolved from the manifest. Field-by-field public
+   * projection; misconception names are already public post-fire material.
+   */
+  defeatedMisconception: { id: string; name: string } | null;
 }
 
 export const MAX_ATTEMPTS_PER_QUESTION = 2;
@@ -235,7 +270,12 @@ export class MasteryEngine {
       // Mid-exam, correctness, rationale, and remediation all stay withheld
       // — nothing that could steer remaining exam answers leaves the engine
       // before submit.
-      return { ...result, rationale: null, remediationAnchor: null };
+      return {
+        ...result,
+        rationale: null,
+        remediationAnchor: null,
+        defeatedMisconception: null,
+      };
     }
     if (wasExamActive) {
       // The exam expired between the click and this call. The answer must
@@ -266,6 +306,13 @@ export class MasteryEngine {
       attemptNumber,
       rationale: resolved ? question.rationale : null,
       remediationAnchor: grade.correct ? null : question.remediationAnchor,
+      defeatedMisconception: grade.correct
+        ? resolveDefeatedMisconception(
+            this.ledger,
+            question,
+            this.manifest.misconceptions,
+          )
+        : null,
     };
   }
 
@@ -313,6 +360,19 @@ export class MasteryEngine {
   }
 
   requestNextAction(confidence?: 'low' | 'high'): RoutingVerdict {
+    if (confidence !== undefined && !this.isExamActive()) {
+      const next = cloneLedger(this.ledger);
+      next.confidenceHints = clampAgentReportRecords([
+        ...next.confidenceHints,
+        {
+          confidence,
+          lastCorrect: this.lastGrade === null ? null : this.lastGrade.correct,
+          timestamp: this.now(),
+        },
+      ]);
+      this.ledger = next;
+      this.persist();
+    }
     return routeNextAction({
       ledger: this.ledger,
       lastGrade: this.lastGrade,
@@ -433,7 +493,19 @@ export class MasteryEngine {
       };
     }
     const result = validateRubricSubmission(input, corpus);
+    const timestamp = this.now();
     if (!result.ok) {
+      const next = cloneLedger(this.ledger);
+      next.rubricProposals = clampAgentReportRecords([
+        ...next.rubricProposals,
+        {
+          accepted: false,
+          gatePassed: gatePasses(this.ledger.scores),
+          timestamp,
+        },
+      ]);
+      this.ledger = next;
+      this.persist();
       return result;
     }
 
@@ -444,6 +516,14 @@ export class MasteryEngine {
       application: result.scores.application,
       transfer: result.scores.transfer,
     };
+    next.rubricProposals = clampAgentReportRecords([
+      ...next.rubricProposals,
+      {
+        accepted: true,
+        gatePassed: gatePasses(next.scores),
+        timestamp,
+      },
+    ]);
     this.ledger = next;
     this.persist();
     return result;
@@ -457,27 +537,122 @@ export class MasteryEngine {
    * corpus — agent-authored text must not launder itself into "verbatim
    * evidence".
    */
-  logCoachingNote(note: string): void {
+  logCoachingNote(note: string, kind?: CoachNoteKind): CoachingNoteResult {
     if (typeof note !== 'string') {
-      return;
+      return { stored: false, reason: 'empty' };
     }
     // Exam guard: no coaching-surface mutation during a live exam
     // (cross-review BLOCKER 1).
     if (this.isExamActive()) {
-      return;
+      return { stored: false, reason: 'exam-active' };
     }
-    const trimmed = note.trim().slice(0, MAX_COACH_NOTE_LENGTH);
-    if (trimmed.length === 0) {
-      return;
+    const clamped = note.trim().slice(0, MAX_COACH_NOTE_LENGTH);
+    if (clamped.length === 0) {
+      return { stored: false, reason: 'empty' };
+    }
+    if (containsAnswerContent(clamped, this.manifest)) {
+      return { stored: false, reason: 'answer-content' };
     }
     const next = cloneLedger(this.ledger);
-    next.coachNotes = clampCoachNotes([...next.coachNotes, trimmed]);
+    next.coachNotes = clampCoachNotes([
+      ...next.coachNotes,
+      { text: clamped, kind: kind ?? 'observation' },
+    ]);
     this.ledger = next;
     this.persist();
+    return { stored: true, reason: null };
   }
 
-  getCoachNotes(): string[] {
-    return this.ledger.coachNotes.slice();
+  getCoachNotes(): CoachNote[] {
+    return this.ledger.coachNotes.map((entry) => ({
+      text: entry.text,
+      kind: entry.kind,
+    }));
+  }
+
+  getCalibrationSummary(): CoachCalibrationSummary | null {
+    const hints = this.ledger.confidenceHints;
+    const proposals = this.ledger.rubricProposals;
+    if (hints.length === 0 && proposals.length === 0) {
+      return null;
+    }
+    let confidenceAgreements = 0;
+    let highConfidenceMisses = 0;
+    for (const hint of hints) {
+      if (
+        (hint.confidence === 'high' && hint.lastCorrect === true) ||
+        (hint.confidence === 'low' && hint.lastCorrect === false)
+      ) {
+        confidenceAgreements += 1;
+      }
+      if (hint.confidence === 'high' && hint.lastCorrect === false) {
+        highConfidenceMisses += 1;
+      }
+    }
+    let rubricProposalsAccepted = 0;
+    for (const proposal of proposals) {
+      if (proposal.accepted) {
+        rubricProposalsAccepted += 1;
+      }
+    }
+    return {
+      confidenceHintCount: hints.length,
+      confidenceAgreements,
+      highConfidenceMisses,
+      rubricProposalCount: proposals.length,
+      rubricProposalsAccepted,
+    };
+  }
+
+  /**
+   * Learner-facing evidence map: which questions fired each misconception
+   * (glass-box panel, ISC-67). Derived from attempts; no option ids, no
+   * answer-key material.
+   */
+  getMisconceptionEvidence(): {
+    misconceptionId: string;
+    fireCount: number;
+    questionIds: string[];
+  }[] {
+    const order: string[] = [];
+    const byId = new Map<
+      string,
+      { fireCount: number; questionIds: string[]; seen: Set<string> }
+    >();
+    for (const attempt of this.ledger.attempts) {
+      if (attempt.correct || attempt.misconceptionId === null) {
+        continue;
+      }
+      const id = attempt.misconceptionId;
+      let entry = byId.get(id);
+      if (entry === undefined) {
+        entry = { fireCount: 0, questionIds: [], seen: new Set() };
+        byId.set(id, entry);
+        order.push(id);
+      }
+      entry.fireCount += 1;
+      if (!entry.seen.has(attempt.questionId)) {
+        entry.seen.add(attempt.questionId);
+        entry.questionIds.push(attempt.questionId);
+      }
+    }
+    const evidence: {
+      misconceptionId: string;
+      fireCount: number;
+      questionIds: string[];
+    }[] = [];
+    for (const id of order) {
+      const entry = byId.get(id);
+      if (entry === undefined) {
+        continue;
+      }
+      evidence.push({
+        misconceptionId: id,
+        fireCount: entry.fireCount,
+        questionIds: entry.questionIds.slice(),
+      });
+    }
+    return evidence;
   }
 
   getLearnerState(): LearnerStatePublic {
@@ -495,6 +670,8 @@ export class MasteryEngine {
       lessonAims: copyStringMap(this.ledger.lessonAims),
       ruleCompressions: copyStringMap(this.ledger.ruleCompressions),
       runCommitments: copyStringMap(this.ledger.runCommitments),
+      coachingNotes: this.getCoachNotes(),
+      coachCalibration: this.getCalibrationSummary(),
     };
   }
 
@@ -826,4 +1003,76 @@ function copyStringMap(record: Record<string, string>): Record<string, string> {
     copy[key] = record[key];
   }
   return copy;
+}
+
+function normalizeAnswerText(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function containsAnswerContent(
+  note: string,
+  manifest: ContentManifest,
+): boolean {
+  if (QUESTION_ID_IN_NOTE.test(note)) {
+    return true;
+  }
+  const normalizedNote = normalizeAnswerText(note);
+  for (const question of manifest.questions) {
+    for (const option of question.options) {
+      const normalizedOption = normalizeAnswerText(option.text);
+      if (normalizedOption.length < ANSWER_TEXT_WINDOW) {
+        continue;
+      }
+      for (
+        let i = 0;
+        i <= normalizedOption.length - ANSWER_TEXT_WINDOW;
+        i += 1
+      ) {
+        if (
+          normalizedNote.includes(
+            normalizedOption.slice(i, i + ANSWER_TEXT_WINDOW),
+          )
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function resolveDefeatedMisconception(
+  ledger: Ledger,
+  question: Question,
+  misconceptions: readonly Misconception[],
+): { id: string; name: string } | null {
+  let misconceptionId: string | null = null;
+  for (let i = ledger.attempts.length - 1; i >= 0; i -= 1) {
+    const attempt = ledger.attempts[i];
+    if (
+      attempt.questionId === question.id &&
+      !attempt.correct &&
+      attempt.misconceptionId !== null
+    ) {
+      misconceptionId = attempt.misconceptionId;
+      break;
+    }
+  }
+  if (misconceptionId === null) {
+    for (const option of question.options) {
+      if (option.misconceptionId !== undefined) {
+        misconceptionId = option.misconceptionId;
+        break;
+      }
+    }
+  }
+  if (misconceptionId === null) {
+    return null;
+  }
+  for (const misconception of misconceptions) {
+    if (misconception.id === misconceptionId) {
+      return { id: misconception.id, name: misconception.name };
+    }
+  }
+  return null;
 }

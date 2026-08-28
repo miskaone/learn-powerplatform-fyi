@@ -137,6 +137,7 @@ export function PracticePanel(props: {
         attemptsRemaining: result.attemptsRemaining,
         rationale: result.rationale,
         remediationAnchor: result.remediationAnchor,
+        defeatedMisconceptionName: result.defeatedMisconception?.name ?? null,
       });
       setHint(null);
       setHintRefusal(null);
@@ -319,6 +320,12 @@ export function PracticePanel(props: {
             {question
               ? "Correct — next question loaded."
               : "Correct — practice items complete."}
+            {movedOnVerdict.defeatedMisconceptionName ? (
+              <p className="pl400-myth">
+                Defeats the myth:{" "}
+                <strong>{movedOnVerdict.defeatedMisconceptionName}</strong>.
+              </p>
+            ) : null}
             {movedOnVerdict.rationale ? (
               <p className="pl400-rationale">{movedOnVerdict.rationale}</p>
             ) : null}

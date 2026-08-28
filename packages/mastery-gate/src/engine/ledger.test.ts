@@ -2,9 +2,14 @@ import { test, expect } from 'bun:test';
 import { gradeAnswer } from './grading';
 import {
   attemptCount,
+  clampAgentReportRecords,
+  clampCoachNotes,
   clampLessonTextRecord,
   createEmptyLedger,
   isRepeatedMisconception,
+  MAX_AGENT_REPORT_RECORDS,
+  MAX_COACH_NOTE_LENGTH,
+  MAX_COACH_NOTES,
   MAX_LESSON_AIM_LENGTH,
   MAX_LESSON_TEXT_ENTRIES,
   misconceptionFireCount,
@@ -25,6 +30,8 @@ test('createEmptyLedger has phase lesson, zero scores, empty collections', () =>
   expect(ledger.phase).toBe('lesson');
   expect(ledger.attempts).toEqual([]);
   expect(ledger.coachNotes).toEqual([]);
+  expect(ledger.confidenceHints).toEqual([]);
+  expect(ledger.rubricProposals).toEqual([]);
   expect(ledger.misconceptionFires).toEqual({});
   expect(ledger.scores).toEqual({
     recall: 0,
@@ -52,6 +59,8 @@ test('recordAttempt is immutable and does not share arrays or fire maps', () => 
   expect(ledger.attempts === next.attempts).toBe(false);
   expect(ledger.misconceptionFires === next.misconceptionFires).toBe(false);
   expect(ledger.coachNotes === next.coachNotes).toBe(false);
+  expect(ledger.confidenceHints === next.confidenceHints).toBe(false);
+  expect(ledger.rubricProposals === next.rubricProposals).toBe(false);
   expect(ledger.lessonAims === next.lessonAims).toBe(false);
   expect(ledger.ruleCompressions === next.ruleCompressions).toBe(false);
   expect(ledger.runCommitments === next.runCommitments).toBe(false);
@@ -144,4 +153,42 @@ test('clampLessonTextRecord drops empty values, truncates, and caps at 24 sorted
       return `k${String(i).padStart(2, '0')}`;
     }),
   );
+});
+
+test('clampCoachNotes truncates text, rebuilds field-by-field, and keeps the most recent notes', () => {
+  const long = 'x'.repeat(MAX_COACH_NOTE_LENGTH + 40);
+  const clamped = clampCoachNotes([
+    { text: long, kind: 'preference' },
+    { text: 'keep', kind: 'context' },
+  ]);
+  expect(clamped).toEqual([
+    { text: 'x'.repeat(MAX_COACH_NOTE_LENGTH), kind: 'preference' },
+    { text: 'keep', kind: 'context' },
+  ]);
+  expect(clamped[0] === undefined).toBe(false);
+
+  const many = Array.from({ length: MAX_COACH_NOTES + 5 }, (_, i) => ({
+    text: `n${i}`,
+    kind: 'observation' as const,
+  }));
+  const capped = clampCoachNotes(many);
+  expect(capped.length).toBe(MAX_COACH_NOTES);
+  expect(capped[0]).toEqual({ text: 'n5', kind: 'observation' });
+  expect(capped[MAX_COACH_NOTES - 1]).toEqual({
+    text: `n${MAX_COACH_NOTES + 4}`,
+    kind: 'observation',
+  });
+});
+
+test('clampAgentReportRecords keeps the most recent MAX_AGENT_REPORT_RECORDS', () => {
+  const records = Array.from({ length: MAX_AGENT_REPORT_RECORDS + 7 }, (_, i) => ({
+    n: i,
+  }));
+  const clamped = clampAgentReportRecords(records);
+  expect(clamped.length).toBe(MAX_AGENT_REPORT_RECORDS);
+  expect(clamped[0]).toEqual({ n: 7 });
+  expect(clamped[MAX_AGENT_REPORT_RECORDS - 1]).toEqual({
+    n: MAX_AGENT_REPORT_RECORDS + 6,
+  });
+  expect(clampAgentReportRecords([{ n: 1 }])).toEqual([{ n: 1 }]);
 });

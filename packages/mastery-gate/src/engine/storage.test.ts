@@ -1,6 +1,7 @@
 import { test, expect } from 'bun:test';
 import {
   createEmptyLedger,
+  MAX_AGENT_REPORT_RECORDS,
   MAX_LEARNER_NAME_LENGTH,
   MAX_LESSON_AIM_LENGTH,
   MAX_LESSON_TEXT_ENTRIES,
@@ -305,6 +306,8 @@ test('old-format persisted state without the five new ledger fields loads with d
   expect(loaded.ledger.lessonAims).toEqual({});
   expect(loaded.ledger.ruleCompressions).toEqual({});
   expect(loaded.ledger.runCommitments).toEqual({});
+  expect(loaded.ledger.confidenceHints).toEqual([]);
+  expect(loaded.ledger.rubricProposals).toEqual([]);
 });
 
 test('v1 record without ACTOR lesson-text fields loads with empty records', () => {

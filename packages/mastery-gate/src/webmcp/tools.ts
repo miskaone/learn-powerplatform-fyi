@@ -82,13 +82,40 @@ const GATE_REGRESS_HINT =
 const RUBRIC_INTERVIEW_GUIDANCE =
   'MCQ coverage is sufficient but the gate has not passed — run the rubric interview now: ask 5–8 open questions across recall, connections, application, and transfer, one at a time, never answering for the learner. Then submit score_rubric with a 0–4 score per dimension and a verbatim evidence quote for each.';
 
+interface ProfileSuffixes {
+  hint: string;
+  brief: string;
+}
+
+function composeProfileSuffixes(engine: EngineFacade): ProfileSuffixes | null {
+  const fires = engine.getLearnerState().misconceptionFires;
+  const repeated = Object.keys(fires)
+    .filter((id) => fires[id] >= 2)
+    .sort((a, b) => (fires[b] - fires[a]) || (a < b ? -1 : a > b ? 1 : 0))
+    .slice(0, 3);
+  if (repeated.length === 0) {
+    return null;
+  }
+  const entries = repeated.map((id) => {
+    const name = engine.getMisconceptionBrief(id)?.name ?? id;
+    return { name, count: fires[id] };
+  });
+  const names = entries.map((e) => `"${e.name}"`).join(', ');
+  const history = entries.map((e) => `"${e.name}" (${e.count}x)`).join(', ');
+  return {
+    hint: ` Returning learner: they have repeatedly stumbled on ${names} — when a hint touches one of these, slow down and ground it in where they went wrong before.`,
+    brief: ` Returning learner fire history: ${history} — reference this history when you coach.`,
+  };
+}
+
 export function createToolset(
   engine: EngineFacade,
 ): Record<ToolName, ToolDescriptor> {
+  const suffixes = composeProfileSuffixes(engine);
   return {
     get_learner_state: descriptor(
       'get_learner_state',
-      'Read the learner\'s rubric scores, misconception fire counts, phase, gate status, attempt count, and their own written lesson aims, one-line rule compressions, and run commitments. Call at session start and again before choosing any coaching move. When a rule compression exists, critique it against the lesson\'s governing rule — what did they miss or overstate?',
+      'Read this first, every session — the learner\'s rubric scores, misconception fire counts, phase, gate status, attempt count, their written lesson aims, one-line rule compressions, and run commitments, PLUS coachingNotes (durable observations from previous coaching sessions, including yours) and a coachCalibration summary of how earlier confidence hints and rubric proposals matched engine outcomes. Call again before choosing any coaching move. When a rule compression exists, critique it against the lesson\'s governing rule — what did they miss or overstate?',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -126,15 +153,31 @@ export function createToolset(
     ),
     log_coaching_note: descriptor(
       'log_coaching_note',
-      'Persist a short coaching observation on the learner\'s ledger (survives reload; feeds the closing debrief). Call when you notice something worth remembering next session — a pattern, a breakthrough, a recurring confusion. Notes can never be used as rubric evidence.',
-      closedObject({ note: stringSchema() }, ['note']),
+      'Deposit a durable observation about HOW this learner learns — a pattern, a preference, a piece of their world worth remembering next session (kind: observation | preference | context; defaults to observation). Notes persist across sessions and replay to the next coach through get_learner_state, so write for your future self. Never answer content: the engine deterministically rejects notes naming question or option ids or quoting answer-option text (reason "answer-content"), and notes can never be used as rubric evidence.',
+      closedObject(
+        {
+          note: stringSchema(),
+          kind: {
+            type: 'string',
+            enum: ['observation', 'preference', 'context'],
+          },
+        },
+        ['note'],
+      ),
       async (input) => {
         const parsed = requireStrings(input, ['note'] as const);
         if (!parsed.ok) {
           return parsed.response;
         }
-        engine.logCoachingNote(parsed.value.note);
-        return textResponse({ ok: true });
+        const kindParsed = parseKind(input);
+        if (!kindParsed.ok) {
+          return kindParsed.response;
+        }
+        const result = engine.logCoachingNote(
+          parsed.value.note,
+          kindParsed.value,
+        );
+        return textResponse({ stored: result.stored, reason: result.reason });
       },
     ),
     get_current_question: descriptor(
@@ -185,6 +228,7 @@ export function createToolset(
               attemptsRemaining: verdict.attemptsRemaining,
               rationale: verdict.rationale,
               remediationAnchor: verdict.remediationAnchor,
+              defeatedMisconception: verdict.defeatedMisconception,
               toolChangeHint: SECOND_FIRE_HINT(misconceptionId),
             });
           }
@@ -202,7 +246,8 @@ export function createToolset(
     ),
     get_hint: descriptor(
       'get_hint',
-      'Request the next hint tier for the current question. Call only when the learner is stuck or routing says hint — the engine enforces the ladder and refuses tier 2 before a genuine first attempt. Re-voice the hint Socratically; never add answer information of your own.',
+      'Request the next hint tier for the current question. Call only when the learner is stuck or routing says hint — the engine enforces the ladder and refuses tier 2 before a genuine first attempt. Re-voice the hint Socratically, grounded in the learner\'s world — their stated aim, their work, what get_learner_state shows about their history; never add answer information of your own.' +
+        (suffixes === null ? '' : suffixes.hint),
       closedObject({ questionId: stringSchema() }, ['questionId']),
       async (input) => {
         const parsed = requireStrings(input, ['questionId'] as const);
@@ -285,7 +330,7 @@ export function createToolset(
     ),
     set_lesson_aim: descriptor(
       'set_lesson_aim',
-      'Record why the learner is here: "I\'m reading this because I need to ___". ASK for the aim as your FIRST question of every session, before any practice, and store the answer here (200 chars max). It persists per lesson — keyed "track" when the learner is on the hub rather than a lesson page — appears in get_learner_state, and can never be used as rubric evidence. Set it again if the learner\'s goal shifts.',
+      'Record why the learner is here: "I\'m reading this because I need to ___". ASK for the aim as your FIRST question of every session, before any practice, and store the answer here (200 chars max). It persists per lesson — keyed "track" when the learner is on the hub rather than a lesson page — appears in get_learner_state, and can never be used as rubric evidence. Set it again if the learner\'s goal shifts. Connect the aim to goals you already know this learner has — from their coaching notes and previous aims — and reflect that connection back to them.',
       closedObject({ aim: stringSchema() }, ['aim']),
       async (input) => {
         const parsed = requireStrings(input, ['aim'] as const);
@@ -309,7 +354,8 @@ export function createToolset(
     ),
     get_misconception_brief: descriptor(
       'get_misconception_brief',
-      'Fetch the contrast and Socratic seed questions for a misconception that has fired at least twice — this tool appears only then. Call when routing says coach or a miss repeats a misconception. Use the seeds one at a time and finish with the teach-back: the learner restates the corrected idea in their own words before you move on.',
+      'Fetch the contrast and Socratic seed questions for a misconception that has fired at least twice — this tool appears only then. Call when routing says coach or a miss repeats a misconception. Ground the contrast in the learner\'s world: connect it to their stated aim and what you know of their work. Use the seeds one at a time and finish with the teach-back: the learner restates the corrected idea in their own words before you move on.' +
+        (suffixes === null ? '' : suffixes.brief),
       closedObject({ misconceptionId: stringSchema() }, ['misconceptionId']),
       async (input) => {
         const parsed = requireStrings(input, ['misconceptionId'] as const);
@@ -630,6 +676,25 @@ function parseConfidence(
   return ok(confidence);
 }
 
+function parseKind(
+  input: unknown,
+): ParseResult<'observation' | 'preference' | 'context' | undefined> {
+  const obj = readObject(input);
+  if (obj === null) {
+    return fail('expected an object');
+  }
+  const kind = obj['kind'];
+  if (kind === undefined) {
+    return ok(undefined);
+  }
+  if (kind !== 'observation' && kind !== 'preference' && kind !== 'context') {
+    return fail(
+      'kind must be "observation", "preference", or "context"',
+    );
+  }
+  return ok(kind);
+}
+
 function parseEmpty(input: unknown): ParseResult<Record<string, never>> {
   const obj = readObject(input);
   if (obj === null) {
@@ -815,6 +880,21 @@ function publicLearnerState(state: LearnerStatePublic): LearnerStatePublic {
     lessonAims: copyStringRecord(state.lessonAims),
     ruleCompressions: copyStringRecord(state.ruleCompressions),
     runCommitments: copyStringRecord(state.runCommitments),
+    coachingNotes: state.coachingNotes.map((note) => ({
+      text: note.text,
+      kind: note.kind,
+    })),
+    coachCalibration:
+      state.coachCalibration === null
+        ? null
+        : {
+            confidenceHintCount: state.coachCalibration.confidenceHintCount,
+            confidenceAgreements: state.coachCalibration.confidenceAgreements,
+            highConfidenceMisses: state.coachCalibration.highConfidenceMisses,
+            rubricProposalCount: state.coachCalibration.rubricProposalCount,
+            rubricProposalsAccepted:
+              state.coachCalibration.rubricProposalsAccepted,
+          },
   };
 }
 
@@ -874,6 +954,13 @@ function publicVerdict(
     rationale: verdict.rationale,
     // Miss-only lesson-section anchor; not answer-key material.
     remediationAnchor: verdict.remediationAnchor,
+    defeatedMisconception:
+      verdict.defeatedMisconception === null
+        ? null
+        : {
+            id: verdict.defeatedMisconception.id,
+            name: verdict.defeatedMisconception.name,
+          },
   };
 }
 

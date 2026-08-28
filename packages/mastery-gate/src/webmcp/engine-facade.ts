@@ -20,6 +20,17 @@ export interface LearnerStatePublic {
   lessonAims: Record<string, string>;
   ruleCompressions: Record<string, string>;
   runCommitments: Record<string, string>;
+  coachingNotes: {
+    text: string;
+    kind: 'observation' | 'preference' | 'context';
+  }[];
+  coachCalibration: {
+    confidenceHintCount: number;
+    confidenceAgreements: number;
+    highConfidenceMisses: number;
+    rubricProposalCount: number;
+    rubricProposalsAccepted: number;
+  } | null;
 }
 
 export interface LessonTextResultPublic {
@@ -68,6 +79,12 @@ export interface SubmitAnswerVerdictPublic {
    * section; carries no answer-key material.
    */
   remediationAnchor: string | null;
+  /**
+   * Present only on a correct practice verdict: the distractor-myth this
+   * correct answer defeats (id + public name). Never present mid-exam or on
+   * a miss. Names are post-fire-public material — no new leak surface.
+   */
+  defeatedMisconception: { id: string; name: string } | null;
 }
 
 export interface HintResultPublic {
@@ -211,7 +228,10 @@ export interface EngineFacade {
    * rubric evidence corpus; engine-guarded against exam-mode writes.
    */
   setRunCommitment(text: string): LessonTextResultPublic;
-  logCoachingNote(note: string): void;
+  logCoachingNote(
+    note: string,
+    kind?: 'observation' | 'preference' | 'context',
+  ): { stored: boolean; reason: string | null };
   navigateToAnchor(anchor: string): NavigateResultPublic;
   getMisconceptionBrief(misconceptionId: string): Misconception | null;
   mutateAssumption(

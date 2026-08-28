@@ -207,11 +207,16 @@ test('roster ordering: watcher and registry.getRegisteredNames agree on canonica
   const stubEngine = new Proxy(
     {},
     {
-      get:
-        () =>
-        () => {
+      get: (_target, prop) => {
+        // createToolset snapshots repeated-misconception names at
+        // registration time (ISC-74); everything else stays unused here.
+        if (prop === 'getLearnerState') {
+          return () => ({ misconceptionFires: {} });
+        }
+        return () => {
           throw new Error('not called in this test');
-        },
+        };
+      },
     },
   );
   const registry = new ToolRegistry(

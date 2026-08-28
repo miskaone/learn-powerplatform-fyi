@@ -129,6 +129,8 @@ describe('MasteryEngineFacade', () => {
     expect(Object.keys(state).sort()).toEqual(
       [
         'attemptCount',
+        'coachCalibration',
+        'coachingNotes',
         'gatePassed',
         'lessonAims',
         'misconceptionFires',

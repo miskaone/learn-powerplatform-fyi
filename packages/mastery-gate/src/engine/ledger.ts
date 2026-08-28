@@ -1,5 +1,7 @@
 import type {
   AttemptRecord,
+  CoachNote,
+  ConfidenceHintRecord,
   DebriefSegment,
   DebriefState,
   DrillResultRecord,
@@ -7,6 +9,7 @@ import type {
   ExamState,
   ExamVerdict,
   Ledger,
+  RubricProposalRecord,
 } from '../schema';
 import type { GradeResult } from './grading';
 
@@ -14,6 +17,7 @@ import type { GradeResult } from './grading';
 export const MAX_COACH_NOTES = 50;
 export const MAX_COACH_NOTE_LENGTH = 500;
 export const MAX_LEARNER_NAME_LENGTH = 40;
+export const MAX_AGENT_REPORT_RECORDS = 50;
 
 /** Storage sanity caps for learner-authored ACTOR lesson text. */
 export const MAX_LESSON_AIM_LENGTH = 200;
@@ -25,12 +29,23 @@ export const MAX_LESSON_TEXT_ENTRIES = 24;
  * Clamp coaching notes to the storage caps: each note truncated to
  * MAX_COACH_NOTE_LENGTH chars, only the most recent MAX_COACH_NOTES kept.
  */
-export function clampCoachNotes(notes: readonly string[]): string[] {
-  const clamped = notes.map((note) => note.slice(0, MAX_COACH_NOTE_LENGTH));
+export function clampCoachNotes(notes: readonly CoachNote[]): CoachNote[] {
+  const clamped = notes.map((note) => ({
+    text: note.text.slice(0, MAX_COACH_NOTE_LENGTH),
+    kind: note.kind,
+  }));
   if (clamped.length <= MAX_COACH_NOTES) {
     return clamped;
   }
   return clamped.slice(clamped.length - MAX_COACH_NOTES);
+}
+
+/** Keep only the most recent MAX_AGENT_REPORT_RECORDS. */
+export function clampAgentReportRecords<T>(records: readonly T[]): T[] {
+  if (records.length <= MAX_AGENT_REPORT_RECORDS) {
+    return records.slice();
+  }
+  return records.slice(records.length - MAX_AGENT_REPORT_RECORDS);
 }
 
 export function createEmptyLedger(): Ledger {
@@ -44,6 +59,8 @@ export function createEmptyLedger(): Ledger {
       transfer: 0,
     },
     coachNotes: [],
+    confidenceHints: [],
+    rubricProposals: [],
     phase: 'lesson',
     drillResults: [],
     activeDrill: null,
@@ -122,6 +139,31 @@ function cloneAttempt(attempt: AttemptRecord): AttemptRecord {
     correct: attempt.correct,
     misconceptionId: attempt.misconceptionId,
     timestamp: attempt.timestamp,
+  };
+}
+
+function cloneCoachNote(note: CoachNote): CoachNote {
+  return {
+    text: note.text,
+    kind: note.kind,
+  };
+}
+
+function cloneConfidenceHint(record: ConfidenceHintRecord): ConfidenceHintRecord {
+  return {
+    confidence: record.confidence,
+    lastCorrect: record.lastCorrect,
+    timestamp: record.timestamp,
+  };
+}
+
+function cloneRubricProposal(
+  record: RubricProposalRecord,
+): RubricProposalRecord {
+  return {
+    accepted: record.accepted,
+    gatePassed: record.gatePassed,
+    timestamp: record.timestamp,
   };
 }
 
@@ -223,7 +265,9 @@ export function cloneLedger(ledger: Ledger): Ledger {
       application: ledger.scores.application,
       transfer: ledger.scores.transfer,
     },
-    coachNotes: ledger.coachNotes.slice(),
+    coachNotes: ledger.coachNotes.map(cloneCoachNote),
+    confidenceHints: ledger.confidenceHints.map(cloneConfidenceHint),
+    rubricProposals: ledger.rubricProposals.map(cloneRubricProposal),
     phase: ledger.phase,
     drillResults: ledger.drillResults.map(cloneDrillResult),
     activeDrill: cloneActiveDrill(ledger.activeDrill),

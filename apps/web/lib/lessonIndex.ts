@@ -54,12 +54,18 @@ export function anchorOwnerSlug(anchor: string): string | null {
   return ANCHOR_OWNER_BY_ID.get(anchor) ?? null;
 }
 
+export function lessonForQuestion(
+  questionId: string,
+): LessonIndexEntry | null {
+  return LESSON_BY_QUESTION_ID.get(questionId) ?? null;
+}
+
 /**
  * The governing-rule anchor of the lesson that owns a question — the
  * same-lesson fallback for review/coach routing when no misconception-
  * specific anchor is available (cross-review finding 3).
  */
 export function ruleAnchorForQuestion(questionId: string): string | null {
-  const entry = LESSON_BY_QUESTION_ID.get(questionId);
+  const entry = lessonForQuestion(questionId);
   return entry ? `${entry.slug}-rule` : null;
 }

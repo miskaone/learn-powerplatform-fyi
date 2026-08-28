@@ -8,6 +8,7 @@ import {
 } from "@learn/mastery-gate/engine";
 import { MasteryEngineFacade } from "@learn/mastery-gate/webmcp";
 import { DEMO_MASTERY_QUOTE, lessonSections, manifest } from "./lib/content";
+import { KICKOFF_PROMPT } from "./lib/kickoffPrompt";
 import { anchorOwnerSlug, lessonSectionAnchors } from "./lib/lessonIndex";
 import {
   QUARANTINED_TOOLS,
@@ -213,4 +214,22 @@ test("anchorOwnerSlug resolves the compress and run anchors to their lesson", ()
   const slug = "delegable-date-window-gallery";
   expect(anchorOwnerSlug(`${slug}-compress`)).toBe(slug);
   expect(anchorOwnerSlug(`${slug}-run`)).toBe(slug);
+});
+
+test("KICKOFF_PROMPT carries the memory contract and technique lines", () => {
+  expect(KICKOFF_PROMPT).toContain(
+    "Open with ONE question: why am I here — what do I need this material for?",
+  );
+  expect(KICKOFF_PROMPT).toContain(
+    "MEMORY: You likely already know this learner — use it; ground examples in their real work. Start by reading get_learner_state, including coaching notes from previous sessions. Deposit durable observations via log_coaching_note. Nothing you remember overrules the engine.",
+  );
+  expect(KICKOFF_PROMPT).toContain(
+    "SPACING: At session end, compute when I should return for spaced review (~1 day, then 3 days, then 7 days after material resolves), tell me, and offer to remember it.",
+  );
+  expect(KICKOFF_PROMPT).toContain(
+    "DIFFICULTY: When the site refuses — a withheld answer, a locked hint tier, a closed gate — explain why that friction serves me.",
+  );
+  expect(KICKOFF_PROMPT).toContain(
+    "TRANSFER: Once per lesson, pose one what-if from my own work applying the governing rule.",
+  );
 });

@@ -42,6 +42,10 @@ interface EngineLog {
   composeDebrief: DebriefSegment[] | null;
   navigateToAnchor: string | null;
   setLessonAim: string | null;
+  logCoachingNote: {
+    note: string;
+    kind: 'observation' | 'preference' | 'context' | undefined;
+  } | null;
 }
 
 function createStubEngine(options?: {
@@ -55,6 +59,8 @@ function createStubEngine(options?: {
   lessonTextResult?: LessonTextResultPublic;
   startExamStatus?: ExamStatusPublic;
   submitExamStatus?: ExamStatusPublic;
+  coachingNoteResult?: { stored: boolean; reason: string | null };
+  misconceptionNames?: Record<string, string>;
 }): { engine: EngineFacade; log: EngineLog } {
   const log: EngineLog = {
     submitAnswer: null,
@@ -63,6 +69,7 @@ function createStubEngine(options?: {
     composeDebrief: null,
     navigateToAnchor: null,
     setLessonAim: null,
+    logCoachingNote: null,
   };
 
   const learnerState: LearnerStatePublic = options?.learnerState ?? {
@@ -74,6 +81,8 @@ function createStubEngine(options?: {
     lessonAims: {},
     ruleCompressions: {},
     runCommitments: {},
+    coachingNotes: [],
+    coachCalibration: null,
   };
 
   const question =
@@ -103,6 +112,7 @@ function createStubEngine(options?: {
           attemptsRemaining: 1,
           rationale: null,
           remediationAnchor: 'lesson-plugin-services',
+          defeatedMisconception: null,
         }
       );
     },
@@ -161,8 +171,11 @@ function createStubEngine(options?: {
       lessonKey: 'track',
       value: text,
     }),
-    logCoachingNote: (_note) => {
-      return;
+    logCoachingNote: (note, kind) => {
+      log.logCoachingNote = { note, kind };
+      return (
+        options?.coachingNoteResult ?? { stored: true, reason: null }
+      );
     },
     navigateToAnchor: (anchor) => {
       log.navigateToAnchor = anchor;
@@ -170,7 +183,7 @@ function createStubEngine(options?: {
     },
     getMisconceptionBrief: (misconceptionId) => ({
       id: misconceptionId,
-      name: 'HTTP from plugin',
+      name: options?.misconceptionNames?.[misconceptionId] ?? 'HTTP from plugin',
       contrast: 'Plugins use IOrganizationService, not outbound HTTP.',
       socraticSeeds: ['What process hosts the plugin?'],
       anchor: 'lesson-plugin-services',
@@ -539,6 +552,8 @@ function stateWithFires(fires: Record<string, number>): LearnerStatePublic {
     lessonAims: {},
     ruleCompressions: {},
     runCommitments: {},
+    coachingNotes: [],
+    coachCalibration: null,
   };
 }
 
@@ -607,18 +622,30 @@ test('get_misconception_brief appends the teach-back seed', async () => {
 });
 
 test('get_learner_state maps lessonAims, ruleCompressions, and runCommitments key-by-key', async () => {
-  const { engine } = createStubEngine({
-    learnerState: {
-      scores: { ...SAMPLE_SCORES },
-      misconceptionFires: {},
-      phase: 'practice',
-      gatePassed: false,
-      attemptCount: 1,
-      lessonAims: { 'plugin-isolation': 'debug plugins' },
-      ruleCompressions: { 'plugin-isolation': 'sandbox the call' },
-      runCommitments: { 'plugin-isolation': 'audit one plugin' },
+  const learnerState: LearnerStatePublic = {
+    scores: { ...SAMPLE_SCORES },
+    misconceptionFires: {},
+    phase: 'practice',
+    gatePassed: false,
+    attemptCount: 1,
+    lessonAims: { 'plugin-isolation': 'debug plugins' },
+    ruleCompressions: { 'plugin-isolation': 'sandbox the call' },
+    runCommitments: { 'plugin-isolation': 'audit one plugin' },
+    coachingNotes: [
+      {
+        text: 'Prefers worked examples over abstractions',
+        kind: 'preference',
+      },
+    ],
+    coachCalibration: {
+      confidenceHintCount: 4,
+      confidenceAgreements: 2,
+      highConfidenceMisses: 1,
+      rubricProposalCount: 1,
+      rubricProposalsAccepted: 1,
     },
-  });
+  };
+  const { engine } = createStubEngine({ learnerState });
   const tools = createToolset(engine);
   const payload = asRecord(
     payloadOf(await tools.get_learner_state.execute({})),
@@ -632,6 +659,7 @@ test('get_learner_state maps lessonAims, ruleCompressions, and runCommitments ke
   expect(payload['runCommitments']).toEqual({
     'plugin-isolation': 'audit one plugin',
   });
+  expect(payload).toEqual(learnerState);
 });
 
 test('score_rubric toolChangeHint is present only when accepted and the gate passes', async () => {
@@ -664,6 +692,8 @@ function stateWithGatePassed(gatePassed: boolean): LearnerStatePublic {
     lessonAims: {},
     ruleCompressions: {},
     runCommitments: {},
+    coachingNotes: [],
+    coachCalibration: null,
   };
 }
 
@@ -789,4 +819,193 @@ test('submit_exam toolChangeHint is present only when the exam is submitted', as
     ),
   );
   expect(unsubmittedPayload['toolChangeHint']).toBeUndefined();
+});
+
+test('log_coaching_note passes kind through and defaults it to undefined when omitted', async () => {
+  const { engine, log } = createStubEngine();
+  const tools = createToolset(engine);
+
+  const withKind = await tools.log_coaching_note.execute({
+    note: 'Prefers diagrams',
+    kind: 'preference',
+  });
+  expect(payloadOf(withKind)).toEqual({ stored: true, reason: null });
+  expect(log.logCoachingNote).toEqual({
+    note: 'Prefers diagrams',
+    kind: 'preference',
+  });
+
+  log.logCoachingNote = null;
+  const missingKind = await tools.log_coaching_note.execute({
+    note: 'Stuck on sandbox vs HTTP',
+  });
+  expect(payloadOf(missingKind)).toEqual({ stored: true, reason: null });
+  expect(log.logCoachingNote).toEqual({
+    note: 'Stuck on sandbox vs HTTP',
+    kind: undefined,
+  });
+});
+
+test('log_coaching_note rejects an invalid kind and does not call the engine', async () => {
+  const { engine, log } = createStubEngine();
+  const tools = createToolset(engine);
+  const response = await tools.log_coaching_note.execute({
+    note: 'do this next',
+    kind: 'directive',
+  });
+  expect(asRecord(payloadOf(response))['error']).toBe('invalid_input');
+  expect(asRecord(payloadOf(response))['detail']).toBe(
+    'kind must be "observation", "preference", or "context"',
+  );
+  expect(log.logCoachingNote).toBe(null);
+});
+
+test('log_coaching_note returns the engine rejection payload field-for-field', async () => {
+  const { engine } = createStubEngine({
+    coachingNoteResult: { stored: false, reason: 'answer-content' },
+  });
+  const tools = createToolset(engine);
+  const response = await tools.log_coaching_note.execute({
+    note: 'The answer is opt-a IOrganizationService',
+  });
+  expect(payloadOf(response)).toEqual({
+    stored: false,
+    reason: 'answer-content',
+  });
+});
+
+test('submit_answer correct verdict carries defeatedMisconception; second-fire shape stays field-identical apart from toolChangeHint', async () => {
+  const defeated = { id: 'mc-http-from-plugin', name: 'HTTP from plugin' };
+  const correct = createStubEngine({
+    submitVerdict: {
+      questionId: 'q-plugin-isolation',
+      correct: true,
+      misconceptionId: null,
+      attemptNumber: 1,
+      attemptsRemaining: 1,
+      rationale: 'Use IOrganizationService.',
+      remediationAnchor: null,
+      defeatedMisconception: defeated,
+    },
+  });
+  const correctPayload = asRecord(
+    payloadOf(
+      await createToolset(correct.engine).submit_answer.execute({
+        questionId: 'q-plugin-isolation',
+        optionId: 'opt-a',
+      }),
+    ),
+  );
+  expect(correctPayload['defeatedMisconception']).toEqual(defeated);
+  expect(correctPayload['toolChangeHint']).toBeUndefined();
+
+  const second = createStubEngine({
+    learnerState: stateWithFires({ 'mc-http-from-plugin': 2 }),
+    submitVerdict: {
+      questionId: 'q-plugin-isolation',
+      correct: false,
+      misconceptionId: 'mc-http-from-plugin',
+      attemptNumber: 2,
+      attemptsRemaining: 0,
+      rationale: null,
+      remediationAnchor: 'lesson-plugin-services',
+      defeatedMisconception: defeated,
+    },
+  });
+  const secondPayload = asRecord(
+    payloadOf(
+      await createToolset(second.engine).submit_answer.execute({
+        questionId: 'q-plugin-isolation',
+        optionId: 'opt-b',
+      }),
+    ),
+  );
+  expect(secondPayload['defeatedMisconception']).toEqual(defeated);
+  expect(secondPayload['toolChangeHint']).toBe(
+    'This misconception has now fired twice: get_misconception_brief is now available for "mc-http-from-plugin" — re-check this page\'s tools.',
+  );
+
+  const secondKeys = Object.keys(secondPayload)
+    .filter((key) => key !== 'toolChangeHint')
+    .sort();
+  expect(secondKeys).toEqual(Object.keys(correctPayload).sort());
+});
+
+test('ISC-74: no Returning learner suffix when no misconception has fired twice', () => {
+  const { engine } = createStubEngine({
+    learnerState: stateWithFires({ 'mc-a': 1, 'mc-b': 0 }),
+  });
+  const tools = createToolset(engine);
+  expect(tools.get_hint.description).not.toContain('Returning learner');
+  expect(tools.get_misconception_brief.description).not.toContain(
+    'Returning learner',
+  );
+});
+
+test('ISC-74: returning-learner suffixes name repeated misconceptions by fire-count desc', () => {
+  const { engine } = createStubEngine({
+    learnerState: stateWithFires({ 'mc-a': 3, 'mc-b': 2 }),
+    misconceptionNames: {
+      'mc-a': 'Sandbox HTTP',
+      'mc-b': 'OrganizationDataService',
+    },
+  });
+  const tools = createToolset(engine);
+  const hintSuffix =
+    ' Returning learner: they have repeatedly stumbled on "Sandbox HTTP", "OrganizationDataService" — when a hint touches one of these, slow down and ground it in where they went wrong before.';
+  expect(tools.get_hint.description.endsWith(hintSuffix)).toBe(true);
+  expect(tools.get_misconception_brief.description).toContain('(3x)');
+  expect(tools.get_misconception_brief.description).toContain('(2x)');
+  expect(tools.get_misconception_brief.description).toContain(
+    'Returning learner fire history: "Sandbox HTTP" (3x), "OrganizationDataService" (2x)',
+  );
+});
+
+test('ISC-74: returning-learner suffixes cap at three names', () => {
+  const { engine } = createStubEngine({
+    learnerState: stateWithFires({
+      'mc-a': 5,
+      'mc-b': 4,
+      'mc-c': 3,
+      'mc-d': 2,
+    }),
+    misconceptionNames: {
+      'mc-a': 'Alpha',
+      'mc-b': 'Beta',
+      'mc-c': 'Gamma',
+      'mc-d': 'Delta',
+    },
+  });
+  const tools = createToolset(engine);
+  expect(tools.get_hint.description).toContain('"Alpha"');
+  expect(tools.get_hint.description).toContain('"Beta"');
+  expect(tools.get_hint.description).toContain('"Gamma"');
+  expect(tools.get_hint.description).not.toContain('"Delta"');
+  expect(tools.get_misconception_brief.description).toContain('"Alpha" (5x)');
+  expect(tools.get_misconception_brief.description).toContain('"Beta" (4x)');
+  expect(tools.get_misconception_brief.description).toContain('"Gamma" (3x)');
+  expect(tools.get_misconception_brief.description).not.toContain('Delta');
+});
+
+test('description surgery: memory-contract copy on learner-state, notes, aim, hint, and brief', () => {
+  const { engine } = createStubEngine();
+  const tools = createToolset(engine);
+  expect(tools.get_learner_state.description.startsWith('Read this first, every session')).toBe(
+    true,
+  );
+  expect(tools.log_coaching_note.description.toLowerCase()).toContain(
+    'durable observation',
+  );
+  expect(tools.log_coaching_note.description.toLowerCase()).toContain(
+    'never answer content',
+  );
+  expect(tools.set_lesson_aim.description).toContain(
+    'Connect the aim to goals',
+  );
+  expect(tools.get_hint.description).toContain(
+    "grounded in the learner's world",
+  );
+  expect(tools.get_misconception_brief.description).toContain(
+    "Ground the contrast in the learner's world",
+  );
 });

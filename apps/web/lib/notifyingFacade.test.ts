@@ -18,6 +18,8 @@ const STATE = {
   lessonAims: {},
   ruleCompressions: {},
   runCommitments: {},
+  coachingNotes: [],
+  coachCalibration: null,
 } as const;
 
 const EXAM_STATUS = {
@@ -54,6 +56,7 @@ function succeedingFacade(): EngineFacade {
       attemptsRemaining: 1,
       rationale: null,
       remediationAnchor: null,
+      defeatedMisconception: null,
     }),
     getHint: () => ({ granted: false, tier: null, hint: null, refusal: "x" }),
     requestNextAction: () => "continue",
@@ -86,7 +89,7 @@ function succeedingFacade(): EngineFacade {
       lessonKey: "track",
       value: text,
     }),
-    logCoachingNote: () => {},
+    logCoachingNote: () => ({ stored: true, reason: null }),
     navigateToAnchor: (anchor) => ({ ok: true, anchor }),
     getMisconceptionBrief: () => null,
     mutateAssumption: (scenarioId) => ({
@@ -236,6 +239,43 @@ test("lesson-text setters notify once when stored and never when refused", () =>
       `${name}:refused:0`,
     );
   }
+});
+
+test("logCoachingNote passes kind through and notifies only when stored", () => {
+  let storedNotifications = 0;
+  const storedCalls: Array<{
+    note: string;
+    kind?: "observation" | "preference" | "context";
+  }> = [];
+  const storedInner = succeedingFacade();
+  storedInner.logCoachingNote = (note, kind) => {
+    storedCalls.push({ note, kind });
+    return { stored: true, reason: null };
+  };
+  const storedFacade = new NotifyingFacade(storedInner, () => {
+    storedNotifications += 1;
+  });
+  expect(
+    storedFacade.logCoachingNote("prefers worked examples first", "preference"),
+  ).toEqual({ stored: true, reason: null });
+  expect(storedCalls).toEqual([
+    { note: "prefers worked examples first", kind: "preference" },
+  ]);
+  expect(storedNotifications).toBe(1);
+
+  let refusedNotifications = 0;
+  const refusedInner = succeedingFacade();
+  refusedInner.logCoachingNote = () => ({
+    stored: false,
+    reason: "answer-content",
+  });
+  const refusedFacade = new NotifyingFacade(refusedInner, () => {
+    refusedNotifications += 1;
+  });
+  expect(
+    refusedFacade.logCoachingNote("ml13-q1 was hard", "observation"),
+  ).toEqual({ stored: false, reason: "answer-content" });
+  expect(refusedNotifications).toBe(0);
 });
 
 test("getRegistrySnapshot passes through without notifying", () => {

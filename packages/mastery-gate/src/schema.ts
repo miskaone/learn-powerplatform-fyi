@@ -186,12 +186,44 @@ export interface DebriefState {
   currentIndex: number; // 0 = first segment is current
 }
 
+/** Kind of a durable coaching note (memory contract, ISC-75). */
+export type CoachNoteKind = 'observation' | 'preference' | 'context';
+
+/** One durable agent-authored coaching note. */
+export interface CoachNote {
+  text: string;
+  kind: CoachNoteKind;
+}
+
+/** One recorded agent confidence hint, logged against the outcome it referred to (ISC-73). */
+export interface ConfidenceHintRecord {
+  confidence: 'low' | 'high';
+  /** Correctness of the last graded attempt at the moment of the hint; null if none existed. */
+  lastCorrect: boolean | null;
+  timestamp: number;
+}
+
+/** One recorded rubric proposal outcome (ISC-73). */
+export interface RubricProposalRecord {
+  accepted: boolean;
+  /** Gate state after the proposal was applied (accepted) or current gate state (rejected). */
+  gatePassed: boolean;
+  timestamp: number;
+}
+
 /** Authoritative learner state the engine owns; agent input is untrusted against this. */
 export interface Ledger {
   attempts: AttemptRecord[];
   misconceptionFires: Record<string, number>;
   scores: RubricScores;
-  coachNotes: string[];
+  coachNotes: CoachNote[];
+  /**
+   * Agent report card (ISC-73): append-only records of the agent's confidence
+   * hints and rubric proposals against engine outcomes. Deterministic
+   * bookkeeping only — NEVER read by routing, grading, or the gate.
+   */
+  confidenceHints: ConfidenceHintRecord[];
+  rubricProposals: RubricProposalRecord[];
   phase: ToolPhase;
   drillResults: DrillResultRecord[];
   activeDrill: DrillSessionState | null;

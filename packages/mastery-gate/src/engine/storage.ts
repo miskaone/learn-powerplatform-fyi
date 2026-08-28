@@ -1,5 +1,8 @@
 import type {
   AttemptRecord,
+  CoachNote,
+  CoachNoteKind,
+  ConfidenceHintRecord,
   DebriefSegment,
   DebriefSegmentKind,
   DebriefState,
@@ -8,6 +11,7 @@ import type {
   ExamState,
   ExamVerdict,
   Ledger,
+  RubricProposalRecord,
   RubricScore,
   StorageAdapter,
   ToolPhase,
@@ -16,8 +20,10 @@ import { MAX_SCRIPT_LINE_LENGTH } from '../schema';
 import type { GradeResult } from './grading';
 import type { HintState } from './hints';
 import {
+  clampAgentReportRecords,
   clampCoachNotes,
   clampLessonTextRecord,
+  MAX_COACH_NOTE_LENGTH,
   MAX_LEARNER_NAME_LENGTH,
   MAX_LESSON_AIM_LENGTH,
   MAX_RULE_COMPRESSION_LENGTH,
@@ -580,13 +586,20 @@ function validateLedger(value: unknown, now: number): Ledger | null {
   ) {
     return null;
   }
-  if (
-    !Array.isArray(coachNotes) ||
-    coachNotes.some((note) => typeof note !== 'string')
-  ) {
+  const validatedCoachNotes = validateCoachNotes(coachNotes);
+  if (validatedCoachNotes === null) {
     return null;
   }
   if (!isToolPhase(phase)) {
+    return null;
+  }
+
+  const confidenceHints = validateConfidenceHints(value.confidenceHints);
+  if (confidenceHints === null) {
+    return null;
+  }
+  const rubricProposals = validateRubricProposals(value.rubricProposals);
+  if (rubricProposals === null) {
     return null;
   }
 
@@ -686,7 +699,9 @@ function validateLedger(value: unknown, now: number): Ledger | null {
     misconceptionFires: { ...misconceptionFires },
     scores: { recall, connections, application, transfer },
     // Tampered/oversized persisted notes are clamped, not rejected.
-    coachNotes: clampCoachNotes(coachNotes as string[]),
+    coachNotes: validatedCoachNotes,
+    confidenceHints,
+    rubricProposals,
     phase,
     drillResults,
     activeDrill,
@@ -697,6 +712,101 @@ function validateLedger(value: unknown, now: number): Ledger | null {
     ruleCompressions,
     runCommitments,
   };
+}
+
+function isCoachNoteKind(value: unknown): value is CoachNoteKind {
+  return (
+    value === 'observation' || value === 'preference' || value === 'context'
+  );
+}
+
+function validateCoachNotes(value: unknown): CoachNote[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const notes: CoachNote[] = [];
+  for (const entry of value) {
+    if (typeof entry === 'string') {
+      notes.push({
+        text: entry.slice(0, MAX_COACH_NOTE_LENGTH),
+        kind: 'observation',
+      });
+      continue;
+    }
+    if (
+      !isRecord(entry) ||
+      typeof entry.text !== 'string' ||
+      !isCoachNoteKind(entry.kind)
+    ) {
+      return null;
+    }
+    notes.push({
+      text: entry.text.slice(0, MAX_COACH_NOTE_LENGTH),
+      kind: entry.kind,
+    });
+  }
+  return clampCoachNotes(notes);
+}
+
+function validateConfidenceHints(value: unknown): ConfidenceHintRecord[] | null {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const records: ConfidenceHintRecord[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) {
+      return null;
+    }
+    const { confidence, lastCorrect, timestamp } = entry;
+    if (confidence !== 'low' && confidence !== 'high') {
+      return null;
+    }
+    if (lastCorrect !== null && typeof lastCorrect !== 'boolean') {
+      return null;
+    }
+    if (!isFiniteNumber(timestamp)) {
+      return null;
+    }
+    records.push({
+      confidence,
+      lastCorrect,
+      timestamp,
+    });
+  }
+  return clampAgentReportRecords(records);
+}
+
+function validateRubricProposals(
+  value: unknown,
+): RubricProposalRecord[] | null {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const records: RubricProposalRecord[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) {
+      return null;
+    }
+    const { accepted, gatePassed, timestamp } = entry;
+    if (typeof accepted !== 'boolean' || typeof gatePassed !== 'boolean') {
+      return null;
+    }
+    if (!isFiniteNumber(timestamp)) {
+      return null;
+    }
+    records.push({
+      accepted,
+      gatePassed,
+      timestamp,
+    });
+  }
+  return clampAgentReportRecords(records);
 }
 
 function validateLessonTextField(

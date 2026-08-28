@@ -197,8 +197,11 @@ test('coaching notes persist on the ledger and round-trip through a reload', () 
   engine.logCoachingNote('Learner conflates pre-validation with pre-operation.');
   engine.logCoachingNote('  second note with padding  ');
   expect(engine.getCoachNotes()).toEqual([
-    'Learner conflates pre-validation with pre-operation.',
-    'second note with padding',
+    {
+      text: 'Learner conflates pre-validation with pre-operation.',
+      kind: 'observation',
+    },
+    { text: 'second note with padding', kind: 'observation' },
   ]);
 
   // Reload: a fresh engine on the same adapter restores the notes.
@@ -206,8 +209,11 @@ test('coaching notes persist on the ledger and round-trip through a reload', () 
     now: () => 2000,
   });
   expect(resumed.getCoachNotes()).toEqual([
-    'Learner conflates pre-validation with pre-operation.',
-    'second note with padding',
+    {
+      text: 'Learner conflates pre-validation with pre-operation.',
+      kind: 'observation',
+    },
+    { text: 'second note with padding', kind: 'observation' },
   ]);
 });
 
@@ -223,7 +229,7 @@ test('coaching notes are validated, clamped to 500 chars, and capped at the last
 
   // Over-long notes clamp to 500 characters.
   engine.logCoachingNote('x'.repeat(900));
-  expect(engine.getCoachNotes()[0]!.length).toBe(500);
+  expect(engine.getCoachNotes()[0]!.text.length).toBe(500);
 
   // Only the most recent 50 notes are kept.
   for (let i = 0; i < 60; i += 1) {
@@ -231,8 +237,8 @@ test('coaching notes are validated, clamped to 500 chars, and capped at the last
   }
   const notes = engine.getCoachNotes();
   expect(notes.length).toBe(50);
-  expect(notes[0]).toBe('note-10');
-  expect(notes[49]).toBe('note-59');
+  expect(notes[0]!.text).toBe('note-10');
+  expect(notes[49]!.text).toBe('note-59');
 
   // The cap also holds through persistence.
   const resumed = new MasteryEngine(FIXTURE_MANIFEST, adapter);

@@ -74,9 +74,15 @@ export class NotifyingFacade implements EngineFacade {
     return result;
   }
 
-  logCoachingNote(note: string) {
-    this.inner.logCoachingNote(note);
-    this.notify();
+  logCoachingNote(
+    note: string,
+    kind?: "observation" | "preference" | "context",
+  ) {
+    const result = this.inner.logCoachingNote(note, kind);
+    if (result.stored === true) {
+      this.notify();
+    }
+    return result;
   }
 
   navigateToAnchor(anchor: string) {

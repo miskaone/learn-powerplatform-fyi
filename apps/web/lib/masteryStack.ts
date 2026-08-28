@@ -206,6 +206,19 @@ function startRuntimeDetection(
       onStuckRevocation: () => onEngineMutation(),
     });
     stack.watcher = new ToolSurfaceWatcher(late);
+    // Late binding IS registration time: the registry above just composed
+    // its descriptors (incl. the ISC-74 returning-learner suffixes) from the
+    // profile as it stands NOW. Rebuild the roster meta from the same state
+    // so the on-page descriptions match what actually registered — the meta
+    // captured at stack creation could predate profile changes.
+    const lateToolset = createToolset(facade);
+    for (const name of Object.keys(lateToolset)) {
+      const descriptor = lateToolset[name as ToolName];
+      stack.toolMeta[name] = {
+        description: descriptor.description,
+        dynamic: (DYNAMIC_TOOL_NAMES as readonly string[]).includes(name),
+      };
+    }
     stack.agentRuntimeDetected = true;
     stop();
     onRuntimeDetected?.();

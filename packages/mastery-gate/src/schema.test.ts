@@ -91,6 +91,8 @@ test("empty Ledger typechecks with phase 'lesson' and all four rubric dimensions
       transfer: 0,
     },
     coachNotes: [],
+    confidenceHints: [],
+    rubricProposals: [],
     phase: 'lesson',
     drillResults: [],
     activeDrill: null,

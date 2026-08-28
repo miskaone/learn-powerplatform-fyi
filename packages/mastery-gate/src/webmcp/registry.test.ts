@@ -63,6 +63,8 @@ function createStubEngine(options?: {
     lessonAims: {},
     ruleCompressions: {},
     runCommitments: {},
+    coachingNotes: [],
+    coachCalibration: null,
   };
 
   const question =
@@ -93,6 +95,7 @@ function createStubEngine(options?: {
           attemptsRemaining: 1,
           rationale: null,
           remediationAnchor: 'lesson-plugin-services',
+          defeatedMisconception: null,
         }
       );
     },
@@ -141,7 +144,7 @@ function createStubEngine(options?: {
       value: text,
     }),
     logCoachingNote: (_note) => {
-      return;
+      return { stored: true, reason: null };
     },
     navigateToAnchor: (anchor) => {
       log.navigateToAnchor = anchor;

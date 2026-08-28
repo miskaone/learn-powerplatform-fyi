@@ -102,6 +102,21 @@ export class MasteryEngineFacade implements EngineFacade {
       lessonAims: copyStringRecord(state.lessonAims),
       ruleCompressions: copyStringRecord(state.ruleCompressions),
       runCommitments: copyStringRecord(state.runCommitments),
+      coachingNotes: state.coachingNotes.map((note) => ({
+        text: note.text,
+        kind: note.kind,
+      })),
+      coachCalibration:
+        state.coachCalibration === null
+          ? null
+          : {
+              confidenceHintCount: state.coachCalibration.confidenceHintCount,
+              confidenceAgreements: state.coachCalibration.confidenceAgreements,
+              highConfidenceMisses: state.coachCalibration.highConfidenceMisses,
+              rubricProposalCount: state.coachCalibration.rubricProposalCount,
+              rubricProposalsAccepted:
+                state.coachCalibration.rubricProposalsAccepted,
+            },
     };
   }
 
@@ -153,6 +168,13 @@ export class MasteryEngineFacade implements EngineFacade {
       ),
       rationale: verdict.rationale,
       remediationAnchor: verdict.remediationAnchor,
+      defeatedMisconception:
+        verdict.defeatedMisconception === null
+          ? null
+          : {
+              id: verdict.defeatedMisconception.id,
+              name: verdict.defeatedMisconception.name,
+            },
     };
   }
 
@@ -263,11 +285,15 @@ export class MasteryEngineFacade implements EngineFacade {
     };
   }
 
-  logCoachingNote(note: string): void {
+  logCoachingNote(
+    note: string,
+    kind?: 'observation' | 'preference' | 'context',
+  ): { stored: boolean; reason: string | null } {
     // Persisted on the engine ledger (Ledger.coachNotes) via the storage
     // adapter, so notes survive reload and the Debrief graft can read them.
     // The engine validates/clamps input and caps the stored list.
-    this.engine.logCoachingNote(note);
+    const result = this.engine.logCoachingNote(note, kind);
+    return { stored: result.stored, reason: result.reason };
   }
 
   navigateToAnchor(anchor: string): NavigateResultPublic {

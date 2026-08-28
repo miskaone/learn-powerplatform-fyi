@@ -11,6 +11,8 @@ export interface UiVerdict {
   rationale: string | null;
   /** Same-lesson remediation anchor — non-null only on a miss. */
   remediationAnchor: string | null;
+  /** Named distractor-myth a correct answer defeats — non-null only on a correct verdict. */
+  defeatedMisconceptionName: string | null;
 }
 
 export interface ToolRosterEntry {

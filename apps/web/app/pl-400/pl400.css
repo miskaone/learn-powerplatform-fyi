@@ -768,3 +768,87 @@ button.pl400-btn,
   line-height: 1.5;
   opacity: 0.92;
 }
+
+.pl400-myth {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  font-weight: 550;
+}
+
+.pl400-model-entry {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--pl400-border);
+  border-radius: 8px;
+}
+
+.pl400-model-entry p {
+  margin: 0;
+}
+
+.pl400-model-questions {
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pl400-notes {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pl400-notes li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--pl400-border);
+}
+
+.pl400-notes li:last-child {
+  border-bottom: none;
+}
+
+.pl400-note-kind {
+  display: inline-block;
+  margin-right: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pl400-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+
+.pl400-note-form textarea,
+.pl400-note-form select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--pl400-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  width: 100%;
+}
+
+.pl400-note-form textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.pl400-model-footer {
+  margin-top: 1.1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--pl400-border);
+}

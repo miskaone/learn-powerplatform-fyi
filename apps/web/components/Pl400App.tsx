@@ -17,6 +17,7 @@ import { RubricPanel } from "./RubricPanel";
 import { StartCoaching } from "./StartCoaching";
 import { ToolRoster } from "./ToolRoster";
 import { useMasteryGate } from "./useMasteryGate";
+import { YourModelPanel } from "./YourModelPanel";
 
 const DIMENSIONS: { key: RubricDimension; label: string }[] = [
   { key: "recall", label: "Recall" },
@@ -168,6 +169,8 @@ export function Pl400App() {
               showDemoRubric
             />
           </section>
+
+          <YourModelPanel gate={gate} />
 
           <section id="flip-drill">
             <h2>Flip-Condition drill</h2>

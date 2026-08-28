@@ -10,9 +10,11 @@ export {
   misconceptionFireCount,
   isRepeatedMisconception,
   clampCoachNotes,
+  clampAgentReportRecords,
   clampLessonTextRecord,
   MAX_COACH_NOTES,
   MAX_COACH_NOTE_LENGTH,
+  MAX_AGENT_REPORT_RECORDS,
   MAX_LEARNER_NAME_LENGTH,
   MAX_LESSON_AIM_LENGTH,
   MAX_RULE_COMPRESSION_LENGTH,
@@ -61,11 +63,14 @@ export type {
   LessonTextResult,
   SubmitAnswerResult,
   MasteryEngineOptions,
+  CoachingNoteResult,
+  CoachCalibrationSummary,
 } from './engine';
 export {
   MasteryEngine,
   MAX_ATTEMPTS_PER_QUESTION,
   RUBRIC_INTERVIEW_MIN_COVERAGE,
+  ANSWER_TEXT_WINDOW,
 } from './engine';
 
 export type { ExamStatus, ExamDebrief } from './exam';

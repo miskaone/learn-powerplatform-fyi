@@ -87,6 +87,12 @@ export function QuizCard(props: {
         props.verdict.correct ? (
           <div className="pl400-banner pl400-banner-success" role="status">
             Correct.
+            {props.verdict.defeatedMisconceptionName ? (
+              <p className="pl400-myth">
+                Defeats the myth:{" "}
+                <strong>{props.verdict.defeatedMisconceptionName}</strong>.
+              </p>
+            ) : null}
             {props.verdict.rationale ? (
               <p className="pl400-rationale">{props.verdict.rationale}</p>
             ) : null}

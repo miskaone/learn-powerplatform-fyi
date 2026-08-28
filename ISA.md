@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 40/68
+progress: 46/74
 mode: build
 started: 2026-08-26
 updated: 2026-08-28
@@ -198,6 +198,15 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [x] ISC-70: Gate-crossing tool responses carry a `toolChangeHint` naming newly available/revoked tools at score_rubric gate-pass AND gate-regress (transition-aware: no hint on an accepted rescore that leaves the gate open), misconception second fire, and exam start/submit (hint states truthfully that coaching tools return only when the learner leaves the exam screen) — present only at the crossing; the response channel as the only push channel (unit tests)
 - [x] ISC-71: Every tool description states WHEN to call it (audit table in the ACTOR-pass record), and stuck revocations surface as a draining badge in the Tool Roster via getStuckRevocations/onStuckRevocation
 
+### Transparency + Memory pass (approved 2026-08-28, docs/actor-plan.md §7)
+
+- [x] ISC-67: "Your model" panel on the hub renders every fired misconception WITH its evidencing questions (each linked to its owning lesson), framed as evidence rather than badges, mirroring what `get_learner_state` shows the agent, and visually paired with the erase control (engine `getMisconceptionEvidence` + unit tests + panel; live-browser pass rides the ISC-38 ChatGPT check)
+- [x] ISC-68: One-click JSON export of the complete `mastery-gate:v1` payload (client-side blob, zero network) plus a confirmed one-tap erase that destroys it and reloads — copy states "your data never leaves your browser"
+- [x] ISC-69: A correct practice verdict names the distractor-myth it defeats — the learner's own previously fired misconception on that question when one exists, else the first distractor's — selected engine-side, projected field-by-field, absent on misses and mid-exam (unit tests + success-card line on page and tool response)
+- [x] ISC-73: The ledger records the agent's confidence hints (against the outcome each referred to) and rubric proposals (accepted/rejected + resulting gate state) — deterministic bookkeeping that never feeds routing, grading, or the gate; the calibration summary is exposed through `get_learner_state` and rendered as one line in the Your-model panel when data exists (unit tests incl. routing-verdict invariance)
+- [x] ISC-74: At registration time only (never mid-session churn), `get_hint` and `get_misconception_brief` descriptions gain profile-composed suffixes for returning learners naming their repeated misconceptions (names only — never contrasts, seeds, prompts, or option text), capped at three, absent on a cold profile; the roster meta re-composes at late runtime binding so the on-page descriptions match what registered (unit tests)
+- [x] ISC-75: Memory contract — `get_learner_state` exposes `coachingNotes`; `log_coaching_note` gains validated `kind` observation|preference|context (default observation) and a deterministic answer-cache guard rejecting question/option id patterns (`ml\d+-q\d+(-…)`) and ≥20-char verbatim option-text substrings (case/whitespace-insensitive); the agreed description surgery on get_learner_state / log_coaching_note / get_hint / get_misconception_brief / set_lesson_aim; kickoff prompt carries the MEMORY clause and the SPACING / DIFFICULTY / TRANSFER technique lines (unit tests + prompt assertions)
+
 ## Test Strategy
 
 | isc | type | check | threshold | tool |
@@ -244,6 +253,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 | Submission package | README example, Devpost docs, checklist re-verify | ISC-45, 47…49, 51…53 | all above (MSP gate, Sep 1) | no |
 | Demo video | Three-beat script, rehearsal, record in ChatGPT browser, publish | ISC-46, 55 | Submission package (MSP) | no |
 | ACTOR pass | Aim/compress/run ledger records + inputs, teach-back prompt layer, rubric-interview routing, response hints, description audit, stuck badge | ISC-62…66, 70…71 | Engine core; WebMCP tool surface; state machines | no |
+| Transparency + Memory pass | Your-model panel, export/erase, myth naming, agent report card, profile-annotated descriptions, memory contract + answer-cache guard | ISC-67…69, 73…75 | ACTOR pass; WebMCP tool surface; UI | no |
 
 ## Decisions
 
@@ -458,3 +468,46 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   item respected). Response-hint pattern formally adopted as the agent's only push channel;
   description audit (all 23 tools state WHEN to call) stands. Gates at ship: 314 tests green,
   tsc clean both packages, validate:content OK, per-route redaction grep clean on the built HTML.
+- **2026-08-28** — Transparency + Memory pass shipped (actor-plan §7, one commit on
+  build/transparency; Grok 4.6 built the slices, driver-verified with independently authored
+  behavior tests). **Glass box (ISC-67…69)**: the engine derives a misconception→evidencing-
+  questions map from the attempts ledger (`getMisconceptionEvidence`, first-fire order, no option
+  ids) and the hub's new "Your model" panel renders it with each question linked to its owning
+  lesson — framed explicitly as evidence, not badges (Long & Aleven's calibration caveat), showing
+  the learner the same coachingNotes/calibration surface `get_learner_state` hands an agent, and
+  visually paired with the data controls: a client-side blob export of the complete
+  `mastery-gate:v1` payload and a confirmed erase (engine reset + scenario commits + reload) under
+  the copy "your data never leaves your browser". Correct practice verdicts now name the
+  distractor-myth they defeat — the learner's own previously fired misconception on that question
+  when one exists, else the first distractor's — selected engine-side, projected field-by-field,
+  null on misses and mid-exam; rendered on both success cards and carried by `submit_answer` (both
+  response shapes stay field-identical apart from toolChangeHint, pinned by test). **Dual profile
+  (ISC-73/74)**: the ledger gains `confidenceHints` (each explicit request_next_action confidence
+  logged against the lastGrade outcome it referred to — never recorded mid-exam) and
+  `rubricProposals` (accepted/rejected + resulting gate state, recorded only past the
+  preconditions); a deterministic calibration summary (agreements, high-confidence misses,
+  proposals accepted) is exposed via get_learner_state and rendered as one line in the Your-model
+  panel — with a pinned invariance test that recording never changes the routing verdict.
+  Profile-annotated descriptions compose at REGISTRATION time only: `createToolset` snapshots
+  repeated misconceptions (fires ≥2, capped at 3, fire-count order) into returning-learner
+  suffixes on get_hint/get_misconception_brief — names only, never contrasts/seeds/option text;
+  cold profiles get no suffix; the late-binding runtime path re-composes the roster meta at its
+  own registration moment so the on-page descriptions match what registered. **Memory contract
+  (ISC-75)**: coachNotes became typed CoachNotes with `kind` observation|preference|context
+  (tool-validated enum, default observation; legacy string notes migrate on load, invalid kinds
+  reject the ledger); the ANSWER-CACHE GUARD deterministically rejects notes matching
+  `ml\d+-q\d+(-…)` id shapes or containing any ≥20-char verbatim substring of option text
+  (case/whitespace-normalized windows) with reason `answer-content` — notes replay next session
+  and must never become a key stash; `log_coaching_note` returns `{stored, reason}` (NotifyingFacade
+  notifies only on stored). Description surgery landed as drafted: get_learner_state ("read this
+  first, every session", now exposing coachingNotes + coachCalibration), log_coaching_note
+  (durable observations about HOW this learner learns, never answer content), get_hint +
+  get_misconception_brief (ground in the learner's world), set_lesson_aim (connect the aim to
+  known goals). The kickoff prompt gained the MEMORY clause and the SPACING (~1d/3d/7d session-end
+  review appointment), DIFFICULTY (explain why the site's friction serves the learner), and
+  TRANSFER (one what-if per lesson from the learner's own work) technique lines, pinned verbatim
+  by test. Agent-less parity: the panel reads the same facade the tools call and adds a page-side
+  note form (kind selector, guard rejections surfaced). Gates at ship: 351 tests green (37 new),
+  tsc clean both packages, static export clean (prerendered-HTML answer-key scan unchanged from
+  baseline; the client-side engine's manifest chunk is by-design), validate:content OK.
+  Live-browser confirmation of the panel rides the existing ISC-38 ChatGPT in-app pass.
