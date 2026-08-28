@@ -19,17 +19,13 @@ import { getLessonIndexEntry, lessonSectionAnchors } from "./lessonIndex";
 import { NotifyingFacade } from "./notifyingFacade";
 
 /**
- * Drill, exam, and debrief tools stay off the live surface until the engine
- * has state machines for those phases; they must never register.
+ * Debrief tools stay off the live surface until the Mastery Debrief UI
+ * graft lands; they must never register. Drill and exam tools are LIVE —
+ * their engine state machines ship, and the registry gates them by phase
+ * (drill tools only while a drill is active, exam tools only in exam mode,
+ * reveal_outcome only after commit_prediction).
  */
 export const QUARANTINED_TOOLS: readonly ToolName[] = [
-  "mutate_assumption",
-  "commit_prediction",
-  "reveal_outcome",
-  "start_exam",
-  "get_exam_status",
-  "submit_exam",
-  "get_exam_debrief",
   "compose_debrief",
   "get_narration_script",
   "advance_segment",
@@ -233,9 +229,9 @@ function startRuntimeDetection(
 }
 
 /**
- * Drill/exam/debrief tools stay off the live surface until the host opts
- * them in (QUARANTINED_TOOLS unchanged in this slice), but the snapshot
- * itself is now truthful when a facade is supplied.
+ * With a facade supplied the snapshot reports engine truth (drill/exam/
+ * debrief phase, predictionCommitted, examSubmitted, moduleComplete); the
+ * input object only fills the UI-owned lesson/practice/remediation phase.
  */
 export function registrySnapshot(
   input: {

@@ -43,6 +43,8 @@ function succeedingFacade(): EngineFacade {
       misconceptionId: null,
       attemptNumber: 1,
       attemptsRemaining: 1,
+      rationale: null,
+      remediationAnchor: null,
     }),
     getHint: () => ({ granted: false, tier: null, hint: null, refusal: "x" }),
     requestNextAction: () => "continue",

@@ -8,10 +8,9 @@ import { manifest } from "../lib/content";
 // Slim index only — the full teaching catalog (lessonPages) is server-side
 // and must not enter client bundles (cross-review finding 8).
 import { lessonIndex } from "../lib/lessonIndex";
-import { flipPreviewScenario } from "../lib/flipPreview";
 import { lessonProgress, type MasteryStack } from "../lib/masteryStack";
-import { ExamModePanel } from "./ExamModePanel";
-import { FlipConditionDrill } from "./FlipConditionDrill";
+import { DrillSection } from "./DrillSection";
+import { ExamSection } from "./ExamSection";
 import { PracticePanel } from "./PracticePanel";
 import { RubricPanel } from "./RubricPanel";
 import { StartCoaching } from "./StartCoaching";
@@ -24,8 +23,6 @@ const DIMENSIONS: { key: RubricDimension; label: string }[] = [
   { key: "application", label: "Application" },
   { key: "transfer", label: "Transfer" },
 ];
-
-function noop(): void {}
 
 export function Pl400App() {
   const gate = useMasteryGate();
@@ -172,43 +169,21 @@ export function Pl400App() {
 
           <section id="flip-drill">
             <h2>Flip-Condition drill</h2>
-            <span className="pl400-phase">
-              inactive — engine drill state machine pending; drill tools not
-              registered
-            </span>
-            <fieldset
-              disabled
-              className="drill-disabled"
-              style={{ border: "none", padding: 0, margin: 0, minInlineSize: 0 }}
-            >
-              <FlipConditionDrill scenario={flipPreviewScenario} />
-            </fieldset>
+            <DrillSection gate={gate} />
           </section>
 
           <section id="exam">
             <h2>Exam</h2>
-            <span className="pl400-phase">
-              inactive — exam lifecycle pending; exam tools not registered
-            </span>
-            <fieldset
-              disabled
-              className="drill-disabled"
-              style={{ border: "none", padding: 0, margin: 0, minInlineSize: 0 }}
-            >
-              <ExamModePanel
-                active={false}
-                secondsRemaining={0}
-                lockedTools={[]}
-                onStart={noop}
-                onSubmit={noop}
-                submitted={false}
-              />
-            </fieldset>
+            <ExamSection gate={gate} />
           </section>
 
           <section id="debrief" className="pl400-card">
             <h2>Debrief</h2>
-            <p>Inactive — the debrief unlocks after Exam Mode ships.</p>
+            <p>
+              Text debrief unlocks with the Mastery Debrief graft —
+              compose_debrief, get_narration_script, and advance_segment stay
+              quarantined until then.
+            </p>
           </section>
         </div>
 

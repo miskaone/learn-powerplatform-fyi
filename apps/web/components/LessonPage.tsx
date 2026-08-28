@@ -342,6 +342,19 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
             </article>
           ))}
         </div>
+        <div className="lp-nuance">
+          <span className="lp-label">LIVE TRANSFER DRILL</span>
+          <p>
+            The Flip-Condition drill runs track-level against the live engine:
+            flip one assumption, commit a prediction with your reasoning, then
+            reveal the decision-table verdict — commit-then-reveal is
+            engine-enforced.{" "}
+            <Link href="/pl-400/#flip-drill">
+              Open the Flip-Condition drill on the track hub
+            </Link>
+            .
+          </p>
+        </div>
         <div className="lp-reflection">
           <span className="lp-label">REFLECTION</span>
           <ul>

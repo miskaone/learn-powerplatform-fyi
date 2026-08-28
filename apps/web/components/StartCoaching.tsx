@@ -93,6 +93,10 @@ export function StartCoaching(props: {
       {copyFailed ? (
         <p className="muted">Copy failed — select the text manually.</p>
       ) : null}
+      <p className="muted">
+        No agent? The page works with buttons alone — every engine path
+        (practice, drill, exam, rubric) is drivable from the page controls.
+      </p>
       <span className="pl400-phase">
         {props.agentDetected
           ? "agent runtime detected — tools are live on this page"

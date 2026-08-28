@@ -111,3 +111,75 @@ test("registrySnapshot with a facade reports engine drill truth over UI phase", 
   expect(snapshot.predictionCommitted).toBe(true);
   expect(snapshot.phase).toBe("drill");
 });
+
+test("the live app manifest supports a full flip-condition drill round", () => {
+  const engine = new MasteryEngine(manifest, new MemoryStorageAdapter());
+  const facade = new MasteryEngineFacade(engine, manifest);
+  const started = engine.startDrill();
+  expect(started.assumptions.length).toBeGreaterThan(0);
+  const first = started.assumptions[0];
+  const mutated = facade.mutateAssumption(started.scenarioId, first.id);
+  expect(mutated.accepted).toBe(true);
+  // Reveal refuses before commit — commit-then-reveal is engine-enforced.
+  expect(() => facade.revealOutcome(started.scenarioId)).toThrow(
+    "prediction-not-committed",
+  );
+  const committed = facade.commitPrediction(
+    started.scenarioId,
+    "some outcome",
+    "because the flipped assumption changes the tree walk",
+  );
+  expect(committed.committed).toBe(true);
+  const revealed = facade.revealOutcome(started.scenarioId);
+  expect(revealed.outcome.length).toBeGreaterThan(0);
+  expect(revealed.explanationAnchor.length).toBeGreaterThan(0);
+  const results = engine.getDrillResults();
+  expect(results.length).toBe(1);
+  expect(results[0].dimension).toBe("transfer");
+});
+
+test("exam on the live app manifest: mass revocation, submit, debrief tool", () => {
+  const engine = new MasteryEngine(manifest, new MemoryStorageAdapter());
+  const facade = new MasteryEngineFacade(engine, manifest, {
+    evidenceCorpus: lessonSections.flatMap((section) => [
+      section.title,
+      ...section.body,
+    ]),
+  });
+  // Prime the gate: one graded attempt, then a passing rubric.
+  const first = manifest.questions[0];
+  facade.submitAnswer(first.id, first.correctOptionId);
+  const entry = { score: 3 as const, evidenceQuote: DEMO_MASTERY_QUOTE };
+  facade.scoreRubric({
+    recall: entry,
+    connections: entry,
+    application: entry,
+    transfer: entry,
+  });
+  const status = facade.startExam();
+  expect(status.active).toBe(true);
+  expect(status.questionsTotal).toBe(manifest.questions.length);
+  // Registry truth mid-exam: only the exam toolset survives.
+  const midExam = wouldRegisterToolNames(
+    registrySnapshot(
+      { phase: "practice", gatePassed: true, misconceptionFires: {} },
+      facade,
+    ),
+  );
+  expect([...midExam].sort()).toEqual(["get_exam_status", "submit_exam"]);
+  const submitted = facade.submitExam();
+  expect(submitted.submitted).toBe(true);
+  const postSubmit = wouldRegisterToolNames(
+    registrySnapshot(
+      { phase: "practice", gatePassed: true, misconceptionFires: {} },
+      facade,
+    ),
+  );
+  expect(postSubmit).toContain("get_exam_debrief");
+  const debrief = facade.getExamDebrief();
+  expect(debrief.scores.recall).toBeGreaterThanOrEqual(3);
+  // The submitted exam grades unanswered questions as incorrect; their
+  // concepts land in missedConceptIds without leaking option ids.
+  expect(debrief.missedConceptIds.length).toBeGreaterThan(0);
+  expect(JSON.stringify(debrief)).not.toContain("OptionId");
+});
