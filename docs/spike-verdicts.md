@@ -62,3 +62,28 @@ Chrome with WebMCP enabled") and the last unexercised runtime path.
 4. **Exam Mode ships REAL revocation** with a hard drain-first rule: never abort a
    registration while an execution is in flight (Chromium <153 kills in-flight calls;
    ChatGPT's base is 151). Revocation waits for active executions to settle.
+
+## Edge + Copilot — third runtime (2026-08-29, PROVISIONAL)
+
+Owner reports the flag works in Edge (`edge://flags/#enable-webmcp-testing`) and
+that **Microsoft Copilot also appears to drive the tool surface**. Provisional
+pending evidence of what Copilot actually did (tool listing vs execution).
+
+If confirmed, this is the strongest available proof of the product's central
+architectural claim: the site publishes tools and *whatever agent the visitor
+brings* becomes the coach — demonstrated across two competing vendors' agents
+(OpenAI ChatGPT, Microsoft Copilot) with zero vendor-specific code. Nothing in
+the implementation targets a vendor: the shim feature-detects
+`document.modelContext` and the watcher adapts to whichever notification mode
+the runtime offers.
+
+Domain resonance worth naming in the writeup: this is a **Power Platform**
+certification course, and the agent that works is **Microsoft's own**, in the
+browser Microsoft-ecosystem learners already have. The product reaches its real
+audience through its native tooling.
+
+**Claim discipline:** do not state Copilot support in the Devpost submission
+until the evidence line below is filled in. Unverified vendor claims are exactly
+the kind of thing a judge checks.
+
+- Evidence: `[PENDING — what Copilot listed/called, screenshot]`
