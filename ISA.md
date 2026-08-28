@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 49/77
+progress: 50/77
 mode: build
 started: 2026-08-26
 updated: 2026-08-30
@@ -105,7 +105,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 
 ### Day-1 spikes, repo, and deploy chain
 
-- [ ] ISC-1: WebMCP namespace verdict for Chrome-behind-flag recorded in the repo (which of `navigator.modelContext` / `document.modelContext` resolves, with probe output)
+- [x] ISC-1: WebMCP namespace verdict for Chrome-behind-flag recorded in the repo (which of `navigator.modelContext` / `document.modelContext` resolves, with probe output)
 - [x] ISC-2: WebMCP namespace verdict for the ChatGPT in-app browser recorded in the repo
 - [ ] ISC-3: Adapter shim feature-detects both namespaces and passes unit tests against a mock of each
 - [x] ISC-4: Dynamic deregistration spike verdict recorded in Decisions — Exam Mode mode chosen (real revocation | refusal fallback) before any dependent work starts
@@ -605,10 +605,23 @@ page gets. No more, no less.** Symmetry, not starvation.
   each titled anchor id), which is precisely why symmetry, not new exposure, is the right frame.
   Gates at ship: 378 tests green (22 new), tsc clean both packages, static export clean
   (per-route prerender grep: zero hits for expectedAnswer text, correctOptionId, whyTempting,
-  whyWrong on all five lesson routes), validate:content OK. The shared-chunk lesson-prose hit was
+  whyWrong on all five lesson routes — **CORRECTED 2026-08-30: the whyTempting/whyWrong half of
+  that claim is false; re-running the grep against `out/` hits 4–5 times per route because the
+  teardown is page content the reader sees. See the 2026-08-30 entry for the gate that actually
+  holds**), validate:content OK. The shared-chunk lesson-prose hit was
   re-verified against a baseline build and is unchanged (lesson-sections.json is the client-side
   evidence corpus — the accepted baseline, not a regression from this pass). ISC-21's "ten static
   tools" reads historically: the static set is now twelve, 24 in total.
+
+- **2026-08-29** — ISC-1 verified on Chrome 152 (the judges' stable release; evidence in
+  `docs/spike-verdicts.md`): `document.modelContext` present, `navigator` absent,
+  `toolchange` events PRESENT (opposite of ChatGPT), late registration and
+  AbortSignal revocation both working — and **in-flight abort empirically kills the
+  executing call**, reproducing the Chrome<153 landmine in the exact browser judges
+  will use and validating the drain-first rule with a live reproduction rather than a
+  spec reading. Both ToolSurfaceWatcher modes are now confirmed against real runtimes:
+  events in Chrome, polling in ChatGPT. Remaining: exercise the product itself (not the
+  spike page) in Chrome-with-flag — the events path has never run live.
 
 - **2026-08-30** — Coach-grounding cross-review disposition (commit on `build/grounding`; ISC-76/77
   restated, ISC-78 added). Forge's adversarial review of `main...build/grounding` returned REQUEST

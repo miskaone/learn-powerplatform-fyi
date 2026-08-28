@@ -18,9 +18,36 @@ with the resident ChatGPT agent answering discovery/execution questions between 
 | **Deregistration honored by the agent** | **YES — aborting the registration removed `spike_echo` from the agent's tool list** | agent run |
 | In-flight abort behavior | not yet run (button-3 self-test pending) | — |
 
-## Chrome + `#enable-webmcp-testing` — ISC-1
+## Chrome 152 + `#enable-webmcp-testing` — ISC-1 (run 2026-08-29)
 
-Pending — Part B of the spike checklist not yet run.
+Chrome **152.0.0.0** — the stable release judges will be running (152 shipped
+2026-08-25; 153 lands 2026-09-08, five days AFTER the deadline).
+
+| Probe | Verdict | Evidence |
+|---|---|---|
+| `document.modelContext` | **PRESENT** | verdict block, 11:39 run |
+| `navigator.modelContext` | **ABSENT** | verdict block — document-first is correct in BOTH target environments |
+| `registerTool` / `getTools` / `executeTool` | present | capabilities line |
+| `addEventListener` (`toolchange`) | **PRESENT** — unlike ChatGPT | `EVENT toolchange fired` on every registration and revocation |
+| Mid-session (late) registration | works, fires `toolchange` | log 11:40:12 |
+| Deregistration via AbortSignal | works, fires `toolchange`, tool leaves `getTools()` | log 11:40:18 |
+| **In-flight abort** | **KILLS the in-flight execution** — `executeTool` rejected: "The provided value is not of type 'RegisteredTool'" | log 11:40:21–23, 8s tool aborted at t+2s |
+
+### Binding consequences (all already implemented)
+
+1. **The drain-first rule is empirically required, not precautionary.** Aborting a
+   registration during an active execution kills that call on Chrome 152 — reproduced
+   here, in the browser the judges will use. `ToolRegistry` drains before it aborts.
+2. **Both watcher modes are now real, and each target uses a different one:** Chrome
+   takes the `toolchange` event path; ChatGPT (no `addEventListener`) takes the
+   `getTools()` polling path. The feature-detecting `ToolSurfaceWatcher` was built for
+   exactly this split — and each half is now confirmed against a live runtime.
+3. **`document.modelContext` only** — confirmed in both environments; the `navigator`
+   fallback remains dead code retained for spec-compat.
+
+**Open:** the product itself has been exercised live in ChatGPT (polling path) but not
+yet in Chrome-with-flag (events path). That is a submission requirement ("testable in
+Chrome with WebMCP enabled") and the last unexercised runtime path.
 
 ## Binding consequences (applied to the build)
 
