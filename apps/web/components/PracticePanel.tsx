@@ -27,7 +27,9 @@ const MASTERY_EVIDENCE = {
   evidenceQuote: DEMO_MASTERY_QUOTE,
 };
 
-function isNextAction(value: NextAction | "continue" | null): value is NextAction {
+function isNextAction(
+  value: NextAction | "continue" | "rubric_interview" | null,
+): value is NextAction {
   return (NEXT_ACTIONS as readonly string[]).includes(value ?? "");
 }
 

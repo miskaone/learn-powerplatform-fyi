@@ -169,11 +169,14 @@ export interface EngineFacade {
   getHint(questionId: string): HintResultPublic;
   /**
    * Engine routing verdict. `'continue'` covers correct+confident / no-attempt
-   * states the five-row routing table does not define (matches the engine's
+   * states the routing table does not define (matches the engine's
    * RoutingVerdict union). `confidence: 'low'` after a correct answer routes
-   * to `go_deeper` (routing table row 4).
+   * to `go_deeper`. `'rubric_interview'` is the coverage-ready invitation
+   * when the gate has not passed.
    */
-  requestNextAction(confidence?: 'low' | 'high'): NextAction | 'continue';
+  requestNextAction(
+    confidence?: 'low' | 'high',
+  ): NextAction | 'continue' | 'rubric_interview';
   prescribeDrill(): DrillPrescriptionPublic;
   scoreRubric(submission: RubricSubmission): RubricVerdictPublic;
   logCoachingNote(note: string): void;

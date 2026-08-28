@@ -9,6 +9,7 @@ import type {
   NarrationCue,
   Question,
   QuestionPublic,
+  RubricDimension,
   RubricScores,
   StorageAdapter,
   ToolPhase,
@@ -25,6 +26,10 @@ import {
   createEmptyLedger,
   MAX_COACH_NOTE_LENGTH,
   MAX_LEARNER_NAME_LENGTH,
+  MAX_LESSON_AIM_LENGTH,
+  MAX_LESSON_TEXT_ENTRIES,
+  MAX_RULE_COMPRESSION_LENGTH,
+  MAX_RUN_COMMITMENT_LENGTH,
   recordAttempt,
 } from './ledger';
 import type {
@@ -59,7 +64,7 @@ import {
   isExamActive,
   toExamStatus,
 } from './exam';
-import { gatePasses } from './rubric';
+import { gatePasses, RUBRIC_DIMENSIONS } from './rubric';
 import type { RubricValidationResult } from './rubricEvidence';
 import { validateRubricSubmission } from './rubricEvidence';
 import type { RoutingVerdict } from './routing';
@@ -72,7 +77,20 @@ export interface LearnerStatePublic {
   phase: ToolPhase;
   gatePassed: boolean;
   attemptsCount: number;
+  lessonAims: Record<string, string>;
+  ruleCompressions: Record<string, string>;
+  runCommitments: Record<string, string>;
 }
+
+export interface LessonTextResult {
+  stored: boolean;
+  reason: 'exam-active' | 'empty' | 'too-many-entries' | null;
+  value: string | null;
+}
+
+export const RUBRIC_INTERVIEW_MIN_COVERAGE = 2;
+
+type LessonTextField = 'lessonAims' | 'ruleCompressions' | 'runCommitments';
 
 export interface SubmitAnswerResult {
   questionId: string;
@@ -299,7 +317,99 @@ export class MasteryEngine {
       ledger: this.ledger,
       lastGrade: this.lastGrade,
       confidence,
+      rubricInterviewReady: this.isRubricInterviewReady(),
     });
+  }
+
+  /**
+   * Deterministic thresholds behind the `rubric_interview` routing verdict
+   * (docs/actor-plan.md §5, ISC-66) — the referee hands the mic to the
+   * agent only when MCQ coverage is sufficient to judge but the gate has
+   * not passed.
+   */
+  isRubricInterviewReady(): boolean {
+    if (gatePasses(this.ledger.scores)) {
+      return false;
+    }
+    if (this.isExamActive()) {
+      return false;
+    }
+
+    const attemptedIds = new Set<string>();
+    for (const attempt of this.ledger.attempts) {
+      attemptedIds.add(attempt.questionId);
+    }
+
+    const counts: Record<RubricDimension, number> = {
+      recall: 0,
+      connections: 0,
+      application: 0,
+      transfer: 0,
+    };
+    for (const question of this.manifest.questions) {
+      if (attemptedIds.has(question.id)) {
+        counts[question.dimension] += 1;
+      }
+    }
+    for (const dimension of RUBRIC_DIMENSIONS) {
+      if (counts[dimension] < RUBRIC_INTERVIEW_MIN_COVERAGE) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  setLessonAim(lessonKey: string, text: string): LessonTextResult {
+    return this.setLessonText(
+      'lessonAims',
+      MAX_LESSON_AIM_LENGTH,
+      lessonKey,
+      text,
+    );
+  }
+
+  setRuleCompression(lessonKey: string, text: string): LessonTextResult {
+    return this.setLessonText(
+      'ruleCompressions',
+      MAX_RULE_COMPRESSION_LENGTH,
+      lessonKey,
+      text,
+    );
+  }
+
+  setRunCommitment(lessonKey: string, text: string): LessonTextResult {
+    return this.setLessonText(
+      'runCommitments',
+      MAX_RUN_COMMITMENT_LENGTH,
+      lessonKey,
+      text,
+    );
+  }
+
+  private setLessonText(
+    field: LessonTextField,
+    maxLength: number,
+    lessonKey: string,
+    text: string,
+  ): LessonTextResult {
+    if (this.isExamActive()) {
+      return { stored: false, reason: 'exam-active', value: null };
+    }
+    const clamped = text.trim().slice(0, maxLength);
+    if (clamped.length === 0) {
+      return { stored: false, reason: 'empty', value: null };
+    }
+    const key = lessonKey.trim() === '' ? 'track' : lessonKey.trim();
+    const record = this.ledger[field];
+    const alreadyPresent = Object.prototype.hasOwnProperty.call(record, key);
+    if (!alreadyPresent && Object.keys(record).length >= MAX_LESSON_TEXT_ENTRIES) {
+      return { stored: false, reason: 'too-many-entries', value: null };
+    }
+    const next = cloneLedger(this.ledger);
+    next[field][key] = clamped;
+    this.ledger = next;
+    this.persist();
+    return { stored: true, reason: null, value: clamped };
   }
 
   scoreRubric(input: unknown, corpus?: string): RubricValidationResult {
@@ -382,6 +492,9 @@ export class MasteryEngine {
       phase: this.ledger.phase,
       gatePassed: gatePasses(this.ledger.scores),
       attemptsCount: this.ledger.attempts.length,
+      lessonAims: copyStringMap(this.ledger.lessonAims),
+      ruleCompressions: copyStringMap(this.ledger.ruleCompressions),
+      runCommitments: copyStringMap(this.ledger.runCommitments),
     };
   }
 
@@ -703,6 +816,14 @@ function copyFires(fires: Record<string, number>): Record<string, number> {
   const copy: Record<string, number> = {};
   for (const key of Object.keys(fires)) {
     copy[key] = fires[key];
+  }
+  return copy;
+}
+
+function copyStringMap(record: Record<string, string>): Record<string, string> {
+  const copy: Record<string, string> = {};
+  for (const key of Object.keys(record)) {
+    copy[key] = record[key];
   }
   return copy;
 }

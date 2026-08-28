@@ -10,9 +10,14 @@ export {
   misconceptionFireCount,
   isRepeatedMisconception,
   clampCoachNotes,
+  clampLessonTextRecord,
   MAX_COACH_NOTES,
   MAX_COACH_NOTE_LENGTH,
   MAX_LEARNER_NAME_LENGTH,
+  MAX_LESSON_AIM_LENGTH,
+  MAX_RULE_COMPRESSION_LENGTH,
+  MAX_RUN_COMMITMENT_LENGTH,
+  MAX_LESSON_TEXT_ENTRIES,
 } from './ledger';
 
 export type {
@@ -53,10 +58,15 @@ export {
 
 export type {
   LearnerStatePublic,
+  LessonTextResult,
   SubmitAnswerResult,
   MasteryEngineOptions,
 } from './engine';
-export { MasteryEngine, MAX_ATTEMPTS_PER_QUESTION } from './engine';
+export {
+  MasteryEngine,
+  MAX_ATTEMPTS_PER_QUESTION,
+  RUBRIC_INTERVIEW_MIN_COVERAGE,
+} from './engine';
 
 export type { ExamStatus, ExamDebrief } from './exam';
 export {
@@ -69,6 +79,7 @@ export type { ComposeDebriefResult } from './debrief';
 export { MAX_DEBRIEF_SEGMENTS } from './debrief';
 
 export {
+  COVERAGE_MANIFEST,
   FIXTURE_MANIFEST,
   FIXTURE_MANIFEST_WITH_DRILLS,
   FIXTURE_MANIFEST_WITH_EXAM,

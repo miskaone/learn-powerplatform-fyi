@@ -72,6 +72,7 @@ test('distractor without misconceptionId yields null', () => {
     correctOptionId: 'q1-a',
     rationale: q1.rationale,
     remediationAnchor: q1.remediationAnchor,
+    dimension: q1.dimension,
   };
   const result = gradeAnswer(stripped, 'q1-orphan');
   expect(result.correct).toBe(false);

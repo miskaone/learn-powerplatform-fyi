@@ -2,6 +2,10 @@ import { test, expect } from 'bun:test';
 import {
   createEmptyLedger,
   MAX_LEARNER_NAME_LENGTH,
+  MAX_LESSON_AIM_LENGTH,
+  MAX_LESSON_TEXT_ENTRIES,
+  MAX_RULE_COMPRESSION_LENGTH,
+  MAX_RUN_COMMITMENT_LENGTH,
   recordAttempt,
 } from './ledger';
 import { createHintState } from './hints';
@@ -298,6 +302,115 @@ test('old-format persisted state without the five new ledger fields loads with d
   expect(loaded.ledger.exam).toBe(null);
   expect(loaded.ledger.debrief).toBe(null);
   expect(loaded.ledger.learnerName).toBe(null);
+  expect(loaded.ledger.lessonAims).toEqual({});
+  expect(loaded.ledger.ruleCompressions).toEqual({});
+  expect(loaded.ledger.runCommitments).toEqual({});
+});
+
+test('v1 record without ACTOR lesson-text fields loads with empty records', () => {
+  const adapter = new MemoryStorageAdapter();
+  const ledger = oldFormatLedger();
+  adapter.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      ledger,
+      hints: createHintState(),
+    }),
+  );
+  const loaded = loadState(adapter);
+  expect(loaded === null).toBe(false);
+  expect(loaded?.ledger.lessonAims).toEqual({});
+  expect(loaded?.ledger.ruleCompressions).toEqual({});
+  expect(loaded?.ledger.runCommitments).toEqual({});
+});
+
+test('present-but-wrong-type lesson-text fields reject the whole state', () => {
+  const good = (): Record<string, unknown> => ({
+    version: 1,
+    ledger: createEmptyLedger(),
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  const cases: Array<Record<string, unknown>> = [
+    (() => {
+      const s = good();
+      (s.ledger as Record<string, unknown>).lessonAims = 5;
+      return s;
+    })(),
+    (() => {
+      const s = good();
+      (s.ledger as Record<string, unknown>).ruleCompressions = ['nope'];
+      return s;
+    })(),
+    (() => {
+      const s = good();
+      (s.ledger as Record<string, unknown>).runCommitments = { a: 1 };
+      return s;
+    })(),
+  ];
+  for (const payload of cases) {
+    const adapter = new MemoryStorageAdapter();
+    adapter.setItem(STORAGE_KEY, JSON.stringify(payload));
+    expect(loadState(adapter)).toBe(null);
+  }
+});
+
+test('oversized lesson-text values are truncated on load, not rejected', () => {
+  const adapter = new MemoryStorageAdapter();
+  const ledger = createEmptyLedger();
+  ledger.lessonAims = { 'lesson-a': 'a'.repeat(MAX_LESSON_AIM_LENGTH + 50) };
+  ledger.ruleCompressions = {
+    'lesson-a': 'c'.repeat(MAX_RULE_COMPRESSION_LENGTH + 50),
+  };
+  ledger.runCommitments = {
+    'lesson-a': 'r'.repeat(MAX_RUN_COMMITMENT_LENGTH + 50),
+  };
+  adapter.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      ledger,
+      hints: createHintState(),
+      lastGrade: null,
+    }),
+  );
+  const loaded = loadState(adapter);
+  expect(loaded === null).toBe(false);
+  expect(loaded?.ledger.lessonAims['lesson-a']?.length).toBe(MAX_LESSON_AIM_LENGTH);
+  expect(loaded?.ledger.ruleCompressions['lesson-a']?.length).toBe(
+    MAX_RULE_COMPRESSION_LENGTH,
+  );
+  expect(loaded?.ledger.runCommitments['lesson-a']?.length).toBe(
+    MAX_RUN_COMMITMENT_LENGTH,
+  );
+});
+
+test('more than 24 lesson-text entries are clamped deterministically on load', () => {
+  const adapter = new MemoryStorageAdapter();
+  const ledger = createEmptyLedger();
+  const oversized: Record<string, string> = {};
+  for (let i = 0; i < 30; i += 1) {
+    oversized[`k${String(i).padStart(2, '0')}`] = `v${i}`;
+  }
+  ledger.lessonAims = oversized;
+  adapter.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      ledger,
+      hints: createHintState(),
+      lastGrade: null,
+    }),
+  );
+  const loaded = loadState(adapter);
+  expect(loaded === null).toBe(false);
+  const keys = Object.keys(loaded?.ledger.lessonAims ?? {}).sort();
+  expect(keys).toEqual(
+    Array.from({ length: MAX_LESSON_TEXT_ENTRIES }, (_, i) => {
+      return `k${String(i).padStart(2, '0')}`;
+    }),
+  );
 });
 
 test('tampered activeDrill or drillResults dimension rejects the whole state', () => {

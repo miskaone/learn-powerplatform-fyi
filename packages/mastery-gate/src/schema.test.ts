@@ -15,11 +15,13 @@ const _noRemediationAnchor: AssertAbsent<QuestionPublic, 'remediationAnchor'> =
   true;
 const _noMisconceptionId: AssertAbsent<QuestionOptionPublic, 'misconceptionId'> =
   true;
+const _noDimension: AssertAbsent<QuestionPublic, 'dimension'> = true;
 
 void _noCorrectOptionId;
 void _noRationale;
 void _noRemediationAnchor;
 void _noMisconceptionId;
+void _noDimension;
 
 const sampleQuestion: Question = {
   id: 'q-plugin-isolation',
@@ -45,6 +47,7 @@ const sampleQuestion: Question = {
   correctOptionId: 'opt-a',
   rationale: 'Plug-ins write through IOrganizationService inside the sandbox.',
   remediationAnchor: 'lesson-plugin-services',
+  dimension: 'recall',
 };
 
 test('toQuestionPublic structurally omits answer-key and distractor-map fields', () => {
@@ -55,6 +58,7 @@ test('toQuestionPublic structurally omits answer-key and distractor-map fields',
   expect(serialized).not.toContain('rationale');
   expect(serialized).not.toContain('remediationAnchor');
   expect(serialized).not.toContain('misconception');
+  expect(serialized).not.toContain('dimension');
 
   const optionIds = publicQuestion.options.map((option) => option.id);
   expect(optionIds).toContain(sampleQuestion.correctOptionId);
@@ -93,6 +97,9 @@ test("empty Ledger typechecks with phase 'lesson' and all four rubric dimensions
     exam: null,
     debrief: null,
     learnerName: null,
+    lessonAims: {},
+    ruleCompressions: {},
+    runCommitments: {},
   };
 
   expect(ledger.phase).toBe('lesson');

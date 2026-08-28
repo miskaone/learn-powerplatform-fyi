@@ -1,4 +1,9 @@
-import type { ContentManifest, Question, QuestionOption } from '../schema';
+import type {
+  ContentManifest,
+  Question,
+  QuestionOption,
+  RubricDimension,
+} from '../schema';
 import type { FlipConditionScenario } from '../rules/flipCondition';
 
 export const Q1_RATIONALE =
@@ -49,6 +54,7 @@ export const FIXTURE_MANIFEST: ContentManifest = {
       correctOptionId: 'q1-a',
       rationale: Q1_RATIONALE,
       remediationAnchor: 'anchor-q1-sandbox',
+      dimension: 'recall',
     },
     {
       id: 'q2',
@@ -71,6 +77,7 @@ export const FIXTURE_MANIFEST: ContentManifest = {
       correctOptionId: 'q2-b',
       rationale: Q2_RATIONALE,
       remediationAnchor: 'anchor-q2-stages',
+      dimension: 'connections',
     },
     {
       id: 'q3',
@@ -96,6 +103,7 @@ export const FIXTURE_MANIFEST: ContentManifest = {
       correctOptionId: 'q3-b',
       rationale: Q3_RATIONALE,
       remediationAnchor: 'anchor-q3-openapi',
+      dimension: 'application',
     },
     {
       id: 'q4',
@@ -118,6 +126,7 @@ export const FIXTURE_MANIFEST: ContentManifest = {
       correctOptionId: 'q4-a',
       rationale: Q4_RATIONALE,
       remediationAnchor: 'anchor-q4-apim',
+      dimension: 'transfer',
     },
   ],
   misconceptions: [
@@ -180,6 +189,107 @@ export function fixtureQuestion(id: string): Question {
   }
   return question;
 }
+
+function cloneQuestion(question: Question): Question {
+  return {
+    id: question.id,
+    objectiveId: question.objectiveId,
+    concepts: question.concepts.slice(),
+    prompt: question.prompt,
+    options: question.options.map((option) => {
+      const cloned: QuestionOption = {
+        id: option.id,
+        text: option.text,
+      };
+      if (option.misconceptionId !== undefined) {
+        cloned.misconceptionId = option.misconceptionId;
+      }
+      return cloned;
+    }),
+    correctOptionId: question.correctOptionId,
+    rationale: question.rationale,
+    remediationAnchor: question.remediationAnchor,
+    dimension: question.dimension,
+  };
+}
+
+function coverageQuestion(
+  id: string,
+  dimension: RubricDimension,
+  objectiveId: string,
+): Question {
+  return {
+    id,
+    objectiveId,
+    concepts: [dimension, 'coverage'],
+    prompt: `Coverage probe for ${dimension} (${id}).`,
+    options: [
+      { id: `${id}-a`, text: 'The authored correct choice' },
+      {
+        id: `${id}-b`,
+        text: 'An outbound HTTP client from the sandbox',
+        misconceptionId: 'mc-shared',
+      },
+    ],
+    correctOptionId: `${id}-a`,
+    rationale: `Coverage rationale for ${id}.`,
+    remediationAnchor: 'anchor-q1-sandbox',
+    dimension,
+  };
+}
+
+/**
+ * Purpose-built bank with ≥2 questions per rubric dimension so interview
+ * readiness tests can build coverage without enlarging FIXTURE_MANIFEST
+ * (tests enumerate that 4-item bank).
+ */
+export const COVERAGE_MANIFEST: ContentManifest = {
+  courseId: 'pl-400-coverage',
+  title: 'PL-400 Coverage Fixture',
+  objectives: [
+    {
+      id: 'obj-coverage-a',
+      title: 'Recall and connections coverage',
+      summary: 'Two items each for recall and connections.',
+      questionIds: [
+        'cov-recall-1',
+        'cov-recall-2',
+        'cov-connections-1',
+        'cov-connections-2',
+      ],
+    },
+    {
+      id: 'obj-coverage-b',
+      title: 'Application and transfer coverage',
+      summary: 'Two items each for application and transfer.',
+      questionIds: [
+        'cov-application-1',
+        'cov-application-2',
+        'cov-transfer-1',
+        'cov-transfer-2',
+      ],
+    },
+  ],
+  questions: [
+    coverageQuestion('cov-recall-1', 'recall', 'obj-coverage-a'),
+    coverageQuestion('cov-recall-2', 'recall', 'obj-coverage-a'),
+    coverageQuestion('cov-connections-1', 'connections', 'obj-coverage-a'),
+    coverageQuestion('cov-connections-2', 'connections', 'obj-coverage-a'),
+    coverageQuestion('cov-application-1', 'application', 'obj-coverage-b'),
+    coverageQuestion('cov-application-2', 'application', 'obj-coverage-b'),
+    coverageQuestion('cov-transfer-1', 'transfer', 'obj-coverage-b'),
+    coverageQuestion('cov-transfer-2', 'transfer', 'obj-coverage-b'),
+  ],
+  misconceptions: FIXTURE_MANIFEST.misconceptions.map((misconception) => {
+    return {
+      id: misconception.id,
+      name: misconception.name,
+      contrast: misconception.contrast,
+      socraticSeeds: misconception.socraticSeeds.slice(),
+      anchor: misconception.anchor,
+    };
+  }),
+};
 
 export const FIXTURE_FLIP_SCENARIOS: FlipConditionScenario[] = [
   {
@@ -282,27 +392,7 @@ export const FIXTURE_MANIFEST_WITH_DRILLS: ContentManifest = {
       questionIds: objective.questionIds.slice(),
     };
   }),
-  questions: FIXTURE_MANIFEST.questions.map((question) => {
-    return {
-      id: question.id,
-      objectiveId: question.objectiveId,
-      concepts: question.concepts.slice(),
-      prompt: question.prompt,
-      options: question.options.map((option) => {
-        const cloned: QuestionOption = {
-          id: option.id,
-          text: option.text,
-        };
-        if (option.misconceptionId !== undefined) {
-          cloned.misconceptionId = option.misconceptionId;
-        }
-        return cloned;
-      }),
-      correctOptionId: question.correctOptionId,
-      rationale: question.rationale,
-      remediationAnchor: question.remediationAnchor,
-    };
-  }),
+  questions: FIXTURE_MANIFEST.questions.map(cloneQuestion),
   misconceptions: FIXTURE_MANIFEST.misconceptions.map((misconception) => {
     return {
       id: misconception.id,
@@ -326,27 +416,7 @@ export const FIXTURE_MANIFEST_WITH_EXAM: ContentManifest = {
       questionIds: objective.questionIds.slice(),
     };
   }),
-  questions: FIXTURE_MANIFEST_WITH_DRILLS.questions.map((question) => {
-    return {
-      id: question.id,
-      objectiveId: question.objectiveId,
-      concepts: question.concepts.slice(),
-      prompt: question.prompt,
-      options: question.options.map((option) => {
-        const cloned: QuestionOption = {
-          id: option.id,
-          text: option.text,
-        };
-        if (option.misconceptionId !== undefined) {
-          cloned.misconceptionId = option.misconceptionId;
-        }
-        return cloned;
-      }),
-      correctOptionId: question.correctOptionId,
-      rationale: question.rationale,
-      remediationAnchor: question.remediationAnchor,
-    };
-  }),
+  questions: FIXTURE_MANIFEST_WITH_DRILLS.questions.map(cloneQuestion),
   misconceptions: FIXTURE_MANIFEST_WITH_DRILLS.misconceptions.map(
     (misconception) => {
       return {

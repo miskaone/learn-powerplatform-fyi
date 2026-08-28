@@ -15,7 +15,14 @@ import type {
 import { MAX_SCRIPT_LINE_LENGTH } from '../schema';
 import type { GradeResult } from './grading';
 import type { HintState } from './hints';
-import { clampCoachNotes, MAX_LEARNER_NAME_LENGTH } from './ledger';
+import {
+  clampCoachNotes,
+  clampLessonTextRecord,
+  MAX_LEARNER_NAME_LENGTH,
+  MAX_LESSON_AIM_LENGTH,
+  MAX_RULE_COMPRESSION_LENGTH,
+  MAX_RUN_COMMITMENT_LENGTH,
+} from './ledger';
 import {
   MAX_PREDICTION_LENGTH,
   MAX_PREDICTION_REASON_LENGTH,
@@ -652,6 +659,28 @@ function validateLedger(value: unknown, now: number): Ledger | null {
     learnerName = validated === undefined ? null : validated;
   }
 
+  const lessonAims = validateLessonTextField(
+    value.lessonAims,
+    MAX_LESSON_AIM_LENGTH,
+  );
+  if (lessonAims === null) {
+    return null;
+  }
+  const ruleCompressions = validateLessonTextField(
+    value.ruleCompressions,
+    MAX_RULE_COMPRESSION_LENGTH,
+  );
+  if (ruleCompressions === null) {
+    return null;
+  }
+  const runCommitments = validateLessonTextField(
+    value.runCommitments,
+    MAX_RUN_COMMITMENT_LENGTH,
+  );
+  if (runCommitments === null) {
+    return null;
+  }
+
   return {
     attempts: validatedAttempts,
     misconceptionFires: { ...misconceptionFires },
@@ -664,7 +693,23 @@ function validateLedger(value: unknown, now: number): Ledger | null {
     exam,
     debrief,
     learnerName,
+    lessonAims,
+    ruleCompressions,
+    runCommitments,
   };
+}
+
+function validateLessonTextField(
+  value: unknown,
+  maxLength: number,
+): Record<string, string> | null {
+  if (value === undefined) {
+    return {};
+  }
+  if (!isStringRecord(value)) {
+    return null;
+  }
+  return clampLessonTextRecord(value, maxLength);
 }
 
 function validateHints(value: unknown): HintState | null {

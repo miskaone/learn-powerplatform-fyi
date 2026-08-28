@@ -93,3 +93,86 @@ test('routing (g) null lastGrade + gate closed → continue', () => {
     }),
   ).toBe('continue');
 });
+
+test('routing (h) ready + gate closed + no last grade → rubric_interview', () => {
+  expect(
+    routeNextAction({
+      ledger: createEmptyLedger(),
+      lastGrade: null,
+      rubricInterviewReady: true,
+    }),
+  ).toBe('rubric_interview');
+});
+
+test('routing (i) ready + last grade miss → miss verdict wins', () => {
+  const first = gradeAnswer(q1, 'q1-b');
+  const second = gradeAnswer(q1, 'q1-c');
+  let ledger = recordAttempt(createEmptyLedger(), first, 1);
+  expect(
+    routeNextAction({
+      ledger,
+      lastGrade: first,
+      rubricInterviewReady: true,
+    }),
+  ).toBe('hint');
+
+  ledger = recordAttempt(ledger, second, 2);
+  expect(
+    routeNextAction({
+      ledger,
+      lastGrade: second,
+      rubricInterviewReady: true,
+    }),
+  ).toBe('review');
+
+  const q1Miss = gradeAnswer(q1, 'q1-b');
+  const q3Miss = gradeAnswer(q3, 'q3-a');
+  let coached = recordAttempt(createEmptyLedger(), q1Miss, 1);
+  coached = recordAttempt(coached, q3Miss, 2);
+  expect(
+    routeNextAction({
+      ledger: coached,
+      lastGrade: q3Miss,
+      rubricInterviewReady: true,
+    }),
+  ).toBe('coach');
+});
+
+test("routing (j) ready + correct + low confidence → go_deeper wins", () => {
+  const grade = gradeAnswer(q1, 'q1-a');
+  const ledger = recordAttempt(createEmptyLedger(), grade, 1);
+  expect(
+    routeNextAction({
+      ledger,
+      lastGrade: grade,
+      confidence: 'low',
+      rubricInterviewReady: true,
+    }),
+  ).toBe('go_deeper');
+});
+
+test('routing (k) ready + gatePassed → advance', () => {
+  const ledger = withScores(createEmptyLedger(), {
+    recall: 3,
+    connections: 3,
+    application: 3,
+    transfer: 3,
+  });
+  expect(
+    routeNextAction({
+      ledger,
+      lastGrade: null,
+      rubricInterviewReady: true,
+    }),
+  ).toBe('advance');
+});
+
+test('routing (l) not ready → continue unchanged', () => {
+  expect(
+    routeNextAction({
+      ledger: createEmptyLedger(),
+      lastGrade: null,
+      rubricInterviewReady: false,
+    }),
+  ).toBe('continue');
+});

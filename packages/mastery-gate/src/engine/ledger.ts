@@ -15,6 +15,12 @@ export const MAX_COACH_NOTES = 50;
 export const MAX_COACH_NOTE_LENGTH = 500;
 export const MAX_LEARNER_NAME_LENGTH = 40;
 
+/** Storage sanity caps for learner-authored ACTOR lesson text. */
+export const MAX_LESSON_AIM_LENGTH = 200;
+export const MAX_RULE_COMPRESSION_LENGTH = 200;
+export const MAX_RUN_COMMITMENT_LENGTH = 300;
+export const MAX_LESSON_TEXT_ENTRIES = 24;
+
 /**
  * Clamp coaching notes to the storage caps: each note truncated to
  * MAX_COACH_NOTE_LENGTH chars, only the most recent MAX_COACH_NOTES kept.
@@ -44,7 +50,48 @@ export function createEmptyLedger(): Ledger {
     exam: null,
     debrief: null,
     learnerName: null,
+    lessonAims: {},
+    ruleCompressions: {},
+    runCommitments: {},
   };
+}
+
+/**
+ * Tamper-tolerant clamp for ACTOR lesson-text records (aims, rule
+ * compressions, run commitments). Drops entries whose value is not a
+ * non-empty string after trim, truncates values to `maxLength`, and if
+ * more than `MAX_LESSON_TEXT_ENTRIES` remain keeps the first
+ * `MAX_LESSON_TEXT_ENTRIES` in sorted-key order (deterministic).
+ */
+export function clampLessonTextRecord(
+  record: Record<string, string>,
+  maxLength: number,
+): Record<string, string> {
+  const kept: Record<string, string> = {};
+  for (const key of Object.keys(record)) {
+    const value = record[key];
+    if (typeof value !== 'string') {
+      continue;
+    }
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    kept[key] = trimmed.slice(0, maxLength);
+  }
+  const sortedKeys = Object.keys(kept).sort();
+  if (sortedKeys.length <= MAX_LESSON_TEXT_ENTRIES) {
+    const copy: Record<string, string> = {};
+    for (const key of sortedKeys) {
+      copy[key] = kept[key];
+    }
+    return copy;
+  }
+  const clamped: Record<string, string> = {};
+  for (const key of sortedKeys.slice(0, MAX_LESSON_TEXT_ENTRIES)) {
+    clamped[key] = kept[key];
+  }
+  return clamped;
 }
 
 function copyNumberRecord(record: Record<string, number>): Record<string, number> {
@@ -178,6 +225,9 @@ export function cloneLedger(ledger: Ledger): Ledger {
     exam: cloneExam(ledger.exam),
     debrief: cloneDebrief(ledger.debrief),
     learnerName: ledger.learnerName,
+    lessonAims: copyStringRecord(ledger.lessonAims),
+    ruleCompressions: copyStringRecord(ledger.ruleCompressions),
+    runCommitments: copyStringRecord(ledger.runCommitments),
   };
 }
 

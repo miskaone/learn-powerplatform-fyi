@@ -6,12 +6,13 @@ import {
 } from './ledger';
 import { gatePasses } from './rubric';
 
-export type RoutingVerdict = NextAction | 'continue';
+export type RoutingVerdict = NextAction | 'continue' | 'rubric_interview';
 
 export interface RoutingInput {
   ledger: Ledger;
   lastGrade: GradeResult | null;
   confidence?: 'low' | 'high';
+  rubricInterviewReady?: boolean;
 }
 
 /**
@@ -21,10 +22,11 @@ export interface RoutingInput {
  * 3. last grade is a miss AND missCount(ledger, questionId) === 1 (first miss on that question) → 'hint'
  * 4. last grade is a miss (second or later miss on that question) → 'review'
  * 5. last grade correct AND confidence === 'low' → 'go_deeper'
- * 6. otherwise → 'continue' (correct + confident, gate not yet passed; or no attempt yet)
+ * 6. rubricInterviewReady === true → 'rubric_interview'
+ * 7. otherwise → 'continue' (correct + confident, gate not yet passed; or no attempt yet)
  */
 export function routeNextAction(input: RoutingInput): RoutingVerdict {
-  const { ledger, lastGrade, confidence } = input;
+  const { ledger, lastGrade, confidence, rubricInterviewReady } = input;
 
   if (gatePasses(ledger.scores)) {
     return 'advance';
@@ -47,6 +49,10 @@ export function routeNextAction(input: RoutingInput): RoutingVerdict {
 
   if (lastGrade !== null && lastGrade.correct && confidence === 'low') {
     return 'go_deeper';
+  }
+
+  if (rubricInterviewReady === true) {
+    return 'rubric_interview';
   }
 
   return 'continue';

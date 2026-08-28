@@ -259,6 +259,18 @@ function validateQuestions(
       errors.push(`Question '${id}' prompt is empty`);
     }
 
+    const dimension = (question as { dimension?: unknown }).dimension;
+    if (
+      dimension !== 'recall' &&
+      dimension !== 'connections' &&
+      dimension !== 'application' &&
+      dimension !== 'transfer'
+    ) {
+      errors.push(
+        `Question '${id}' dimension is not a rubric dimension`,
+      );
+    }
+
     const options = asArray(question.options) ?? [];
     if (options.length < 2) {
       errors.push(`Question '${id}' has fewer than 2 options`);

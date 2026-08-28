@@ -171,7 +171,9 @@ export class MasteryEngineFacade implements EngineFacade {
     };
   }
 
-  requestNextAction(confidence?: 'low' | 'high'): NextAction | 'continue' {
+  requestNextAction(
+    confidence?: 'low' | 'high',
+  ): NextAction | 'continue' | 'rubric_interview' {
     return this.engine.requestNextAction(confidence);
   }
 

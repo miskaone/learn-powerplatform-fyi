@@ -71,6 +71,7 @@ function cloneManifestWithExam(
         correctOptionId: question.correctOptionId,
         rationale: question.rationale,
         remediationAnchor: question.remediationAnchor,
+        dimension: question.dimension,
       };
     }),
     misconceptions: source.misconceptions.map((misconception) => {

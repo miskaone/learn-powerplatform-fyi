@@ -31,12 +31,15 @@ export type LearnerView = {
   attemptCount: number;
 };
 
+/** Engine routing verdict as surfaced to the UI (includes the ACTOR-pass rubric-interview invitation). */
+export type UiNextAction = NextAction | "continue" | "rubric_interview";
+
 export interface MasteryGateView {
   stack: MasteryStack;
   learner: LearnerView;
   question: QuestionPublic | null;
-  nextAction: NextAction | "continue" | null;
-  setNextAction: Dispatch<SetStateAction<NextAction | "continue" | null>>;
+  nextAction: UiNextAction | null;
+  setNextAction: Dispatch<SetStateAction<UiNextAction | null>>;
   uiPhase: UiPhase;
   practiceStarted: boolean;
   beginPractice: () => void;
@@ -69,9 +72,7 @@ export function useMasteryGate(): MasteryGateView {
   const [uiPhase, setUiPhase] = useState<UiPhase>("lesson");
   const [practiceStarted, setPracticeStarted] = useState(false);
   const [rosterNames, setRosterNames] = useState<string[]>([]);
-  const [nextAction, setNextAction] = useState<NextAction | "continue" | null>(
-    null,
-  );
+  const [nextAction, setNextAction] = useState<UiNextAction | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [examActive, setExamActive] = useState(false);
   const [runtimeTick, setRuntimeTick] = useState(0);

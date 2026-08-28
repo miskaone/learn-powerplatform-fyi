@@ -51,6 +51,13 @@ export interface Question {
   correctOptionId: string;
   rationale: string;
   remediationAnchor: string;
+  /**
+   * The authored mastery dimension this MCQ evidences. Drives the
+   * per-dimension coverage computation behind the rubric-interview routing
+   * verdict. NEVER crosses the tool boundary (`toQuestionPublic` stays
+   * exactly as-is — do not add dimension to `QuestionPublic`).
+   */
+  dimension: RubricDimension;
 }
 
 /** A teachable unit that owns a set of instrumented questions. */
@@ -191,6 +198,16 @@ export interface Ledger {
   exam: ExamState | null;
   debrief: DebriefState | null;
   learnerName: string | null;
+  /**
+   * Learner-authored reflective artifacts (ACTOR pass, docs/actor-plan.md
+   * §§1-3). Keyed by lesson slug, or the literal `"track"` when no lesson
+   * is active. Validated and clamped on write and on load. NEVER admitted
+   * to the rubric evidence corpus — learner/agent-authored text must not
+   * launder itself into "verbatim evidence".
+   */
+  lessonAims: Record<string, string>;
+  ruleCompressions: Record<string, string>;
+  runCommitments: Record<string, string>;
 }
 
 /** Kind of a Mastery Debrief playlist beat. */

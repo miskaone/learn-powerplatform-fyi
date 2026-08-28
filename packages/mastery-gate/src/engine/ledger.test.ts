@@ -2,8 +2,11 @@ import { test, expect } from 'bun:test';
 import { gradeAnswer } from './grading';
 import {
   attemptCount,
+  clampLessonTextRecord,
   createEmptyLedger,
   isRepeatedMisconception,
+  MAX_LESSON_AIM_LENGTH,
+  MAX_LESSON_TEXT_ENTRIES,
   misconceptionFireCount,
   missCount,
   recordAttempt,
@@ -34,6 +37,9 @@ test('createEmptyLedger has phase lesson, zero scores, empty collections', () =>
   expect(ledger.exam).toBe(null);
   expect(ledger.debrief).toBe(null);
   expect(ledger.learnerName).toBe(null);
+  expect(ledger.lessonAims).toEqual({});
+  expect(ledger.ruleCompressions).toEqual({});
+  expect(ledger.runCommitments).toEqual({});
 });
 
 test('recordAttempt is immutable and does not share arrays or fire maps', () => {
@@ -46,6 +52,9 @@ test('recordAttempt is immutable and does not share arrays or fire maps', () => 
   expect(ledger.attempts === next.attempts).toBe(false);
   expect(ledger.misconceptionFires === next.misconceptionFires).toBe(false);
   expect(ledger.coachNotes === next.coachNotes).toBe(false);
+  expect(ledger.lessonAims === next.lessonAims).toBe(false);
+  expect(ledger.ruleCompressions === next.ruleCompressions).toBe(false);
+  expect(ledger.runCommitments === next.runCommitments).toBe(false);
   expect(next.attempts.length).toBe(1);
   expect(next.attempts[0]).toEqual({
     questionId: 'q1',
@@ -108,4 +117,31 @@ test('isRepeatedMisconception is false at 1 fire and true at 2', () => {
 
   ledger = recordAttempt(ledger, gradeAnswer(q3, 'q3-a'), 2);
   expect(isRepeatedMisconception(ledger, 'mc-shared')).toBe(true);
+});
+
+test('clampLessonTextRecord drops empty values, truncates, and caps at 24 sorted keys', () => {
+  const clamped = clampLessonTextRecord(
+    {
+      'keep-me': '  hello  ',
+      'too-long': 'x'.repeat(MAX_LESSON_AIM_LENGTH + 20),
+      blank: '   ',
+      empty: '',
+    },
+    MAX_LESSON_AIM_LENGTH,
+  );
+  expect(clamped['keep-me']).toBe('hello');
+  expect(clamped['too-long']?.length).toBe(MAX_LESSON_AIM_LENGTH);
+  expect(Object.prototype.hasOwnProperty.call(clamped, 'blank')).toBe(false);
+  expect(Object.prototype.hasOwnProperty.call(clamped, 'empty')).toBe(false);
+
+  const oversized: Record<string, string> = {};
+  for (let i = 0; i < 30; i += 1) {
+    oversized[`k${String(i).padStart(2, '0')}`] = `v${i}`;
+  }
+  const capped = clampLessonTextRecord(oversized, MAX_LESSON_AIM_LENGTH);
+  expect(Object.keys(capped)).toEqual(
+    Array.from({ length: MAX_LESSON_TEXT_ENTRIES }, (_, i) => {
+      return `k${String(i).padStart(2, '0')}`;
+    }),
+  );
 });

@@ -135,6 +135,7 @@ test('tier 2 contrast never names an option id even when the correct option is n
     correctOptionId: 'opt-correct',
     rationale: 'secret rationale must not leak',
     remediationAnchor: 'anchor-secret',
+    dimension: 'recall',
   };
   const bank: readonly Misconception[] = [
     {
