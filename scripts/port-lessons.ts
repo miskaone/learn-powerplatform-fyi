@@ -11,6 +11,7 @@
  *   - content/pl-400/manifest.json        (objectives, questions, misconceptions)
  *   - content/pl-400/lessons/<slug>.md    (lesson prose with {#anchor} ids)
  *   - content/pl-400/lesson-sections.json (UI section list; imported by apps/web/lib/content.ts)
+ *   - content/pl-400/lesson-pages.json    (per-lesson rich page data consumed by the /pl-400/[slug] lesson template)
  *
  * Deterministic by construction: fixed lesson order, fixed section anchors,
  * fixed option rotation, and authored mapping tables (misconception taxonomy,
@@ -44,16 +45,63 @@ interface SpecQuestion {
   objectiveIds: string[];
 }
 
+interface SpecConcept {
+  id: string;
+  label: string;
+  importance: string;
+  summary: string;
+  relations: unknown[];
+}
+
+interface SpecDistractor {
+  choice: string;
+  whyTempting: string;
+  whyWrong: string;
+}
+
+interface SpecVisualStep {
+  label: string;
+  state: string;
+  detail: string;
+}
+
+interface SpecVisual {
+  type: string;
+  title: string;
+  steps: SpecVisualStep[];
+}
+
+interface SpecDrills {
+  Recall: string;
+  Connections: string;
+  Application: string;
+  Transfer: string;
+}
+
+interface SpecReference {
+  label: string;
+  url: string;
+  accessedDate: string;
+  evidenceNote: string;
+}
+
 interface SpecLesson {
   id: string;
   slug: string;
   title: string;
+  topic: { id: string; title: string };
   heroEpigraph: string;
   governingRule: string;
   examClue: string;
   mnemonic?: string;
   scenario: { prompt: string; expectedAnswer: string };
+  concepts: SpecConcept[];
+  distractors: SpecDistractor[];
   productionNuance: string[];
+  visual: SpecVisual;
+  drills: SpecDrills;
+  reflection: string[];
+  references?: SpecReference[];
   questions: SpecQuestion[];
 }
 
@@ -80,6 +128,29 @@ interface OutQuestion {
   correctOptionId: string;
   rationale: string;
   remediationAnchor: string;
+}
+
+interface LessonPage {
+  id: string;
+  slug: string;
+  title: string;
+  topic: { id: string; title: string };
+  heroEpigraph: string;
+  governingRule: string;
+  examClue: string;
+  mnemonic?: string;
+  scenario: { prompt: string; expectedAnswer: string };
+  concepts: { id: string; label: string; importance: string; summary: string }[];
+  distractors: { choice: string; whyTempting: string; whyWrong: string }[];
+  productionNuance: string[];
+  visual: {
+    type: string;
+    title: string;
+    steps: { label: string; state: string; detail: string }[];
+  };
+  drills: { recall: string; connections: string; application: string; transfer: string };
+  reflection: string[];
+  references: { label: string; url: string }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -656,6 +727,56 @@ function lessonMarkdown(lesson: SpecLesson): string {
   return lines.join('\n');
 }
 
+/** Rich page payload for the /pl-400/[slug] template. Strings are copied verbatim (no `plain()`). */
+function lessonPageFor(lesson: SpecLesson): LessonPage {
+  return {
+    id: lesson.id,
+    slug: lesson.slug,
+    title: lesson.title,
+    topic: { id: lesson.topic.id, title: lesson.topic.title },
+    heroEpigraph: lesson.heroEpigraph,
+    governingRule: lesson.governingRule,
+    examClue: lesson.examClue,
+    ...(lesson.mnemonic !== undefined ? { mnemonic: lesson.mnemonic } : {}),
+    scenario: {
+      prompt: lesson.scenario.prompt,
+      expectedAnswer: lesson.scenario.expectedAnswer,
+    },
+    concepts: lesson.concepts.map((concept) => ({
+      id: concept.id,
+      label: concept.label,
+      importance: concept.importance,
+      summary: concept.summary,
+    })),
+    distractors: lesson.distractors.map((distractor) => ({
+      choice: distractor.choice,
+      whyTempting: distractor.whyTempting,
+      whyWrong: distractor.whyWrong,
+    })),
+    productionNuance: lesson.productionNuance,
+    visual: {
+      type: lesson.visual.type,
+      title: lesson.visual.title,
+      steps: lesson.visual.steps.map((step) => ({
+        label: step.label,
+        state: step.state,
+        detail: step.detail,
+      })),
+    },
+    drills: {
+      recall: lesson.drills.Recall,
+      connections: lesson.drills.Connections,
+      application: lesson.drills.Application,
+      transfer: lesson.drills.Transfer,
+    },
+    reflection: lesson.reflection,
+    references: (lesson.references ?? []).map((reference) => ({
+      label: reference.label,
+      url: reference.url,
+    })),
+  };
+}
+
 async function main(): Promise<void> {
   const sourceDir = process.argv[2] ?? process.env.LESSON_SPEC_DIR;
   if (!sourceDir) {
@@ -670,6 +791,7 @@ async function main(): Promise<void> {
   await mkdir(lessonsDir, { recursive: true });
 
   const allSections: { id: string; title: string; body: string[] }[] = [];
+  const allPages: LessonPage[] = [];
   const allQuestions: OutQuestion[] = [];
   const questionIdsByObjective = new Map<string, string[]>();
   for (const objective of OBJECTIVES) {
@@ -682,6 +804,7 @@ async function main(): Promise<void> {
     };
     const lesson = raw.lesson;
 
+    allPages.push(lessonPageFor(lesson));
     allSections.push(...lessonSectionsFor(lesson));
     await writeFile(join(lessonsDir, `${lesson.slug}.md`), lessonMarkdown(lesson), 'utf8');
 
@@ -717,9 +840,14 @@ async function main(): Promise<void> {
     `${JSON.stringify(allSections, null, 2)}\n`,
     'utf8',
   );
+  await writeFile(
+    join(contentRoot, 'lesson-pages.json'),
+    `${JSON.stringify(allPages, null, 2)}\n`,
+    'utf8',
+  );
 
   console.log(
-    `Ported ${String(LESSONS.length)} lessons: ${String(manifest.objectives.length)} objectives, ${String(allQuestions.length)} questions, ${String(manifest.misconceptions.length)} misconceptions, ${String(allSections.length)} lesson sections`,
+    `Ported ${String(LESSONS.length)} lessons: ${String(manifest.objectives.length)} objectives, ${String(allQuestions.length)} questions, ${String(manifest.misconceptions.length)} misconceptions, ${String(allSections.length)} lesson sections, ${String(allPages.length)} lesson pages`,
   );
 }
 

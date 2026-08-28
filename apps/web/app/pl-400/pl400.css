@@ -649,3 +649,11 @@ button.pl400-btn,
     font-size: 1.8rem;
   }
 }
+
+.pl400-lesson-links{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.6rem;margin-top:.75rem}
+.pl400-lesson-link{display:flex;flex-direction:column;gap:.25rem;padding:.8rem .9rem;border:1px solid var(--pl400-border);border-radius:10px;text-decoration:none;color:var(--text)}
+.pl400-lesson-link:hover{border-color:var(--pl400-accent)}
+.pl400-lesson-link-kicker{font:700 .68rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.08em;color:var(--pl400-accent)}
+.pl400-lesson-link-title{font-weight:650}
+.pl400-lesson-link-topic{font-size:.78rem;color:var(--muted)}
+

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { NextAction, QuestionPublic, RubricScores } from "@learn/mastery-gate/schema";
 import "../app/pl-400/pl400.css";
 import { scrollToSection } from "../lib/anchor";
@@ -10,6 +11,7 @@ import {
   lessonSections,
   manifest,
 } from "../lib/content";
+import { lessonPages } from "../lib/lessonPages";
 import { flipPreviewScenario } from "../lib/flipPreview";
 import {
   getSharedMasteryStack,
@@ -361,15 +363,38 @@ export function Pl400App() {
       <header className="pl400-header">
         <h1>PL-400 — Mastery Gate</h1>
         <p>
-          Dataverse plugin execution: the pipeline, images, and the difference
-          between a veto and a side effect. The site grades; the agent coaches
-          through the tools the roster currently permits.
+          Five micro-lessons across two PL-400 objectives — Custom Connectors
+          & Azure Integration, and Dataverse Extensibility & Platform Limits.
+          The site grades; the agent coaches through the tools the roster
+          currently permits.
         </p>
         <span className="pl400-phase">phase: {uiPhase}</span>
       </header>
 
       <div className="pl400-layout">
         <div className="pl400-main">
+          <section id="micro-lessons" className="pl400-card">
+            <h2>Micro-lessons</h2>
+            <p className="muted">
+              Each lesson is a designed deep-dive: scenario first, mechanism
+              second, distractor teardown, drills.
+            </p>
+            <div className="pl400-lesson-links">
+              {lessonPages.map((p, i) => (
+                <Link
+                  key={p.slug}
+                  href={`/pl-400/${p.slug}/`}
+                  className="pl400-lesson-link"
+                >
+                  <span className="pl400-lesson-link-kicker">
+                    {String(i + 1).padStart(2, "0")} · {p.id}
+                  </span>
+                  <span className="pl400-lesson-link-title">{p.title}</span>
+                  <span className="pl400-lesson-link-topic">{p.topic.title}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
           {lessonSections.map((section) => (
             <section
               key={section.id}
