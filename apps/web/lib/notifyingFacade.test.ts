@@ -15,6 +15,9 @@ const STATE = {
   phase: "practice",
   gatePassed: false,
   attemptCount: 0,
+  lessonAims: {},
+  ruleCompressions: {},
+  runCommitments: {},
 } as const;
 
 const EXAM_STATUS = {
@@ -27,7 +30,13 @@ const EXAM_STATUS = {
 
 function succeedingFacade(): EngineFacade {
   return {
-    getLearnerState: () => ({ ...STATE, misconceptionFires: {} }),
+    getLearnerState: () => ({
+      ...STATE,
+      misconceptionFires: {},
+      lessonAims: {},
+      ruleCompressions: {},
+      runCommitments: {},
+    }),
     getCurrentContext: () => ({
       objectiveId: "obj",
       sectionId: "sec",
@@ -58,6 +67,24 @@ function succeedingFacade(): EngineFacade {
       scores: { ...STATE.scores },
       gatePassed: false,
       rejectionReason: "r",
+    }),
+    setLessonAim: (aim) => ({
+      stored: true,
+      reason: null,
+      lessonKey: "track",
+      value: aim,
+    }),
+    setRuleCompression: (text) => ({
+      stored: true,
+      reason: null,
+      lessonKey: "track",
+      value: text,
+    }),
+    setRunCommitment: (text) => ({
+      stored: true,
+      reason: null,
+      lessonKey: "track",
+      value: text,
     }),
     logCoachingNote: () => {},
     navigateToAnchor: (anchor) => ({ ok: true, anchor }),
@@ -170,6 +197,45 @@ test("read-only facade methods never notify", () => {
   facade.getNarrationScript();
   facade.getRegistrySnapshot();
   expect(notifications).toBe(0);
+});
+
+test("lesson-text setters notify once when stored and never when refused", () => {
+  const methods: ReadonlyArray<
+    [
+      "setLessonAim" | "setRuleCompression" | "setRunCommitment",
+      (facade: EngineFacade) => unknown,
+    ]
+  > = [
+    ["setLessonAim", (f) => f.setLessonAim("aim")],
+    ["setRuleCompression", (f) => f.setRuleCompression("rule")],
+    ["setRunCommitment", (f) => f.setRunCommitment("commit")],
+  ];
+
+  for (const [name, invoke] of methods) {
+    let storedNotifications = 0;
+    const storedInner = succeedingFacade();
+    const storedFacade = new NotifyingFacade(storedInner, () => {
+      storedNotifications += 1;
+    });
+    invoke(storedFacade);
+    expect(`${name}:stored:${storedNotifications}`).toBe(`${name}:stored:1`);
+
+    let refusedNotifications = 0;
+    const refusedInner = succeedingFacade();
+    (refusedInner as unknown as Record<string, unknown>)[name] = () => ({
+      stored: false,
+      reason: "exam-active",
+      lessonKey: "track",
+      value: null,
+    });
+    const refusedFacade = new NotifyingFacade(refusedInner, () => {
+      refusedNotifications += 1;
+    });
+    invoke(refusedFacade);
+    expect(`${name}:refused:${refusedNotifications}`).toBe(
+      `${name}:refused:0`,
+    );
+  }
 });
 
 test("getRegistrySnapshot passes through without notifying", () => {

@@ -130,11 +130,17 @@ describe('MasteryEngineFacade', () => {
       [
         'attemptCount',
         'gatePassed',
+        'lessonAims',
         'misconceptionFires',
         'phase',
+        'ruleCompressions',
+        'runCommitments',
         'scores',
       ].sort(),
     );
+    expect(state.lessonAims).toEqual({});
+    expect(state.ruleCompressions).toEqual({});
+    expect(state.runCommitments).toEqual({});
     expect(JSON.stringify(state)).not.toContain('average');
   });
 
@@ -207,6 +213,72 @@ describe('MasteryEngineFacade', () => {
         connections: fabricated,
         application: fabricated,
         transfer: fabricated,
+      }),
+    );
+    expect(verdict.accepted).toBe(false);
+    expect(verdict.gatePassed).toBe(false);
+    expect(verdict.rejectionReason).toContain('verbatim');
+  });
+
+  test('lesson text setters key by active lesson slug and fall back to track', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+      getActiveLesson: () => ({
+        slug: 'plugin-isolation',
+        title: 'Plugin isolation',
+        objectiveId: 'obj-1',
+        sectionAnchors: ['plugin-isolation-rule'],
+      }),
+    });
+    const aim = facade.setLessonAim('  I need to debug isolation  ');
+    expect(aim).toEqual({
+      stored: true,
+      reason: null,
+      lessonKey: 'plugin-isolation',
+      value: 'I need to debug isolation',
+    });
+    const compression = facade.setRuleCompression('sandbox the call');
+    expect(compression.lessonKey).toBe('plugin-isolation');
+    expect(compression.stored).toBe(true);
+    const commitment = facade.setRunCommitment('audit one plugin');
+    expect(commitment.lessonKey).toBe('plugin-isolation');
+    expect(commitment.stored).toBe(true);
+
+    const state = facade.getLearnerState();
+    expect(state.lessonAims).toEqual({
+      'plugin-isolation': 'I need to debug isolation',
+    });
+    expect(state.ruleCompressions).toEqual({
+      'plugin-isolation': 'sandbox the call',
+    });
+    expect(state.runCommitments).toEqual({
+      'plugin-isolation': 'audit one plugin',
+    });
+
+    const { facade: trackFacade } = makeFacade();
+    const track = trackFacade.setLessonAim('track-level aim');
+    expect(track.lessonKey).toBe('track');
+    expect(track.stored).toBe(true);
+    expect(trackFacade.getLearnerState().lessonAims).toEqual({
+      track: 'track-level aim',
+    });
+  });
+
+  test('stored lesson aim cannot pass as score_rubric verbatim evidence', () => {
+    const { facade } = makeFacade();
+    primeAttempt(facade);
+    const aim = 'I am here to launder this sentence into the rubric';
+    const stored = facade.setLessonAim(aim);
+    expect(stored.stored).toBe(true);
+    const verdict = facade.scoreRubric(
+      rubric(4, 4, 4, 4, {
+        recall: aim,
+        connections: aim,
+        application: aim,
+        transfer: aim,
       }),
     );
     expect(verdict.accepted).toBe(false);

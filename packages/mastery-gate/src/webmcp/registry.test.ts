@@ -60,6 +60,9 @@ function createStubEngine(options?: {
     phase: 'practice',
     gatePassed: false,
     attemptCount: 1,
+    lessonAims: {},
+    ruleCompressions: {},
+    runCommitments: {},
   };
 
   const question =
@@ -119,6 +122,24 @@ function createStubEngine(options?: {
         rejectionReason: null,
       };
     },
+    setLessonAim: (aim) => ({
+      stored: true,
+      reason: null,
+      lessonKey: 'track',
+      value: aim,
+    }),
+    setRuleCompression: (text) => ({
+      stored: true,
+      reason: null,
+      lessonKey: 'track',
+      value: text,
+    }),
+    setRunCommitment: (text) => ({
+      stored: true,
+      reason: null,
+      lessonKey: 'track',
+      value: text,
+    }),
     logCoachingNote: (_note) => {
       return;
     },
@@ -246,7 +267,7 @@ const RICH_FLAGS: Pick<
   moduleComplete: true,
 };
 
-test('registry: initial sync in lesson phase registers exactly the ten STATIC_TOOL_NAMES', async () => {
+test('registry: initial sync in lesson phase registers exactly the STATIC_TOOL_NAMES', async () => {
   const ctx = new MockModelContext();
   const { engine } = createStubEngine();
   const registry = new ToolRegistry(ctx, engine);
@@ -619,6 +640,22 @@ test('stuck revocation: a tool desired again while draining re-registers after s
   expect(ctx.getToolNames()).toContain('get_current_question');
   expect(registry.getRegisteredNames()).toContain('get_current_question');
   expect(registry.getStuckRevocations()).toEqual([]);
+});
+
+test('registry: set_lesson_aim is static in every non-exam phase and revoked in exam deregister mode', async () => {
+  const ctx = new MockModelContext();
+  const { engine } = createStubEngine();
+  const registry = new ToolRegistry(ctx, engine);
+  await registry.sync(snap({ phase: 'lesson' }));
+  expect(ctx.getToolNames()).toContain('set_lesson_aim');
+  await registry.sync(snap({ phase: 'practice' }));
+  expect(ctx.getToolNames()).toContain('set_lesson_aim');
+  await registry.sync(snap({ phase: 'drill' }));
+  expect(ctx.getToolNames()).toContain('set_lesson_aim');
+  await registry.sync(snap({ phase: 'exam' }));
+  expect(ctx.getToolNames()).not.toContain('set_lesson_aim');
+  await registry.sync(snap({ phase: 'practice' }));
+  expect(ctx.getToolNames()).toContain('set_lesson_aim');
 });
 
 test('registry: omitting disabledTools still registers start_exam when gatePassed and phase is not exam', async () => {

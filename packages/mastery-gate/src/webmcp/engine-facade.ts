@@ -17,6 +17,16 @@ export interface LearnerStatePublic {
   phase: ToolPhase;
   gatePassed: boolean;
   attemptCount: number;
+  lessonAims: Record<string, string>;
+  ruleCompressions: Record<string, string>;
+  runCommitments: Record<string, string>;
+}
+
+export interface LessonTextResultPublic {
+  stored: boolean;
+  reason: string | null;
+  lessonKey: string;
+  value: string | null;
 }
 
 export interface ActiveLessonPublic {
@@ -171,14 +181,36 @@ export interface EngineFacade {
    * Engine routing verdict. `'continue'` covers correct+confident / no-attempt
    * states the routing table does not define (matches the engine's
    * RoutingVerdict union). `confidence: 'low'` after a correct answer routes
-   * to `go_deeper`. `'rubric_interview'` is the coverage-ready invitation
-   * when the gate has not passed.
+   * to `go_deeper`. `'rubric_interview'` = MCQ coverage thresholds met per
+   * dimension but gate not passed — the engine invites the agent to run the
+   * open-question interview and score the rubric.
    */
   requestNextAction(
     confidence?: 'low' | 'high',
   ): NextAction | 'continue' | 'rubric_interview';
   prescribeDrill(): DrillPrescriptionPublic;
   scoreRubric(submission: RubricSubmission): RubricVerdictPublic;
+  /**
+   * Keyed by the route-derived active lesson slug, or 'track' when no
+   * lesson is active; learner/agent-authored reflective text — persisted
+   * on the ledger, exposed via getLearnerState, NEVER admitted to the
+   * rubric evidence corpus; engine-guarded against exam-mode writes.
+   */
+  setLessonAim(aim: string): LessonTextResultPublic;
+  /**
+   * Keyed by the route-derived active lesson slug, or 'track' when no
+   * lesson is active; learner/agent-authored reflective text — persisted
+   * on the ledger, exposed via getLearnerState, NEVER admitted to the
+   * rubric evidence corpus; engine-guarded against exam-mode writes.
+   */
+  setRuleCompression(text: string): LessonTextResultPublic;
+  /**
+   * Keyed by the route-derived active lesson slug, or 'track' when no
+   * lesson is active; learner/agent-authored reflective text — persisted
+   * on the ledger, exposed via getLearnerState, NEVER admitted to the
+   * rubric evidence corpus; engine-guarded against exam-mode writes.
+   */
+  setRunCommitment(text: string): LessonTextResultPublic;
   logCoachingNote(note: string): void;
   navigateToAnchor(anchor: string): NavigateResultPublic;
   getMisconceptionBrief(misconceptionId: string): Misconception | null;

@@ -6,7 +6,9 @@ import { MasteryEngineFacade } from './engine-adapter';
 import type {
   ComposeDebriefResultPublic,
   EngineFacade,
+  ExamStatusPublic,
   LearnerStatePublic,
+  LessonTextResultPublic,
   RubricSubmission,
   SubmitAnswerVerdictPublic,
 } from './engine-facade';
@@ -39,6 +41,7 @@ interface EngineLog {
   nextActionConfidence: 'low' | 'high' | 'unset' | null;
   composeDebrief: DebriefSegment[] | null;
   navigateToAnchor: string | null;
+  setLessonAim: string | null;
 }
 
 function createStubEngine(options?: {
@@ -47,6 +50,11 @@ function createStubEngine(options?: {
   submitVerdict?: SubmitAnswerVerdictPublic;
   composeResult?: ComposeDebriefResultPublic;
   learnerState?: LearnerStatePublic;
+  nextAction?: 'hint' | 'review' | 'coach' | 'go_deeper' | 'advance' | 'continue' | 'rubric_interview';
+  scoreGatePassed?: boolean;
+  lessonTextResult?: LessonTextResultPublic;
+  startExamStatus?: ExamStatusPublic;
+  submitExamStatus?: ExamStatusPublic;
 }): { engine: EngineFacade; log: EngineLog } {
   const log: EngineLog = {
     submitAnswer: null,
@@ -54,6 +62,7 @@ function createStubEngine(options?: {
     nextActionConfidence: null,
     composeDebrief: null,
     navigateToAnchor: null,
+    setLessonAim: null,
   };
 
   const learnerState: LearnerStatePublic = options?.learnerState ?? {
@@ -62,6 +71,9 @@ function createStubEngine(options?: {
     phase: 'practice',
     gatePassed: false,
     attemptCount: 1,
+    lessonAims: {},
+    ruleCompressions: {},
+    runCommitments: {},
   };
 
   const question =
@@ -102,6 +114,9 @@ function createStubEngine(options?: {
     }),
     requestNextAction: (confidence) => {
       log.nextActionConfidence = confidence ?? 'unset';
+      if (options?.nextAction !== undefined) {
+        return options.nextAction;
+      }
       return confidence === 'low' ? 'go_deeper' : 'hint';
     },
     prescribeDrill: () => ({
@@ -119,10 +134,33 @@ function createStubEngine(options?: {
           application: submission.application.score,
           transfer: submission.transfer.score,
         },
-        gatePassed: false,
+        gatePassed: options?.scoreGatePassed ?? false,
         rejectionReason: null,
       };
     },
+    setLessonAim: (aim) => {
+      log.setLessonAim = aim;
+      return (
+        options?.lessonTextResult ?? {
+          stored: true,
+          reason: null,
+          lessonKey: 'track',
+          value: aim,
+        }
+      );
+    },
+    setRuleCompression: (text) => ({
+      stored: true,
+      reason: null,
+      lessonKey: 'track',
+      value: text,
+    }),
+    setRunCommitment: (text) => ({
+      stored: true,
+      reason: null,
+      lessonKey: 'track',
+      value: text,
+    }),
     logCoachingNote: (_note) => {
       return;
     },
@@ -153,13 +191,14 @@ function createStubEngine(options?: {
       predictionWasCorrect: false,
       explanationAnchor: 'lesson-plugin-services',
     }),
-    startExam: () => ({
-      active: true,
-      remainingSeconds: 600,
-      questionsAnswered: 0,
-      questionsTotal: 4,
-      submitted: false,
-    }),
+    startExam: () =>
+      options?.startExamStatus ?? {
+        active: true,
+        remainingSeconds: 600,
+        questionsAnswered: 0,
+        questionsTotal: 4,
+        submitted: false,
+      },
     getExamStatus: () => ({
       active: true,
       remainingSeconds: 599,
@@ -167,13 +206,14 @@ function createStubEngine(options?: {
       questionsTotal: 4,
       submitted: false,
     }),
-    submitExam: () => ({
-      active: false,
-      remainingSeconds: 0,
-      questionsAnswered: 4,
-      questionsTotal: 4,
-      submitted: true,
-    }),
+    submitExam: () =>
+      options?.submitExamStatus ?? {
+        active: false,
+        remainingSeconds: 0,
+        questionsAnswered: 4,
+        questionsTotal: 4,
+        submitted: true,
+      },
     getExamDebrief: () => ({
       scores: learnerState.scores,
       missedConceptIds: [],
@@ -233,11 +273,11 @@ function evidenceQuote(dimension: string): string {
   return `Quoted lesson evidence for ${dimension}.`;
 }
 
-test('createToolset returns exactly 22 tools with closed object schemas', () => {
+test('createToolset returns exactly 23 tools with closed object schemas', () => {
   const { engine } = createStubEngine();
   const tools = createToolset(engine);
   const names = Object.keys(tools);
-  expect(names.length).toBe(22);
+  expect(names.length).toBe(23);
   for (const name of ALL_TOOL_NAMES) {
     expect(names).toContain(name);
     const tool = tools[name];
@@ -325,11 +365,11 @@ test('request_next_action passes validated confidence through to the engine', as
   const tools = createToolset(engine);
 
   const plain = await tools.request_next_action.execute({});
-  expect(payloadOf(plain)).toBe('hint');
+  expect(payloadOf(plain)).toEqual({ verdict: 'hint' });
   expect(log.nextActionConfidence).toBe('unset');
 
   const low = await tools.request_next_action.execute({ confidence: 'low' });
-  expect(payloadOf(low)).toBe('go_deeper');
+  expect(payloadOf(low)).toEqual({ verdict: 'go_deeper' });
   expect(log.nextActionConfidence).toBe('low');
 
   log.nextActionConfidence = null;
@@ -469,4 +509,242 @@ test('submit_answer serializes the remediation anchor on a miss and withholds ra
   expect(payload['remediationAnchor']).toBe('lesson-plugin-services');
   expect(payload['rationale']).toBeNull();
   expect(textOf(response)).not.toContain('correctOptionId');
+});
+
+const TEACH_BACK_SEED =
+  'Teach-back: before moving on, ask the learner to explain the corrected idea in their own words — do not advance until they can.';
+
+const GATE_PASS_HINT =
+  "Gate passed: advance_module and start_exam are now available — re-check this page's tools (getTools) before your next move.";
+
+const EXAM_START_HINT =
+  'Exam started: coaching tools are revoked until submit — only get_exam_status and submit_exam stay registered. Re-check this page\'s tools.';
+
+const EXAM_SUBMIT_HINT =
+  'Exam submitted: coaching tools are restored and get_exam_debrief is now registered — re-check this page\'s tools.';
+
+const RUBRIC_INTERVIEW_GUIDANCE =
+  'MCQ coverage is sufficient but the gate has not passed — run the rubric interview now: ask 5–8 open questions across recall, connections, application, and transfer, one at a time, never answering for the learner. Then submit score_rubric with a 0–4 score per dimension and a verbatim evidence quote for each.';
+
+function stateWithFires(fires: Record<string, number>): LearnerStatePublic {
+  return {
+    scores: { ...SAMPLE_SCORES },
+    misconceptionFires: fires,
+    phase: 'practice',
+    gatePassed: false,
+    attemptCount: 1,
+    lessonAims: {},
+    ruleCompressions: {},
+    runCommitments: {},
+  };
+}
+
+function rubricInput() {
+  return {
+    recall: { score: 3, evidenceQuote: evidenceQuote('recall') },
+    connections: { score: 3, evidenceQuote: evidenceQuote('connections') },
+    application: { score: 3, evidenceQuote: evidenceQuote('application') },
+    transfer: { score: 3, evidenceQuote: evidenceQuote('transfer') },
+  };
+}
+
+test('set_lesson_aim validates input, delegates, and echoes the facade result', async () => {
+  const echoed: LessonTextResultPublic = {
+    stored: true,
+    reason: null,
+    lessonKey: 'plugin-isolation',
+    value: 'I need to debug isolation',
+  };
+  const { engine, log } = createStubEngine({ lessonTextResult: echoed });
+  const tools = createToolset(engine);
+
+  const missing = await tools.set_lesson_aim.execute({});
+  expect(asRecord(payloadOf(missing))['error']).toBe('invalid_input');
+  expect(log.setLessonAim).toBe(null);
+
+  const stored = await tools.set_lesson_aim.execute({
+    aim: 'I need to debug isolation',
+  });
+  expect(log.setLessonAim).toBe('I need to debug isolation');
+  expect(payloadOf(stored)).toEqual({
+    stored: true,
+    reason: null,
+    lessonKey: 'plugin-isolation',
+    value: 'I need to debug isolation',
+  });
+});
+
+test('request_next_action payload carries guidance only for rubric_interview', async () => {
+  const interview = createStubEngine({ nextAction: 'rubric_interview' });
+  const interviewTools = createToolset(interview.engine);
+  const interviewResponse = await interviewTools.request_next_action.execute({});
+  expect(payloadOf(interviewResponse)).toEqual({
+    verdict: 'rubric_interview',
+    guidance: RUBRIC_INTERVIEW_GUIDANCE,
+  });
+
+  const hint = createStubEngine({ nextAction: 'hint' });
+  const hintTools = createToolset(hint.engine);
+  const hintResponse = await hintTools.request_next_action.execute({});
+  expect(payloadOf(hintResponse)).toEqual({ verdict: 'hint' });
+  expect(asRecord(payloadOf(hintResponse))['guidance']).toBeUndefined();
+});
+
+test('get_misconception_brief appends the teach-back seed', async () => {
+  const { engine } = createStubEngine();
+  const tools = createToolset(engine);
+  const response = await tools.get_misconception_brief.execute({
+    misconceptionId: 'mc-http-from-plugin',
+  });
+  const payload = asRecord(payloadOf(response));
+  expect(payload['socraticSeeds']).toEqual([
+    'What process hosts the plugin?',
+    TEACH_BACK_SEED,
+  ]);
+});
+
+test('get_learner_state maps lessonAims, ruleCompressions, and runCommitments key-by-key', async () => {
+  const { engine } = createStubEngine({
+    learnerState: {
+      scores: { ...SAMPLE_SCORES },
+      misconceptionFires: {},
+      phase: 'practice',
+      gatePassed: false,
+      attemptCount: 1,
+      lessonAims: { 'plugin-isolation': 'debug plugins' },
+      ruleCompressions: { 'plugin-isolation': 'sandbox the call' },
+      runCommitments: { 'plugin-isolation': 'audit one plugin' },
+    },
+  });
+  const tools = createToolset(engine);
+  const payload = asRecord(
+    payloadOf(await tools.get_learner_state.execute({})),
+  );
+  expect(payload['lessonAims']).toEqual({
+    'plugin-isolation': 'debug plugins',
+  });
+  expect(payload['ruleCompressions']).toEqual({
+    'plugin-isolation': 'sandbox the call',
+  });
+  expect(payload['runCommitments']).toEqual({
+    'plugin-isolation': 'audit one plugin',
+  });
+});
+
+test('score_rubric toolChangeHint is present only when accepted and the gate passes', async () => {
+  const closed = createStubEngine({ scoreGatePassed: false });
+  const closedTools = createToolset(closed.engine);
+  const closedPayload = asRecord(
+    payloadOf(await closedTools.score_rubric.execute(rubricInput())),
+  );
+  expect(closedPayload['accepted']).toBe(true);
+  expect(closedPayload['gatePassed']).toBe(false);
+  expect(closedPayload['toolChangeHint']).toBeUndefined();
+
+  const opened = createStubEngine({ scoreGatePassed: true });
+  const openedTools = createToolset(opened.engine);
+  const openedPayload = asRecord(
+    payloadOf(await openedTools.score_rubric.execute(rubricInput())),
+  );
+  expect(openedPayload['accepted']).toBe(true);
+  expect(openedPayload['gatePassed']).toBe(true);
+  expect(openedPayload['toolChangeHint']).toBe(GATE_PASS_HINT);
+});
+
+test('submit_answer toolChangeHint is present only on the second misconception fire', async () => {
+  const first = createStubEngine({
+    learnerState: stateWithFires({ 'mc-http-from-plugin': 1 }),
+  });
+  const firstPayload = asRecord(
+    payloadOf(
+      await createToolset(first.engine).submit_answer.execute({
+        questionId: 'q-plugin-isolation',
+        optionId: 'opt-b',
+      }),
+    ),
+  );
+  expect(firstPayload['misconceptionId']).toBe('mc-http-from-plugin');
+  expect(firstPayload['toolChangeHint']).toBeUndefined();
+
+  const second = createStubEngine({
+    learnerState: stateWithFires({ 'mc-http-from-plugin': 2 }),
+  });
+  const secondPayload = asRecord(
+    payloadOf(
+      await createToolset(second.engine).submit_answer.execute({
+        questionId: 'q-plugin-isolation',
+        optionId: 'opt-b',
+      }),
+    ),
+  );
+  expect(secondPayload['toolChangeHint']).toBe(
+    'This misconception has now fired twice: get_misconception_brief is now available for "mc-http-from-plugin" — re-check this page\'s tools.',
+  );
+
+  const third = createStubEngine({
+    learnerState: stateWithFires({ 'mc-http-from-plugin': 3 }),
+  });
+  const thirdPayload = asRecord(
+    payloadOf(
+      await createToolset(third.engine).submit_answer.execute({
+        questionId: 'q-plugin-isolation',
+        optionId: 'opt-b',
+      }),
+    ),
+  );
+  expect(thirdPayload['toolChangeHint']).toBeUndefined();
+});
+
+test('start_exam toolChangeHint is present only when the exam is active and not submitted', async () => {
+  const started = createStubEngine();
+  const startedPayload = asRecord(
+    payloadOf(await createToolset(started.engine).start_exam.execute({})),
+  );
+  expect(startedPayload['toolChangeHint']).toBe(EXAM_START_HINT);
+
+  const idle = createStubEngine({
+    startExamStatus: {
+      active: false,
+      remainingSeconds: 0,
+      questionsAnswered: 0,
+      questionsTotal: 4,
+      submitted: false,
+    },
+  });
+  const idlePayload = asRecord(
+    payloadOf(await createToolset(idle.engine).start_exam.execute({})),
+  );
+  expect(idlePayload['toolChangeHint']).toBeUndefined();
+
+  const status = createStubEngine();
+  const statusPayload = asRecord(
+    payloadOf(await createToolset(status.engine).get_exam_status.execute({})),
+  );
+  expect(statusPayload['active']).toBe(true);
+  expect(statusPayload['submitted']).toBe(false);
+  expect(statusPayload['toolChangeHint']).toBeUndefined();
+});
+
+test('submit_exam toolChangeHint is present only when the exam is submitted', async () => {
+  const submitted = createStubEngine();
+  const submittedPayload = asRecord(
+    payloadOf(await createToolset(submitted.engine).submit_exam.execute({})),
+  );
+  expect(submittedPayload['toolChangeHint']).toBe(EXAM_SUBMIT_HINT);
+
+  const unsubmitted = createStubEngine({
+    submitExamStatus: {
+      active: true,
+      remainingSeconds: 10,
+      questionsAnswered: 1,
+      questionsTotal: 4,
+      submitted: false,
+    },
+  });
+  const unsubmittedPayload = asRecord(
+    payloadOf(
+      await createToolset(unsubmitted.engine).submit_exam.execute({}),
+    ),
+  );
+  expect(unsubmittedPayload['toolChangeHint']).toBeUndefined();
 });

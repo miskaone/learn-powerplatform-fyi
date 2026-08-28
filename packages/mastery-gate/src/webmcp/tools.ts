@@ -19,6 +19,7 @@ import type {
   ExamStatusPublic,
   HintResultPublic,
   LearnerStatePublic,
+  LessonTextResultPublic,
   MutateAssumptionResultPublic,
   NavigateResultPublic,
   RevealOutcomeResultPublic,
@@ -60,13 +61,31 @@ interface IncomingSegment {
   misconceptionId: string | undefined;
 }
 
+const TEACH_BACK_SEED =
+  'Teach-back: before moving on, ask the learner to explain the corrected idea in their own words — do not advance until they can.';
+
+const GATE_PASS_HINT =
+  'Gate passed: advance_module and start_exam are now available — re-check this page\'s tools (getTools) before your next move.';
+
+const SECOND_FIRE_HINT = (misconceptionId: string): string =>
+  `This misconception has now fired twice: get_misconception_brief is now available for "${misconceptionId}" — re-check this page's tools.`;
+
+const EXAM_START_HINT =
+  'Exam started: coaching tools are revoked until submit — only get_exam_status and submit_exam stay registered. Re-check this page\'s tools.';
+
+const EXAM_SUBMIT_HINT =
+  'Exam submitted: coaching tools are restored and get_exam_debrief is now registered — re-check this page\'s tools.';
+
+const RUBRIC_INTERVIEW_GUIDANCE =
+  'MCQ coverage is sufficient but the gate has not passed — run the rubric interview now: ask 5–8 open questions across recall, connections, application, and transfer, one at a time, never answering for the learner. Then submit score_rubric with a 0–4 score per dimension and a verbatim evidence quote for each.';
+
 export function createToolset(
   engine: EngineFacade,
 ): Record<ToolName, ToolDescriptor> {
   return {
     get_learner_state: descriptor(
       'get_learner_state',
-      'Return the learner current rubric scores, misconception fire counts, phase, gate status, and attempt count.',
+      'Read the learner\'s rubric scores, misconception fire counts, phase, gate status, attempt count, and their own written lesson aims, one-line rule compressions, and run commitments. Call at session start and again before choosing any coaching move. When a rule compression exists, critique it against the lesson\'s governing rule — what did they miss or overstate?',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -78,7 +97,7 @@ export function createToolset(
     ),
     get_current_context: descriptor(
       'get_current_context',
-      'Return the current objective, section, concepts, and prerequisites for the learner.',
+      'Read the current objective and, when the learner is on a lesson page, that lesson\'s slug, title, and section anchors. Call first in every session and after any navigation, to orient before coaching.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -90,7 +109,7 @@ export function createToolset(
     ),
     navigate_to_anchor: descriptor(
       'navigate_to_anchor',
-      'Scroll the lesson to a named section anchor.',
+      'Scroll the learner\'s page to a named section anchor and highlight it (anchors come from get_current_context.lesson.sectionAnchors or a verdict\'s remediationAnchor). Call when routing says review or coach, or whenever the lesson text you are discussing should be on the learner\'s screen.',
       closedObject({ anchor: stringSchema() }, ['anchor']),
       async (input) => {
         const parsed = requireStrings(input, ['anchor'] as const);
@@ -104,7 +123,7 @@ export function createToolset(
     ),
     log_coaching_note: descriptor(
       'log_coaching_note',
-      'Record a coaching note against the learner ledger.',
+      'Persist a short coaching observation on the learner\'s ledger (survives reload; feeds the closing debrief). Call when you notice something worth remembering next session — a pattern, a breakthrough, a recurring confusion. Notes can never be used as rubric evidence.',
       closedObject({ note: stringSchema() }, ['note']),
       async (input) => {
         const parsed = requireStrings(input, ['note'] as const);
@@ -117,7 +136,7 @@ export function createToolset(
     ),
     get_current_question: descriptor(
       'get_current_question',
-      'Return the current practice question with redacted options, or note if none is active.',
+      'Fetch the current practice question — prompt and options only; the correct answer is structurally absent. Call at the start of each practice loop and after every submit_answer to load the next question. Let the learner reason aloud before they choose.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -136,7 +155,7 @@ export function createToolset(
     ),
     submit_answer: descriptor(
       'submit_answer',
-      'Submit an option for the current question and receive a graded verdict.',
+      'Submit the learner\'s chosen option for grading. Call only after the learner has committed to a choice themselves — never choose for them. A miss names the misconception that fired (coach Socratically from it); the rationale stays withheld until the question resolves. Watch the response for a toolChangeHint naming newly available tools.',
       closedObject(
         { questionId: stringSchema(), optionId: stringSchema() },
         ['questionId', 'optionId'],
@@ -147,11 +166,26 @@ export function createToolset(
           return parsed.response;
         }
         try {
-          return textResponse(
-            publicVerdict(
-              engine.submitAnswer(parsed.value.questionId, parsed.value.optionId),
-            ),
+          const verdict = publicVerdict(
+            engine.submitAnswer(parsed.value.questionId, parsed.value.optionId),
           );
+          const misconceptionId = verdict.misconceptionId;
+          if (
+            misconceptionId !== null &&
+            engine.getLearnerState().misconceptionFires[misconceptionId] === 2
+          ) {
+            return textResponse({
+              questionId: verdict.questionId,
+              correct: verdict.correct,
+              misconceptionId: verdict.misconceptionId,
+              attemptNumber: verdict.attemptNumber,
+              attemptsRemaining: verdict.attemptsRemaining,
+              rationale: verdict.rationale,
+              remediationAnchor: verdict.remediationAnchor,
+              toolChangeHint: SECOND_FIRE_HINT(misconceptionId),
+            });
+          }
+          return textResponse(verdict);
         } catch (error) {
           if (error instanceof RangeError) {
             return textResponse({
@@ -165,7 +199,7 @@ export function createToolset(
     ),
     get_hint: descriptor(
       'get_hint',
-      'Request the next allowed hint tier for a question.',
+      'Request the next hint tier for the current question. Call only when the learner is stuck or routing says hint — the engine enforces the ladder and refuses tier 2 before a genuine first attempt. Re-voice the hint Socratically; never add answer information of your own.',
       closedObject({ questionId: stringSchema() }, ['questionId']),
       async (input) => {
         const parsed = requireStrings(input, ['questionId'] as const);
@@ -187,7 +221,7 @@ export function createToolset(
     ),
     request_next_action: descriptor(
       'request_next_action',
-      'Ask the engine which pedagogical move to take next. Pass confidence "low" after a correct answer the learner was unsure about.',
+      'Ask the deterministic referee for the next pedagogical move. Call after every graded answer; pass confidence "low" when a correct answer felt shaky to the learner. Verdicts: hint, review, coach, go_deeper, advance, rubric_interview (run the open-question interview described in score_rubric), or continue. Follow the verdict — do not improvise the route.',
       closedObject(
         { confidence: { type: 'string', enum: ['low', 'high'] } },
         [],
@@ -197,12 +231,19 @@ export function createToolset(
         if (!parsed.ok) {
           return parsed.response;
         }
-        return textResponse(engine.requestNextAction(parsed.value));
+        const verdict = engine.requestNextAction(parsed.value);
+        if (verdict === 'rubric_interview') {
+          return textResponse({
+            verdict,
+            guidance: RUBRIC_INTERVIEW_GUIDANCE,
+          });
+        }
+        return textResponse({ verdict });
       },
     ),
     prescribe_drill: descriptor(
       'prescribe_drill',
-      'Ask the engine which drill to run against the weakest rubric dimension.',
+      'Ask the engine which drill targets the learner\'s weakest rubric dimension. Call once rubric scores exist and practice is going well — before advancing, or when the learner asks what to work on next.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -214,19 +255,41 @@ export function createToolset(
     ),
     score_rubric: descriptor(
       'score_rubric',
-      'Submit per-dimension rubric scores with verbatim evidence quotes for engine scoring.',
+      'Submit 0-4 scores for recall, connections, application, and transfer, each grounded by a VERBATIM quote from the lesson text as evidence. Call only after a rubric interview: 5-8 open questions across the four dimensions, one at a time, never answering for the learner. The engine rejects non-verbatim evidence, requires prior graded attempts, and refuses during an exam. Every dimension at 3 or above opens the gate; the response then names the newly available tools.',
       scoreRubricSchema(),
       async (input) => {
         const parsed = parseScoreRubric(input);
         if (!parsed.ok) {
           return parsed.response;
         }
-        return textResponse(publicRubricVerdict(engine.scoreRubric(parsed.value)));
+        const verdict = publicRubricVerdict(engine.scoreRubric(parsed.value));
+        if (verdict.accepted && verdict.gatePassed) {
+          return textResponse({
+            accepted: verdict.accepted,
+            scores: verdict.scores,
+            gatePassed: verdict.gatePassed,
+            rejectionReason: verdict.rejectionReason,
+            toolChangeHint: GATE_PASS_HINT,
+          });
+        }
+        return textResponse(verdict);
+      },
+    ),
+    set_lesson_aim: descriptor(
+      'set_lesson_aim',
+      'Record why the learner is here: "I\'m reading this because I need to ___". ASK for the aim as your FIRST question of every session, before any practice, and store the answer here (200 chars max). It persists per lesson, appears in get_learner_state, and can never be used as rubric evidence. Set it again if the learner\'s goal shifts.',
+      closedObject({ aim: stringSchema() }, ['aim']),
+      async (input) => {
+        const parsed = requireStrings(input, ['aim'] as const);
+        if (!parsed.ok) {
+          return parsed.response;
+        }
+        return textResponse(publicLessonText(engine.setLessonAim(parsed.value.aim)));
       },
     ),
     advance_module: descriptor(
       'advance_module',
-      'Advance to the next objective after the mastery gate has passed.',
+      'Advance the learner to the next objective. Call only when routing returns advance (the gate is open) and AFTER the learner has explained the concept back in their own words — the teach-back is your final check; the gate was the engine\'s.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -238,7 +301,7 @@ export function createToolset(
     ),
     get_misconception_brief: descriptor(
       'get_misconception_brief',
-      'Return a brief on a named misconception that has already fired.',
+      'Fetch the contrast and Socratic seed questions for a misconception that has fired at least twice — this tool appears only then. Call when routing says coach or a miss repeats a misconception. Use the seeds one at a time and finish with the teach-back: the learner restates the corrected idea in their own words before you move on.',
       closedObject({ misconceptionId: stringSchema() }, ['misconceptionId']),
       async (input) => {
         const parsed = requireStrings(input, ['misconceptionId'] as const);
@@ -254,7 +317,7 @@ export function createToolset(
     ),
     mutate_assumption: descriptor(
       'mutate_assumption',
-      'Flip one assumption in a transfer-drill scenario.',
+      'Flip exactly one assumption in the active Flip-Condition drill scenario (available only while a drill is running). Call at the start of each drill round, before the learner predicts — one mutation per round, engine-enforced.',
       closedObject(
         { scenarioId: stringSchema(), assumptionId: stringSchema() },
         ['scenarioId', 'assumptionId'],
@@ -279,7 +342,7 @@ export function createToolset(
     ),
     commit_prediction: descriptor(
       'commit_prediction',
-      'Commit a prediction and reason for a transfer-drill scenario.',
+      'Commit the learner\'s prediction and their reasoning for the mutated scenario. Call after mutate_assumption, once the learner has said what changes and why — the engine rejects thin reasoning, and reveal_outcome only registers after a commit.',
       closedObject(
         {
           scenarioId: stringSchema(),
@@ -310,7 +373,7 @@ export function createToolset(
     ),
     reveal_outcome: descriptor(
       'reveal_outcome',
-      'Reveal the outcome of a transfer-drill scenario after a prediction is committed.',
+      'Reveal the engine\'s outcome for the committed prediction (this tool appears only after commit_prediction). Call once the learner has locked their prediction in; then compare outcome against prediction and coach the gap.',
       closedObject({ scenarioId: stringSchema() }, ['scenarioId']),
       async (input) => {
         const parsed = requireStrings(input, ['scenarioId'] as const);
@@ -324,19 +387,30 @@ export function createToolset(
     ),
     start_exam: descriptor(
       'start_exam',
-      'Start exam mode for the current objective.',
+      'Start the timed exam (available only once the gate has passed). Call only when the learner explicitly agrees to be examined. Starting revokes every coaching tool until submit — the roster shrinks to get_exam_status and submit_exam, and the response says so.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
         if (!parsed.ok) {
           return parsed.response;
         }
-        return textResponse(publicExamStatus(engine.startExam()));
+        const status = publicExamStatus(engine.startExam());
+        if (status.active && !status.submitted) {
+          return textResponse({
+            active: status.active,
+            remainingSeconds: status.remainingSeconds,
+            questionsAnswered: status.questionsAnswered,
+            questionsTotal: status.questionsTotal,
+            submitted: status.submitted,
+            toolChangeHint: EXAM_START_HINT,
+          });
+        }
+        return textResponse(status);
       },
     ),
     get_exam_status: descriptor(
       'get_exam_status',
-      'Return remaining time and progress for the active exam.',
+      'Read remaining seconds and answered-of-total progress for the active exam. Call to pace the learner or when they ask how much time is left.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -348,19 +422,30 @@ export function createToolset(
     ),
     submit_exam: descriptor(
       'submit_exam',
-      'Submit the exam and lock further answers.',
+      'Submit the exam, locking all answers, restoring the coaching tools, and unlocking get_exam_debrief. Call when the learner finishes or time is nearly out. The response names the restored tools — re-check the roster.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
         if (!parsed.ok) {
           return parsed.response;
         }
-        return textResponse(publicExamStatus(engine.submitExam()));
+        const status = publicExamStatus(engine.submitExam());
+        if (status.submitted) {
+          return textResponse({
+            active: status.active,
+            remainingSeconds: status.remainingSeconds,
+            questionsAnswered: status.questionsAnswered,
+            questionsTotal: status.questionsTotal,
+            submitted: status.submitted,
+            toolChangeHint: EXAM_SUBMIT_HINT,
+          });
+        }
+        return textResponse(status);
       },
     ),
     get_exam_debrief: descriptor(
       'get_exam_debrief',
-      'Return exam debrief scores and the concepts and misconceptions that fired.',
+      'Read the post-exam debrief — scores, missed concepts, and misconceptions that fired (available only after submit_exam). Call right after submitting, to ground the review of what to study next.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -372,7 +457,7 @@ export function createToolset(
     ),
     compose_debrief: descriptor(
       'compose_debrief',
-      'Submit a mastery-debrief playlist of segments for engine validation.',
+      'Propose the mastery-debrief playlist for engine validation (available only after module completion). Call when composing the closing debrief; any segment citing a misconception that never fired is rejected.',
       composeDebriefSchema(),
       async (input) => {
         const parsed = parseComposeDebrief(input);
@@ -403,7 +488,7 @@ export function createToolset(
     ),
     get_narration_script: descriptor(
       'get_narration_script',
-      'Return the engine-approved narration cues for the current debrief.',
+      'Fetch the engine-approved narration cues for the composed debrief. Call after compose_debrief accepts and before narrating — speak only engine-approved lines.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -415,7 +500,7 @@ export function createToolset(
     ),
     advance_segment: descriptor(
       'advance_segment',
-      'Advance the debrief narrator to a named segment.',
+      'Advance the debrief to a named segment. Call as you finish narrating each cue, so the scenes keep pace with your voice.',
       closedObject({ segmentId: stringSchema() }, ['segmentId']),
       async (input) => {
         const parsed = requireStrings(input, ['segmentId'] as const);
@@ -702,6 +787,16 @@ function publicScores(scores: RubricScores): RubricScores {
   };
 }
 
+function copyStringRecord(
+  record: Record<string, string>,
+): Record<string, string> {
+  const copied: Record<string, string> = {};
+  for (const key of Object.keys(record)) {
+    copied[key] = record[key];
+  }
+  return copied;
+}
+
 function publicLearnerState(state: LearnerStatePublic): LearnerStatePublic {
   return {
     scores: publicScores(state.scores),
@@ -709,6 +804,18 @@ function publicLearnerState(state: LearnerStatePublic): LearnerStatePublic {
     phase: state.phase,
     gatePassed: state.gatePassed,
     attemptCount: state.attemptCount,
+    lessonAims: copyStringRecord(state.lessonAims),
+    ruleCompressions: copyStringRecord(state.ruleCompressions),
+    runCommitments: copyStringRecord(state.runCommitments),
+  };
+}
+
+function publicLessonText(result: LessonTextResultPublic): LessonTextResultPublic {
+  return {
+    stored: result.stored,
+    reason: result.reason,
+    lessonKey: result.lessonKey,
+    value: result.value,
   };
 }
 
@@ -800,7 +907,7 @@ function publicMisconception(brief: Misconception): Misconception {
     id: brief.id,
     name: brief.name,
     contrast: brief.contrast,
-    socraticSeeds: [...brief.socraticSeeds],
+    socraticSeeds: [...brief.socraticSeeds, TEACH_BACK_SEED],
     anchor: brief.anchor,
   };
 }

@@ -24,6 +24,7 @@ import type {
   ExamStatusPublic,
   HintResultPublic,
   LearnerStatePublic,
+  LessonTextResultPublic,
   MutateAssumptionResultPublic,
   NavigateResultPublic,
   RegistrySnapshot,
@@ -98,6 +99,9 @@ export class MasteryEngineFacade implements EngineFacade {
       phase: state.phase,
       gatePassed: state.gatePassed,
       attemptCount: state.attemptsCount,
+      lessonAims: copyStringRecord(state.lessonAims),
+      ruleCompressions: copyStringRecord(state.ruleCompressions),
+      runCommitments: copyStringRecord(state.runCommitments),
     };
   }
 
@@ -190,6 +194,42 @@ export class MasteryEngineFacade implements EngineFacade {
       targetDimension: target,
       rationale: `${target} is the weakest dimension (score ${scores[target]}/4).`,
     };
+  }
+
+  /**
+   * Keyed by the route-derived active lesson slug, or 'track' when no
+   * lesson is active; learner/agent-authored reflective text — persisted
+   * on the ledger, exposed via getLearnerState, NEVER admitted to the
+   * rubric evidence corpus; engine-guarded against exam-mode writes.
+   */
+  setLessonAim(aim: string): LessonTextResultPublic {
+    return this.setLessonText((key, text) => this.engine.setLessonAim(key, text), aim);
+  }
+
+  /**
+   * Keyed by the route-derived active lesson slug, or 'track' when no
+   * lesson is active; learner/agent-authored reflective text — persisted
+   * on the ledger, exposed via getLearnerState, NEVER admitted to the
+   * rubric evidence corpus; engine-guarded against exam-mode writes.
+   */
+  setRuleCompression(text: string): LessonTextResultPublic {
+    return this.setLessonText(
+      (key, value) => this.engine.setRuleCompression(key, value),
+      text,
+    );
+  }
+
+  /**
+   * Keyed by the route-derived active lesson slug, or 'track' when no
+   * lesson is active; learner/agent-authored reflective text — persisted
+   * on the ledger, exposed via getLearnerState, NEVER admitted to the
+   * rubric evidence corpus; engine-guarded against exam-mode writes.
+   */
+  setRunCommitment(text: string): LessonTextResultPublic {
+    return this.setLessonText(
+      (key, value) => this.engine.setRunCommitment(key, value),
+      text,
+    );
   }
 
   scoreRubric(submission: RubricSubmission): RubricVerdictPublic {
@@ -416,9 +456,10 @@ export class MasteryEngineFacade implements EngineFacade {
     // names/contrasts/seeds (get_misconception_brief, tier-2 hints), and
     // objective titles (get_current_context.sectionTitle). Admitted: objective
     // summaries and the host-supplied corpus (lesson body text the learner
-    // reads on the page). Also excluded: the ledger's coachNotes —
-    // agent-authored, so admitting them would let an agent launder fabricated
-    // evidence through log_coaching_note and then quote it back "verbatim".
+    // reads on the page). Also excluded: the ledger's coachNotes,
+    // lessonAims, ruleCompressions, and runCommitments — learner/agent-authored,
+    // so admitting them would let an agent launder fabricated evidence
+    // through those write surfaces and then quote it back "verbatim".
     const lines: string[] = [];
     for (const objective of this.manifest.objectives) {
       lines.push(objective.summary);
@@ -457,6 +498,23 @@ export class MasteryEngineFacade implements EngineFacade {
     return null;
   }
 
+  private setLessonText(
+    write: (
+      key: string,
+      text: string,
+    ) => { stored: boolean; reason: string | null; value: string | null },
+    text: string,
+  ): LessonTextResultPublic {
+    const key = this.getActiveLesson?.()?.slug ?? 'track';
+    const result = write(key, text);
+    return {
+      stored: result.stored,
+      reason: result.reason,
+      lessonKey: key,
+      value: result.value,
+    };
+  }
+
   private nextObjectiveId(): string | null {
     const current = this.currentObjective();
     if (!current) {
@@ -470,4 +528,14 @@ export class MasteryEngineFacade implements EngineFacade {
     }
     return null;
   }
+}
+
+function copyStringRecord(
+  record: Record<string, string>,
+): Record<string, string> {
+  const copied: Record<string, string> = {};
+  for (const key of Object.keys(record)) {
+    copied[key] = record[key];
+  }
+  return copied;
 }
