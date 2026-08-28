@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import "../app/pl-400/pl400.css";
 import { lessonProgress, type MasteryStack } from "../lib/masteryStack";
 import { PracticePanel } from "./PracticePanel";
+import { RubricPanel } from "./RubricPanel";
 import { StartCoaching } from "./StartCoaching";
 import { ToolRoster } from "./ToolRoster";
 import { useMasteryGate } from "./useMasteryGate";
@@ -22,6 +23,16 @@ export function LessonPracticeSection(props: {
       return;
     }
     stack.setActiveLesson(slug);
+    // The stack is a page-lifetime singleton, so leaving this route must
+    // release the lesson scope — otherwise get_current_context and the
+    // question scope stay pinned to this lesson on unrelated pages
+    // (cross-review finding 5). A sibling lesson mount re-scopes after this
+    // cleanup runs; the hub sets null on its own mount as before.
+    return () => {
+      if (stack.getActiveLessonSlug() === slug) {
+        stack.setActiveLesson(null);
+      }
+    };
   }, [slug, stack]);
 
   const progress =
@@ -47,7 +58,29 @@ export function LessonPracticeSection(props: {
         gate={gate}
         questionIds={questionIds}
         scopeLabel={`this lesson — ${questionIds.length} questions`}
+        fallbackAnchor={`${slug}-rule`}
+        lessonSlug={slug}
       />
+      <div className="lp-mastery-profile">
+        <span className="lp-label">MASTERY PROFILE</span>
+        <p className="muted">
+          Rubric dimensions are track-wide — every lesson&apos;s practice
+          feeds the same four scores.
+        </p>
+        <RubricPanel scores={gate.learner.scores} />
+        {stack != null
+          ? (() => {
+              const drill = stack.facade.prescribeDrill();
+              return (
+                <p className="muted lp-drill-line">
+                  Weakest dimension: <strong>{drill.targetDimension}</strong>{" "}
+                  — prescribed drill: <strong>{drill.drillKind}</strong>.{" "}
+                  {drill.rationale}
+                </p>
+              );
+            })()
+          : null}
+      </div>
       {gate.storageDegraded ? (
         <p className="muted">
           localStorage unavailable — progress is in-memory only.

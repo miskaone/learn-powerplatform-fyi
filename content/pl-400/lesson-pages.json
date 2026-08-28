@@ -22,8 +22,7 @@
     "examClue": "Register → Permission → Consent → Connect → Call.",
     "mnemonic": "Register → Permission → Consent → Connect → Call.",
     "scenario": {
-      "prompt": "A mobile Canvas app must identify the logged-in user, inspect that user's Microsoft Entra role through Microsoft Graph, and allow only authorized administrators to manage users. Put these components in dependency order: register a Microsoft Entra application, request Graph permissions, grant administrator consent, create the custom connector, and call it from the Canvas app.",
-      "expectedAnswer": "Register the Microsoft Entra application → request the required Microsoft Graph API permissions → grant administrator consent when required → create the OAuth custom connector → call the connector from the Canvas app. The app registration supplies the connector identity; permissions declare access; consent approves it; the connector encapsulates Graph/OAuth; the app consumes the connector. Because a user is signed in, this is normally delegated access. A directory role is not a permission grant or consent, and a client-side role check alone is not protected-operation enforcement."
+      "prompt": "A mobile Canvas app must identify the logged-in user, inspect that user's Microsoft Entra role through Microsoft Graph, and allow only authorized administrators to manage users. Put these components in dependency order: register a Microsoft Entra application, request Graph permissions, grant administrator consent, create the custom connector, and call it from the Canvas app."
     },
     "concepts": [
       {
@@ -180,8 +179,7 @@
     "examClue": "Heavy transformation → Azure Function; event notification → webhook.",
     "mnemonic": "Signal triggers; compute transforms; API loads.",
     "scenario": {
-      "prompt": "CompanyA must retrieve existing data from legacy applications, perform complex transformation into the Dataverse schema, and load the results into Dataverse. In this exam-style component comparison, which pair is the intended answer: Webhook + Azure Function, Web Resource + Dataverse Web API, Custom Connector + Microsoft Graph, or Power Automate + Microsoft Graph? Then identify the production-direction check before implementing it.",
-      "expectedAnswer": "Answer: Webhook + Azure Function. The webhook is the event-delivery mechanism and the Function performs custom transformation before loading Dataverse through the Web API or SDK. Production design must still ask where the event starts. A Dataverse webhook sends Dataverse server events outward to an external handler; it is not normally the trigger for a one-time or scheduled pull from legacy systems. In that migration shape, use a timer, pipeline, dataflow, or source-driven trigger and retain the Function where custom transformation is needed."
+      "prompt": "CompanyA must retrieve existing data from legacy applications, perform complex transformation into the Dataverse schema, and load the results into Dataverse. In this exam-style component comparison, which pair is the intended answer: Webhook + Azure Function, Web Resource + Dataverse Web API, Custom Connector + Microsoft Graph, or Power Automate + Microsoft Graph? Then identify the production-direction check before implementing it."
     },
     "concepts": [
       {
@@ -355,8 +353,7 @@
     "examClue": "Any Blocked wins; otherwise compare the whole policy fingerprint—not one label from one policy.",
     "mnemonic": "Blocked beats all; matching vectors mix.",
     "scenario": {
-      "prompt": "A cloud flow in one environment uses SharePoint and Salesforce. Policy A classifies both as Business. Policy B classifies SharePoint as Business and Salesforce as Non-Business. Neither connector is Blocked. Will the flow comply, and what happens if it is already running when Policy B becomes applicable?",
-      "expectedAnswer": "No. SharePoint has the fingerprint Business/Business while Salesforce has Business/Non-Business, so the connectors end in different effective groups and cannot be used together. At design time the conflict prevents a compliant save experience; Power Automate can save the flow but marks it Suspended. If a later policy change creates the violation, runtime enforcement also prevents execution and a background polling process marks the flow Suspended, so the change is not necessarily instantaneous."
+      "prompt": "A cloud flow in one environment uses SharePoint and Salesforce. Policy A classifies both as Business. Policy B classifies SharePoint as Business and Salesforce as Non-Business. Neither connector is Blocked. Will the flow comply, and what happens if it is already running when Policy B becomes applicable?"
     },
     "concepts": [
       {
@@ -523,8 +520,7 @@
     "examClue": "Record context + many documents = SharePoint; initial volume = recoverable code; source ID = alternate key.",
     "mnemonic": "Place, match, run: SharePoint, alternate key, recoverable code.",
     "scenario": {
-      "prompt": "You are designing a document architecture for a model-driven app. Users must open customer documents from the correct account or contact, document binaries should not consume substantial Dataverse capacity, and an initial load may contain many files. Before choosing technology, separate three decisions: where the binary lives, how the business record is identified, and how the work is run. Apply that framework to CompanyA's Oracle migration of invoices, contracts, and identity documents: which three components are the best fit—Console Application (C#), SharePoint, and Dataverse Web API; or Azure Blob Storage, Power Automate, and Notes?",
-      "expectedAnswer": "The reusable design answer is: SharePoint stores the binary for native model-driven record-context document management; the Dataverse Web API or SDK resolves the account or contact, preferably through a stable external identifier/alternate key; and the workload decides compute. For CompanyA's high-volume initial load, the keyed answer is Console Application (C#), SharePoint, and Dataverse Web API. C# provides batching, retries, checkpoints, logging, and reconciliation. Blob Storage and Power Automate can be valid in other designs, but do not provide this native, recoverable bulk-migration fit; Notes consume Dataverse capacity and are not an enterprise document repository."
+      "prompt": "You are designing a document architecture for a model-driven app. Users must open customer documents from the correct account or contact, document binaries should not consume substantial Dataverse capacity, and an initial load may contain many files. Before choosing technology, separate three decisions: where the binary lives, how the business record is identified, and how the work is run. Apply that framework to CompanyA's Oracle migration of invoices, contracts, and identity documents: which three components are the best fit—Console Application (C#), SharePoint, and Dataverse Web API; or Azure Blob Storage, Power Automate, and Notes?"
     },
     "concepts": [
       {
@@ -682,8 +678,7 @@
     "examClue": "Many gallery rows → Filter; future date → DateAdd; reusable boundary → Set.",
     "mnemonic": "DateAdd dates; Filter finds many; LookUp finds one.",
     "scenario": {
-      "prompt": "A Canvas app gallery shows Orders. A delegation warning appears for Filter(Orders, 'Shipping Date' <= DateAdd(Today(), 7, Days)). The exam asks for two formulas: one to calculate a seven-day cutoff and one to return all orders through that cutoff. The options include Set(DateDuration, DateAdd(Today(), 7, Days)), Filter(Orders, 'Shipping Date' <= DateDuration), LookUp(Orders, 'Shipping Date' = DateDuration), and Set(DateDuration, DateDiff(Now(), Today(), Minutes)).",
-      "expectedAnswer": "The keyed exam answer is Set(DateDuration, DateAdd(Today(), 7, Days)) followed by Filter(Orders, 'Shipping Date' <= DateDuration). Set stores one global scalar date in a behavior property; Filter returns the table a gallery needs. LookUp returns one record, and DateDiff returns a number, not a future date. In production, the phrase 'next seven days' usually requires both a lower and upper date boundary, and delegation must be confirmed against the actual data source."
+      "prompt": "A Canvas app gallery shows Orders. A delegation warning appears for Filter(Orders, 'Shipping Date' <= DateAdd(Today(), 7, Days)). The exam asks for two formulas: one to calculate a seven-day cutoff and one to return all orders through that cutoff. The options include Set(DateDuration, DateAdd(Today(), 7, Days)), Filter(Orders, 'Shipping Date' <= DateDuration), LookUp(Orders, 'Shipping Date' = DateDuration), and Set(DateDuration, DateDiff(Now(), Today(), Minutes))."
     },
     "concepts": [
       {

@@ -121,3 +121,27 @@ Candidate merges if the owner wants to trim: `single-policy-view` →
 - `tsc --noEmit` (packages/mastery-gate) — clean; `apps/web` standalone tsc has
   pre-existing `bun:test` type errors on the untouched baseline too (missing
   `@types/bun`), unrelated to this port; `next build` typecheck is green
+
+## Addendum — micro-lesson restore cross-review fixes (2026-08-27)
+
+1. **ML-08 / ML-10 omission is deliberate, not silent** (cross-review finding 1).
+   Two more designed lessons exist in the source family:
+   `PL400-ML-10-power-pages-identity-actor` (full spec JSON present in the spec
+   directory) and `PL400-ML-08-canvas-app-cross-host-selection` (spec only as an
+   embedded `pl400-spec` payload inside its rendered HTML). They are NOT ported
+   because the owner's design contract for the micro-lesson restore names exactly
+   ML-09/11/12/13/14; porting them would add ~14 owner-unreviewed questions, new
+   objectives, and change the ratified 17-misconception taxonomy. Queued for a
+   follow-up owner-reviewed port. The converter header carries the same notice.
+2. **Scenario expected answers no longer ship with the page** (finding 7). The
+   converter now excludes `scenario.expectedAnswer` from `lesson-pages.json` and
+   emits `apps/web/public/pl-400/scenario/<slug>.json`, fetched only after the
+   learner commits. Known residual: the scenario section text (including the
+   expected answer, prefixed "Expected answer:") remains in
+   `lesson-sections.json`, which client bundles must carry because it is the
+   rubric verbatim-evidence corpus (agent-less `score_rubric` runs in the
+   browser). The commit gate is a pedagogical device; the corpus is a deliberate
+   trade-off, documented here.
+3. **`lesson-index.json`** (finding 8) is the only lesson artifact client
+   bundles may import (routing/scoping/hub-card data, no teaching prose);
+   `lesson-pages.json` is server-component-only.

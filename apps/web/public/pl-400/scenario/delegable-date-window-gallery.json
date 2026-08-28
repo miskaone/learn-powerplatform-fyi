@@ -1,0 +1,4 @@
+{
+  "slug": "delegable-date-window-gallery",
+  "expectedAnswer": "The keyed exam answer is Set(DateDuration, DateAdd(Today(), 7, Days)) followed by Filter(Orders, 'Shipping Date' <= DateDuration). Set stores one global scalar date in a behavior property; Filter returns the table a gallery needs. LookUp returns one record, and DateDiff returns a number, not a future date. In production, the phrase 'next seven days' usually requires both a lower and upper date boundary, and delegation must be confirmed against the actual data source."
+}

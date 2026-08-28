@@ -91,6 +91,8 @@ function createStubEngine(options?: {
           misconceptionId: 'mc-http-from-plugin',
           attemptNumber: 1,
           attemptsRemaining: 1,
+          rationale: null,
+          remediationAnchor: 'lesson-plugin-services',
         }
       );
     },

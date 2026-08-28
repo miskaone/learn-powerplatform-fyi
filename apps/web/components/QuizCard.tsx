@@ -87,6 +87,9 @@ export function QuizCard(props: {
         props.verdict.correct ? (
           <div className="pl400-banner pl400-banner-success" role="status">
             Correct.
+            {props.verdict.rationale ? (
+              <p className="pl400-rationale">{props.verdict.rationale}</p>
+            ) : null}
           </div>
         ) : (
           <div className="pl400-banner pl400-banner-danger" role="status">
@@ -96,6 +99,14 @@ export function QuizCard(props: {
               "unnamed misconception"}
             . Attempt {props.verdict.attemptNumber};{" "}
             {props.verdict.attemptsRemaining} remaining.
+            {props.verdict.misconceptionContrast ? (
+              <p className="pl400-rationale">
+                {props.verdict.misconceptionContrast}
+              </p>
+            ) : null}
+            {props.verdict.rationale ? (
+              <p className="pl400-rationale">{props.verdict.rationale}</p>
+            ) : null}
           </div>
         )
       ) : null}

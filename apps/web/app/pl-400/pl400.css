@@ -746,3 +746,11 @@ button.pl400-btn,
 }
 
 
+
+/* Post-answer teaching payload: rationale / misconception contrast inside verdict banners. */
+.pl400-rationale {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  opacity: 0.92;
+}

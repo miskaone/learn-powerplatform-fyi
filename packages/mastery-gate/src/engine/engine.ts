@@ -40,6 +40,17 @@ export interface SubmitAnswerResult {
   correct: boolean;
   misconceptionId: string | null;
   attemptNumber: number;
+  /**
+   * The question's authored rationale — released only once the question is
+   * resolved (answered correctly or attempts exhausted), so it can never leak
+   * the answer while attempts remain.
+   */
+  rationale: string | null;
+  /**
+   * Same-lesson remediation anchor for this question — present only on a
+   * miss. Carries no answer-key material (it names a lesson section).
+   */
+  remediationAnchor: string | null;
 }
 
 export const MAX_ATTEMPTS_PER_QUESTION = 2;
@@ -146,12 +157,17 @@ export class MasteryEngine {
     this.lastGrade = grade;
     this.persist();
 
+    const attemptNumber = attemptCount(this.ledger, question.id);
+    const resolved =
+      grade.correct || attemptNumber >= MAX_ATTEMPTS_PER_QUESTION;
     return {
       questionId: grade.questionId,
       optionId: grade.optionId,
       correct: grade.correct,
       misconceptionId: grade.misconceptionId,
-      attemptNumber: attemptCount(this.ledger, question.id),
+      attemptNumber,
+      rationale: resolved ? question.rationale : null,
+      remediationAnchor: grade.correct ? null : question.remediationAnchor,
     };
   }
 
@@ -274,6 +290,49 @@ export class MasteryEngine {
     this.ledger = createEmptyLedger();
     this.hints = createHintState();
     this.lastGrade = null;
+  }
+
+  /**
+   * Lesson-scoped retake: remove the named questions' attempts and hint
+   * tiers from the ledger, recompute misconception fires from the attempts
+   * that remain, and leave every other question — and the track-wide rubric
+   * scores — untouched. "Reset" on a lesson page must not destroy the track.
+   */
+  resetQuestions(questionIds: readonly string[]): void {
+    const scoped = new Set(questionIds);
+    const remaining = this.ledger.attempts.filter(
+      (attempt) => !scoped.has(attempt.questionId),
+    );
+    const misconceptionFires: Record<string, number> = {};
+    for (const attempt of remaining) {
+      if (!attempt.correct && attempt.misconceptionId !== null) {
+        misconceptionFires[attempt.misconceptionId] =
+          (misconceptionFires[attempt.misconceptionId] ?? 0) + 1;
+      }
+    }
+    this.ledger = {
+      attempts: remaining,
+      misconceptionFires,
+      scores: {
+        recall: this.ledger.scores.recall,
+        connections: this.ledger.scores.connections,
+        application: this.ledger.scores.application,
+        transfer: this.ledger.scores.transfer,
+      },
+      coachNotes: this.ledger.coachNotes.slice(),
+      phase: this.ledger.phase,
+    };
+    const tiersIssued: Record<string, number> = {};
+    for (const key of Object.keys(this.hints.tiersIssued)) {
+      if (!scoped.has(key)) {
+        tiersIssued[key] = this.hints.tiersIssued[key];
+      }
+    }
+    this.hints = { tiersIssued };
+    if (this.lastGrade !== null && scoped.has(this.lastGrade.questionId)) {
+      this.lastGrade = null;
+    }
+    this.persist();
   }
 
   private findCurrentQuestion(): Question | null {

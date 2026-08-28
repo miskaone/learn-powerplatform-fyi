@@ -313,3 +313,80 @@ describe('question scope', () => {
     expect(current.id).toBe('q3');
   });
 });
+
+describe('submitAnswer rationale and remediation anchor (cross-review findings 2/12)', () => {
+  test('first miss with attempts remaining: rationale withheld, remediation anchor present and same-lesson', () => {
+    const engine = new MasteryEngine(FIXTURE_MANIFEST, new MemoryStorageAdapter());
+    const miss = engine.submitAnswer('q1-b');
+    expect(miss.correct).toBe(false);
+    expect(miss.rationale).toBeNull();
+    expect(miss.remediationAnchor).toBe('anchor-q1-sandbox');
+  });
+
+  test('correct answer releases the rationale and carries no remediation anchor', () => {
+    const engine = new MasteryEngine(FIXTURE_MANIFEST, new MemoryStorageAdapter());
+    const hit = engine.submitAnswer('q1-a');
+    expect(hit.correct).toBe(true);
+    expect(hit.rationale).toBe(Q1_RATIONALE);
+    expect(hit.remediationAnchor).toBeNull();
+  });
+
+  test('final failed attempt (question resolved) releases the rationale alongside the anchor', () => {
+    const engine = new MasteryEngine(FIXTURE_MANIFEST, new MemoryStorageAdapter());
+    engine.submitAnswer('q1-b');
+    const secondMiss = engine.submitAnswer('q1-c');
+    expect(secondMiss.correct).toBe(false);
+    expect(secondMiss.attemptNumber).toBe(2);
+    expect(secondMiss.rationale).toBe(Q1_RATIONALE);
+    expect(secondMiss.remediationAnchor).toBe('anchor-q1-sandbox');
+  });
+});
+
+describe('resetQuestions — lesson-scoped retake (cross-review finding 10)', () => {
+  test('removes only the scoped questions attempts and recomputes fires; other attempts and scores survive', () => {
+    const adapter = new MemoryStorageAdapter();
+    const engine = new MasteryEngine(FIXTURE_MANIFEST, adapter);
+    engine.submitAnswer('q1-b'); // miss, fires mc-shared
+    engine.submitAnswer('q1-a'); // correct
+    engine.submitAnswer('q2-a'); // miss, fires mc-q2-transaction
+    engine.submitAnswer('q2-b'); // correct
+    engine.submitAnswer('q3-a'); // miss, fires mc-shared (second fire)
+    engine.scoreRubric(
+      {
+        recall: { score: 3, quote: 'recall evidence quote' },
+        connections: { score: 3, quote: 'connections evidence quote' },
+        application: { score: 3, quote: 'application evidence quote' },
+        transfer: { score: 3, quote: 'transfer evidence quote' },
+      },
+    );
+    const scoresBefore = engine.getLearnerState().scores;
+
+    engine.resetQuestions(['q1', 'q2']);
+
+    const state = engine.getLearnerState();
+    // q3 miss survives; q1/q2 attempts are gone.
+    expect(state.attemptsCount).toBe(1);
+    // mc-shared recomputed from remaining attempts (q3 only), mc-q2-transaction gone.
+    expect(state.misconceptionFires).toEqual({ 'mc-shared': 1 });
+    // Track-wide rubric scores untouched.
+    expect(state.scores).toEqual(scoresBefore);
+    // Scoped questions are answerable again, in manifest order.
+    expect(engine.getCurrentQuestion()?.id).toBe('q1');
+
+    // Survives reload through the adapter.
+    const resumed = new MasteryEngine(FIXTURE_MANIFEST, adapter);
+    expect(resumed.getLearnerState()).toEqual(state);
+  });
+
+  test('resets the hint ladder for scoped questions only', () => {
+    const engine = new MasteryEngine(FIXTURE_MANIFEST, new MemoryStorageAdapter());
+    const first = engine.requestHint(); // tier 1 for q1
+    expect(first.granted).toBe(true);
+    engine.resetQuestions(['q1']);
+    const again = engine.requestHint();
+    expect(again.granted).toBe(true);
+    if (again.granted) {
+      expect(again.tier).toBe(1);
+    }
+  });
+});

@@ -15,7 +15,7 @@ import {
 } from "@learn/mastery-gate/webmcp";
 import { navigateToAnchor } from "./anchor";
 import { lessonSections, manifest } from "./content";
-import { getLessonPage, lessonSectionAnchors } from "./lessonPages";
+import { getLessonIndexEntry, lessonSectionAnchors } from "./lessonIndex";
 import { NotifyingFacade } from "./notifyingFacade";
 
 /**
@@ -81,6 +81,7 @@ export function createMasteryStack(
         : {
             slug: activeLesson.slug,
             title: activeLesson.title,
+            objectiveId: activeLesson.objectiveId,
             sectionAnchors: [...activeLesson.sectionAnchors],
           },
   });
@@ -114,8 +115,8 @@ export function createMasteryStack(
     stopRuntimeDetection: () => {},
     setActiveLesson(slug: string | null): void {
       if (slug !== null) {
-        const page = getLessonPage(slug);
-        if (page === undefined) {
+        const entry = getLessonIndexEntry(slug);
+        if (entry === undefined) {
           console.warn(`setActiveLesson: unknown lesson slug "${slug}"`);
         } else {
           if (activeLesson !== null && activeLesson.slug === slug) {
@@ -123,11 +124,12 @@ export function createMasteryStack(
           }
           activeLesson = {
             slug,
-            title: page.title,
+            title: entry.title,
+            objectiveId: entry.objectiveId,
             sectionAnchors: lessonSectionAnchors(slug),
-            questionIds: page.questionIds,
+            questionIds: entry.questionIds,
           };
-          engine.setQuestionScope(page.questionIds);
+          engine.setQuestionScope(entry.questionIds);
           onEngineMutation();
           return;
         }

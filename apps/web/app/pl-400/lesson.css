@@ -662,3 +662,18 @@
   }
 }
 
+
+/* Mastery profile block at the end of the retrieval lab (design contract: each lab ends with the profile). */
+.lp-mastery-profile {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.lp-mastery-profile .rubric-panel {
+  margin: 0;
+}
+
+.lp-drill-line {
+  margin: 0;
+}

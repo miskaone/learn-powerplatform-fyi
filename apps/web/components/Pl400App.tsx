@@ -5,7 +5,9 @@ import Link from "next/link";
 import type { RubricDimension } from "@learn/mastery-gate/schema";
 import "../app/pl-400/pl400.css";
 import { manifest } from "../lib/content";
-import { lessonPages } from "../lib/lessonPages";
+// Slim index only — the full teaching catalog (lessonPages) is server-side
+// and must not enter client bundles (cross-review finding 8).
+import { lessonIndex } from "../lib/lessonIndex";
 import { flipPreviewScenario } from "../lib/flipPreview";
 import { lessonProgress, type MasteryStack } from "../lib/masteryStack";
 import { ExamModePanel } from "./ExamModePanel";
@@ -111,7 +113,7 @@ export function Pl400App() {
               second, distractor teardown, drills.
             </p>
             <div className="pl400-lesson-links">
-              {lessonPages.map((p, i) => {
+              {lessonIndex.map((p, i) => {
                 const progress =
                   stack == null
                     ? {
@@ -135,7 +137,7 @@ export function Pl400App() {
                     </span>
                     <span className="pl400-lesson-link-title">{p.title}</span>
                     <span className="pl400-lesson-link-topic">
-                      {p.topic.title}
+                      {p.topicTitle}
                     </span>
                     <span className="pl400-lesson-link-epigraph">
                       “{p.heroEpigraph}”
@@ -164,6 +166,7 @@ export function Pl400App() {
               gate={gate}
               questionIds={trackQuestionIds}
               scopeLabel={`full track — ${manifest.questions.length} questions`}
+              showDemoRubric
             />
           </section>
 

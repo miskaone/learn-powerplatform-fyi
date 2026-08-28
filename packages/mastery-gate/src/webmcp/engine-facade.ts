@@ -22,6 +22,8 @@ export interface LearnerStatePublic {
 export interface ActiveLessonPublic {
   slug: string;
   title: string;
+  /** Manifest objective the lesson's questions are fenced under. */
+  objectiveId: string;
   sectionAnchors: string[];
 }
 
@@ -40,6 +42,17 @@ export interface SubmitAnswerVerdictPublic {
   misconceptionId: string | null;
   attemptNumber: number;
   attemptsRemaining: number;
+  /**
+   * Authored rationale, released only once the question is resolved
+   * (correct, or attempts exhausted). Null while attempts remain on a miss —
+   * the redaction gate for answer-adjacent prose.
+   */
+  rationale: string | null;
+  /**
+   * Same-lesson remediation anchor, present only on a miss. Names a lesson
+   * section; carries no answer-key material.
+   */
+  remediationAnchor: string | null;
 }
 
 export interface HintResultPublic {

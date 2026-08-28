@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { LessonPageData } from "../lib/lessonPages";
 import "../app/pl-400/lesson.css";
+import {
+  clearScenarioCommit,
+  persistScenarioCommit,
+  readScenarioCommit,
+} from "../lib/scenarioStorage";
 import { LessonPracticeSection } from "./LessonPracticeSection";
 
 const DRILL_ORDER = [
@@ -12,53 +17,6 @@ const DRILL_ORDER = [
   ["application", "APPLICATION"],
   ["transfer", "TRANSFER"],
 ] as const;
-
-function scenarioStorageKey(slug: string): string {
-  return `mastery-gate:lesson:${slug}:scenario`;
-}
-
-function readScenarioCommit(slug: string): { text: string } | null {
-  try {
-    const raw = localStorage.getItem(scenarioStorageKey(slug));
-    if (!raw) {
-      return null;
-    }
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) {
-      return null;
-    }
-    const record = parsed as { committed?: unknown; text?: unknown };
-    if (record.committed !== true || typeof record.text !== "string") {
-      return null;
-    }
-    return { text: record.text };
-  } catch {
-    return null;
-  }
-}
-
-function persistScenarioCommit(slug: string, text: string): void {
-  try {
-    localStorage.setItem(
-      scenarioStorageKey(slug),
-      JSON.stringify({
-        committed: true,
-        text,
-        at: new Date().toISOString(),
-      }),
-    );
-  } catch {
-    // ignore quota / private-mode failures
-  }
-}
-
-function clearScenarioCommit(slug: string): void {
-  try {
-    localStorage.removeItem(scenarioStorageKey(slug));
-  } catch {
-    // ignore
-  }
-}
 
 function importanceClass(importance: string): string {
   const normalized = importance.toLowerCase();
@@ -71,15 +29,35 @@ function importanceClass(importance: string): string {
   return "lp-importance-foundational";
 }
 
-function ScenarioCommit({
-  slug,
-  expectedAnswer,
-}: {
-  slug: string;
-  expectedAnswer: string;
-}) {
+function ScenarioCommit({ slug }: { slug: string }) {
   const [committed, setCommitted] = useState(false);
   const [text, setText] = useState("");
+  // The expected answer never ships in the prerendered page (cross-review
+  // finding 7): it is fetched from /pl-400/scenario/<slug>.json only after
+  // the learner commits, so the commit-before-reveal gate cannot be bypassed
+  // by View Source or a DOM read.
+  const [expectedAnswer, setExpectedAnswer] = useState<string | null>(null);
+  const [revealError, setRevealError] = useState(false);
+
+  const fetchReveal = useCallback(() => {
+    setRevealError(false);
+    void fetch(`/pl-400/scenario/${slug}.json`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`reveal fetch failed: ${String(response.status)}`);
+        }
+        const payload = (await response.json()) as {
+          expectedAnswer?: unknown;
+        };
+        if (typeof payload.expectedAnswer !== "string") {
+          throw new Error("reveal payload malformed");
+        }
+        setExpectedAnswer(payload.expectedAnswer);
+      })
+      .catch(() => {
+        setRevealError(true);
+      });
+  }, [slug]);
 
   useEffect(() => {
     const stored = readScenarioCommit(slug);
@@ -88,7 +66,8 @@ function ScenarioCommit({
     }
     setText(stored.text);
     setCommitted(true);
-  }, [slug]);
+    fetchReveal();
+  }, [slug, fetchReveal]);
 
   if (committed) {
     return (
@@ -99,7 +78,22 @@ function ScenarioCommit({
         </p>
         <div className="lp-expected">
           <span className="lp-label">EXPECTED ANSWER</span>
-          <p>{expectedAnswer}</p>
+          {expectedAnswer !== null ? (
+            <p>{expectedAnswer}</p>
+          ) : revealError ? (
+            <p className="muted">
+              Could not load the expected answer.{" "}
+              <button
+                type="button"
+                className="lp-btn lp-btn-ghost"
+                onClick={fetchReveal}
+              >
+                Retry
+              </button>
+            </p>
+          ) : (
+            <p className="muted">Loading…</p>
+          )}
         </div>
         <button
           type="button"
@@ -107,6 +101,7 @@ function ScenarioCommit({
           onClick={() => {
             clearScenarioCommit(slug);
             setCommitted(false);
+            setExpectedAnswer(null);
           }}
         >
           Reset commitment
@@ -116,6 +111,11 @@ function ScenarioCommit({
   }
 
   const textareaId = `${slug}-commitment`;
+  const commit = () => {
+    persistScenarioCommit(slug, text);
+    setCommitted(true);
+    fetchReveal();
+  };
 
   return (
     <div className="lp-commit">
@@ -136,10 +136,7 @@ function ScenarioCommit({
         type="button"
         className="lp-btn lp-btn-primary"
         disabled={text.trim() === ""}
-        onClick={() => {
-          persistScenarioCommit(slug, text);
-          setCommitted(true);
-        }}
+        onClick={commit}
       >
         Commit answer
       </button>
@@ -258,10 +255,7 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
         <div className="lp-scenario">
           <p>{lesson.scenario.prompt}</p>
         </div>
-        <ScenarioCommit
-          slug={lesson.slug}
-          expectedAnswer={lesson.scenario.expectedAnswer}
-        />
+        <ScenarioCommit slug={lesson.slug} />
       </section>
 
       <section className="lp-section">

@@ -11,7 +11,11 @@
  *   - content/pl-400/manifest.json        (objectives, questions, misconceptions)
  *   - content/pl-400/lessons/<slug>.md    (lesson prose with {#anchor} ids)
  *   - content/pl-400/lesson-sections.json (UI section list; imported by apps/web/lib/content.ts)
- *   - content/pl-400/lesson-pages.json    (per-lesson rich page data consumed by the /pl-400/[slug] lesson template)
+ *   - content/pl-400/lesson-pages.json    (per-lesson rich page data consumed by the /pl-400/[slug] lesson template;
+ *                                          scenario.expectedAnswer is deliberately EXCLUDED so the commit-before-reveal
+ *                                          gate cannot be bypassed via the prerendered flight payload)
+ *   - content/pl-400/lesson-index.json    (slim per-lesson routing/progress index for client bundles — no teaching prose)
+ *   - apps/web/public/pl-400/scenario/<slug>.json (the scenario expected answer, fetched only after the learner commits)
  *
  * Deterministic by construction: fixed lesson order, fixed section anchors,
  * fixed option rotation, and authored mapping tables (misconception taxonomy,
@@ -143,7 +147,12 @@ interface LessonPage {
   governingRule: string;
   examClue: string;
   mnemonic?: string;
-  scenario: { prompt: string; expectedAnswer: string };
+  /**
+   * expectedAnswer is intentionally absent: the reveal is fetched from
+   * /pl-400/scenario/<slug>.json only after the learner commits, so the
+   * prerendered page never carries the answer to its own commit gate.
+   */
+  scenario: { prompt: string };
   concepts: { id: string; label: string; importance: string; summary: string }[];
   distractors: { choice: string; whyTempting: string; whyWrong: string }[];
   productionNuance: string[];
@@ -164,6 +173,16 @@ interface LessonPage {
 // none of which exist in the source directory (it holds ML-09..ML-14 only).
 // Per the brief's fallback clause, the closest-topic lessons were substituted.
 // Full rationale in docs/content-port-review.md.
+//
+// OMISSION NOTICE (cross-review finding 1, 2026-08-27): two additional
+// designed lessons exist and are DELIBERATELY not ported:
+//   - PL400-ML-10-power-pages-identity-actor (spec JSON present in the source dir)
+//   - PL400-ML-08-canvas-app-cross-host-selection (spec only as an embedded
+//     `pl400-spec` payload in its rendered HTML)
+// The owner's design contract for this build names exactly ML-09/11/12/13/14;
+// porting ML-08/ML-10 would add ~14 unreviewed questions, new objectives, and
+// change the ratified 17-misconception taxonomy. They are queued for a
+// follow-up owner-reviewed port, not silently dropped.
 // ---------------------------------------------------------------------------
 
 const OBJECTIVES = [
@@ -750,7 +769,6 @@ function lessonPageFor(
     ...(lesson.mnemonic !== undefined ? { mnemonic: lesson.mnemonic } : {}),
     scenario: {
       prompt: lesson.scenario.prompt,
-      expectedAnswer: lesson.scenario.expectedAnswer,
     },
     concepts: lesson.concepts.map((concept) => ({
       id: concept.id,
@@ -787,6 +805,21 @@ function lessonPageFor(
   };
 }
 
+/**
+ * Slim per-lesson index for client bundles: routing, scoping, and hub-card
+ * data only — no scenario, distractor, drill, or reference prose. Keeps the
+ * full teaching catalog (lesson-pages.json) out of the shared JS chunks.
+ */
+interface LessonIndexEntry {
+  id: string;
+  slug: string;
+  title: string;
+  topicTitle: string;
+  heroEpigraph: string;
+  objectiveId: string;
+  questionIds: string[];
+}
+
 async function main(): Promise<void> {
   const sourceDir = process.argv[2] ?? process.env.LESSON_SPEC_DIR;
   if (!sourceDir) {
@@ -798,10 +831,21 @@ async function main(): Promise<void> {
 
   const contentRoot = join(import.meta.dir, '..', 'content', 'pl-400');
   const lessonsDir = join(contentRoot, 'lessons');
+  const scenarioDir = join(
+    import.meta.dir,
+    '..',
+    'apps',
+    'web',
+    'public',
+    'pl-400',
+    'scenario',
+  );
   await mkdir(lessonsDir, { recursive: true });
+  await mkdir(scenarioDir, { recursive: true });
 
   const allSections: { id: string; title: string; body: string[] }[] = [];
   const allPages: LessonPage[] = [];
+  const allIndexEntries: LessonIndexEntry[] = [];
   const allQuestions: OutQuestion[] = [];
   const questionIdsByObjective = new Map<string, string[]>();
   for (const objective of OBJECTIVES) {
@@ -825,6 +869,24 @@ async function main(): Promise<void> {
       questionIdsByObjective.get(entry.objectiveId)?.push(converted.id);
     });
     allPages.push(lessonPageFor(lesson, entry.objectiveId, lessonQuestionIds));
+    allIndexEntries.push({
+      id: lesson.id,
+      slug: lesson.slug,
+      title: lesson.title,
+      topicTitle: lesson.topic.title,
+      heroEpigraph: lesson.heroEpigraph,
+      objectiveId: entry.objectiveId,
+      questionIds: lessonQuestionIds,
+    });
+    await writeFile(
+      join(scenarioDir, `${lesson.slug}.json`),
+      `${JSON.stringify(
+        { slug: lesson.slug, expectedAnswer: lesson.scenario.expectedAnswer },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    );
   }
 
   const manifest = {
@@ -857,9 +919,14 @@ async function main(): Promise<void> {
     `${JSON.stringify(allPages, null, 2)}\n`,
     'utf8',
   );
+  await writeFile(
+    join(contentRoot, 'lesson-index.json'),
+    `${JSON.stringify(allIndexEntries, null, 2)}\n`,
+    'utf8',
+  );
 
   console.log(
-    `Ported ${String(LESSONS.length)} lessons: ${String(manifest.objectives.length)} objectives, ${String(allQuestions.length)} questions, ${String(manifest.misconceptions.length)} misconceptions, ${String(allSections.length)} lesson sections, ${String(allPages.length)} lesson pages`,
+    `Ported ${String(LESSONS.length)} lessons: ${String(manifest.objectives.length)} objectives, ${String(allQuestions.length)} questions, ${String(manifest.misconceptions.length)} misconceptions, ${String(allSections.length)} lesson sections, ${String(allPages.length)} lesson pages, ${String(allIndexEntries.length)} index entries + scenario reveals`,
   );
 }
 

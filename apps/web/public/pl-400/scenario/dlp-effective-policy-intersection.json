@@ -1,0 +1,4 @@
+{
+  "slug": "dlp-effective-policy-intersection",
+  "expectedAnswer": "No. SharePoint has the fingerprint Business/Business while Salesforce has Business/Non-Business, so the connectors end in different effective groups and cannot be used together. At design time the conflict prevents a compliant save experience; Power Automate can save the flow but marks it Suspended. If a later policy change creates the violation, runtime enforcement also prevents execution and a background polling process marks the flow Suspended, so the change is not necessarily instantaneous."
+}

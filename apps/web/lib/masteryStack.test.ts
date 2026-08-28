@@ -79,6 +79,7 @@ describe("active lesson scoping", () => {
       expect(stack.facade.getCurrentContext().lesson).toEqual({
         slug: gallerySlug,
         title: "Build a Delegable Date-Window Gallery",
+        objectiveId: "dataverse-extensibility-platform-limits",
         sectionAnchors: galleryAnchors,
       });
       expect(notifies).toBe(1);

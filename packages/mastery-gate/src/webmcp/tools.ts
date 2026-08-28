@@ -725,6 +725,7 @@ function publicContext(context: CurrentContextPublic): CurrentContextPublic {
         : {
             slug: context.lesson.slug,
             title: context.lesson.title,
+            objectiveId: context.lesson.objectiveId,
             sectionAnchors: [...context.lesson.sectionAnchors],
           },
   };
@@ -754,6 +755,10 @@ function publicVerdict(
     misconceptionId: verdict.misconceptionId,
     attemptNumber: verdict.attemptNumber,
     attemptsRemaining: verdict.attemptsRemaining,
+    // Post-resolution only (facade contract) — never leaks while attempts remain.
+    rationale: verdict.rationale,
+    // Miss-only lesson-section anchor; not answer-key material.
+    remediationAnchor: verdict.remediationAnchor,
   };
 }
 

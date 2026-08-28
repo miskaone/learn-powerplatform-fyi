@@ -1,4 +1,4 @@
-import { anchorOwnerSlug } from "./lessonPages";
+import { anchorOwnerSlug } from "./lessonIndex";
 
 const highlightTimers = new WeakMap<Element, number>();
 

@@ -113,9 +113,13 @@ export class MasteryEngineFacade implements EngineFacade {
   }
 
   getCurrentContext(): CurrentContextPublic {
-    const objective = this.currentObjective();
     const question = this.engine.getCurrentQuestion();
     const l = this.getActiveLesson?.() ?? null;
+    // Objective resolution order: the current question's objective, then the
+    // route-derived lesson's objective (question scope routinely leaves no
+    // current question), then the manifest fallback. Keeps objectiveId and
+    // lesson from ever contradicting each other in one payload.
+    const objective = this.currentObjective(l?.objectiveId ?? null);
     return {
       objectiveId: objective ? objective.id : '',
       sectionId: objective ? objective.id : '',
@@ -128,6 +132,7 @@ export class MasteryEngineFacade implements EngineFacade {
           : {
               slug: l.slug,
               title: l.title,
+              objectiveId: l.objectiveId,
               sectionAnchors: [...l.sectionAnchors],
             },
     };
@@ -149,6 +154,8 @@ export class MasteryEngineFacade implements EngineFacade {
         0,
         MAX_ATTEMPTS_PER_QUESTION - verdict.attemptNumber,
       ),
+      rationale: verdict.rationale,
+      remediationAnchor: verdict.remediationAnchor,
     };
   }
 
@@ -350,13 +357,14 @@ export class MasteryEngineFacade implements EngineFacade {
     }
   }
 
-  private currentObjective(): Objective | null {
+  private currentObjective(preferredObjectiveId?: string | null): Objective | null {
     const question = this.engine.getCurrentQuestion();
     const objectiveId = question
       ? question.objectiveId
-      : this.manifest.objectives.length > 0
-        ? this.manifest.objectives[this.manifest.objectives.length - 1].id
-        : null;
+      : (preferredObjectiveId ??
+        (this.manifest.objectives.length > 0
+          ? this.manifest.objectives[this.manifest.objectives.length - 1].id
+          : null));
     if (objectiveId === null) {
       return null;
     }
