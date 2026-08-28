@@ -93,7 +93,7 @@ export function LessonAim({ slug }: { slug: string }) {
     if (!stack) {
       return;
     }
-    const result = stack.facade.setLessonAim(draft);
+    const result = stack.facade.setLessonAim(draft, slug);
     if (!result.stored) {
       setError(saveFailureMessage(result.reason));
       return;
@@ -166,7 +166,7 @@ export function RuleCompression({
     if (!stack) {
       return;
     }
-    const result = stack.facade.setRuleCompression(draft);
+    const result = stack.facade.setRuleCompression(draft, slug);
     if (!result.stored) {
       setError(saveFailureMessage(result.reason));
       return;
@@ -261,7 +261,7 @@ export function RunCommitment({ slug }: { slug: string }) {
     if (!stack) {
       return;
     }
-    const result = stack.facade.setRunCommitment(draft);
+    const result = stack.facade.setRunCommitment(draft, slug);
     if (!result.stored) {
       setError(saveFailureMessage(result.reason));
       return;

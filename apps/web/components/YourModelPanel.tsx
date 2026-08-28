@@ -5,7 +5,10 @@ import Link from "next/link";
 import { STORAGE_KEY } from "@learn/mastery-gate/engine";
 import type { CoachNoteKind } from "@learn/mastery-gate/schema";
 import { lessonForQuestion, lessonIndex } from "../lib/lessonIndex";
-import { clearAllScenarioCommits } from "../lib/scenarioStorage";
+import {
+  clearAllScenarioCommits,
+  scenarioStorageKey,
+} from "../lib/scenarioStorage";
 import type { MasteryGateView } from "./useMasteryGate";
 
 const NOTE_KINDS: readonly CoachNoteKind[] = [
@@ -15,7 +18,15 @@ const NOTE_KINDS: readonly CoachNoteKind[] = [
 ];
 
 const ERASE_CONFIRM =
-  "Erase all Mastery Gate data from this browser? This deletes your attempts, scores, notes, aims, and exam history. There is no undo — and no copy anywhere else.";
+  "Erase all Mastery Gate data from this browser? This deletes your attempts, scores, notes, aims, exam history, and lesson scenario predictions. There is no undo — and no copy anywhere else.";
+
+function tryParseJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return raw;
+  }
+}
 
 function noteRejectionMessage(reason: string | null): string {
   if (reason === "answer-content") {
@@ -59,16 +70,33 @@ export function YourModelPanel(props: { gate: MasteryGateView }) {
   function handleExport() {
     setExportNotice(null);
     try {
+      // The export mirrors EXACTLY what erase destroys: the engine payload
+      // plus the per-lesson scenario commits (cross-review fix, 2026-08-28 —
+      // "complete record" must be literally true).
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw === null) {
+      const scenarioCommits: Record<string, unknown> = {};
+      for (const entry of lessonIndex) {
+        const key = scenarioStorageKey(entry.slug);
+        const value = window.localStorage.getItem(key);
+        if (value !== null) {
+          scenarioCommits[key] = tryParseJson(value);
+        }
+      }
+      if (raw === null && Object.keys(scenarioCommits).length === 0) {
         setExportNotice("Nothing stored yet.");
         return;
       }
-      const blob = new Blob([raw], { type: "application/json" });
+      const document_ = {
+        [STORAGE_KEY]: raw === null ? null : tryParseJson(raw),
+        scenarioCommits,
+      };
+      const blob = new Blob([JSON.stringify(document_, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "mastery-gate-v1.json";
+      anchor.download = "mastery-gate-export.json";
       anchor.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -196,9 +224,10 @@ export function YourModelPanel(props: { gate: MasteryGateView }) {
 
       <div className="pl400-model-footer">
         <p className="muted">
-          Your data never leaves your browser — everything below lives in
-          localStorage on this device. The export is the complete record; erase
-          destroys it.
+          Your data never leaves your browser — everything lives in
+          localStorage on this device. The export is the complete record —
+          your engine state plus your lesson scenario predictions; erase
+          destroys both.
         </p>
         <div className="pl400-btn-row">
           <button

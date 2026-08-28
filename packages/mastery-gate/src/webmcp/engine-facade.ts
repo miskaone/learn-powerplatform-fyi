@@ -208,26 +208,29 @@ export interface EngineFacade {
   prescribeDrill(): DrillPrescriptionPublic;
   scoreRubric(submission: RubricSubmission): RubricVerdictPublic;
   /**
-   * Keyed by the route-derived active lesson slug, or 'track' when no
-   * lesson is active; learner/agent-authored reflective text — persisted
-   * on the ledger, exposed via getLearnerState, NEVER admitted to the
-   * rubric evidence corpus; engine-guarded against exam-mode writes.
+   * Keyed by the explicit lessonKey when provided (page surfaces pass the
+   * slug they render under so read and write can never diverge —
+   * cross-review fix 2026-08-28), else by the route-derived active lesson
+   * slug, or 'track' when no lesson is active; learner/agent-authored
+   * reflective text — persisted on the ledger, exposed via getLearnerState,
+   * NEVER admitted to the rubric evidence corpus; engine-guarded against
+   * exam-mode writes.
    */
-  setLessonAim(aim: string): LessonTextResultPublic;
+  setLessonAim(aim: string, lessonKey?: string): LessonTextResultPublic;
   /**
    * Keyed by the route-derived active lesson slug, or 'track' when no
    * lesson is active; learner/agent-authored reflective text — persisted
    * on the ledger, exposed via getLearnerState, NEVER admitted to the
    * rubric evidence corpus; engine-guarded against exam-mode writes.
    */
-  setRuleCompression(text: string): LessonTextResultPublic;
+  setRuleCompression(text: string, lessonKey?: string): LessonTextResultPublic;
   /**
    * Keyed by the route-derived active lesson slug, or 'track' when no
    * lesson is active; learner/agent-authored reflective text — persisted
    * on the ledger, exposed via getLearnerState, NEVER admitted to the
    * rubric evidence corpus; engine-guarded against exam-mode writes.
    */
-  setRunCommitment(text: string): LessonTextResultPublic;
+  setRunCommitment(text: string, lessonKey?: string): LessonTextResultPublic;
   logCoachingNote(
     note: string,
     kind?: 'observation' | 'preference' | 'context',

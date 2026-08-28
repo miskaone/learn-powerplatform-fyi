@@ -224,20 +224,11 @@ export class MasteryEngineFacade implements EngineFacade {
    * on the ledger, exposed via getLearnerState, NEVER admitted to the
    * rubric evidence corpus; engine-guarded against exam-mode writes.
    */
-  setLessonAim(aim: string): LessonTextResultPublic {
-    return this.setLessonText((key, text) => this.engine.setLessonAim(key, text), aim);
-  }
-
-  /**
-   * Keyed by the route-derived active lesson slug, or 'track' when no
-   * lesson is active; learner/agent-authored reflective text — persisted
-   * on the ledger, exposed via getLearnerState, NEVER admitted to the
-   * rubric evidence corpus; engine-guarded against exam-mode writes.
-   */
-  setRuleCompression(text: string): LessonTextResultPublic {
+  setLessonAim(aim: string, lessonKey?: string): LessonTextResultPublic {
     return this.setLessonText(
-      (key, value) => this.engine.setRuleCompression(key, value),
-      text,
+      (key, text) => this.engine.setLessonAim(key, text),
+      aim,
+      lessonKey,
     );
   }
 
@@ -247,10 +238,25 @@ export class MasteryEngineFacade implements EngineFacade {
    * on the ledger, exposed via getLearnerState, NEVER admitted to the
    * rubric evidence corpus; engine-guarded against exam-mode writes.
    */
-  setRunCommitment(text: string): LessonTextResultPublic {
+  setRuleCompression(text: string, lessonKey?: string): LessonTextResultPublic {
+    return this.setLessonText(
+      (key, value) => this.engine.setRuleCompression(key, value),
+      text,
+      lessonKey,
+    );
+  }
+
+  /**
+   * Keyed by the route-derived active lesson slug, or 'track' when no
+   * lesson is active; learner/agent-authored reflective text — persisted
+   * on the ledger, exposed via getLearnerState, NEVER admitted to the
+   * rubric evidence corpus; engine-guarded against exam-mode writes.
+   */
+  setRunCommitment(text: string, lessonKey?: string): LessonTextResultPublic {
     return this.setLessonText(
       (key, value) => this.engine.setRunCommitment(key, value),
       text,
+      lessonKey,
     );
   }
 
@@ -530,8 +536,12 @@ export class MasteryEngineFacade implements EngineFacade {
       text: string,
     ) => { stored: boolean; reason: string | null; value: string | null },
     text: string,
+    lessonKey?: string,
   ): LessonTextResultPublic {
-    const key = this.getActiveLesson?.()?.slug ?? 'track';
+    // Explicit key (page surfaces pass the slug they render under) wins over
+    // the ambient active-lesson slug so read and write can never diverge
+    // (cross-review fix, 2026-08-28); tools keep the ambient/track contract.
+    const key = lessonKey ?? this.getActiveLesson?.()?.slug ?? 'track';
     const result = write(key, text);
     return {
       stored: result.stored,

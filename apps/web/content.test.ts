@@ -233,3 +233,40 @@ test("KICKOFF_PROMPT carries the memory contract and technique lines", () => {
     "TRANSFER: Once per lesson, pose one what-if from my own work applying the governing rule.",
   );
 });
+
+test("answer-cache guard holds against the cross-review evasions on the REAL manifest", () => {
+  const engine = new MasteryEngine(manifest, new MemoryStorageAdapter());
+  // Short CORRECT option ("Azure Function", ml11-q1-a) — below the sliding
+  // window, now caught by the token-bounded short-phrase check.
+  expect(
+    engine.logCoachingNote("when the host question comes up it is Azure Function"),
+  ).toEqual({ stored: false, reason: "answer-content" });
+  // Punctuation insertion inside the ml13 ordering option must not break the
+  // verbatim window (normalization strips punctuation).
+  expect(
+    engine.logCoachingNote(
+      "Regis-ter Permi-ssion Con-sent Conn-ect Ca-ll is the pick",
+    ),
+  ).toEqual({ stored: false, reason: "answer-content" });
+  // Verbatim form still rejected.
+  expect(
+    engine.logCoachingNote(
+      "Register → Permission → Consent → Connect → Call",
+    ),
+  ).toEqual({ stored: false, reason: "answer-content" });
+});
+
+test("answer-cache guard's deliberate boundary: sub-phrase words and free prose still store", () => {
+  const engine = new MasteryEngine(manifest, new MemoryStorageAdapter());
+  // Single common words ("Blocked", "Filter", "SharePoint") stay unguarded —
+  // rejecting every note mentioning them would gut the memory feature. A bare
+  // word with no question binding is the documented free-prose residual.
+  expect(
+    engine.logCoachingNote("learner's org standardized on SharePoint libraries"),
+  ).toEqual({ stored: true, reason: null });
+  // Free-prose paraphrase keys are OUT OF SCOPE for the deterministic guard
+  // (documented residual alongside "agent skips the interview" in the ISA).
+  expect(
+    engine.logCoachingNote("the webhook host question wants the serverless compute answer"),
+  ).toEqual({ stored: true, reason: null });
+});

@@ -105,6 +105,27 @@ test('answer-cache guard rejects >=20-char verbatim option text, case- and white
   ).toEqual({ stored: false, reason: 'answer-content' });
 });
 
+test('answer-cache guard survives punctuation insertion inside option text (cross-review evasion)', () => {
+  const { engine } = engineOnFreshAdapter();
+  // Same q1-b option text with punctuation shot through every few chars —
+  // normalization strips punctuation, so the verbatim window still matches.
+  expect(
+    engine.logCoachingNote('an-outbound. HTTP,client;to!the...Web-API'),
+  ).toEqual({ stored: false, reason: 'answer-content' });
+});
+
+test('answer-cache guard rejects question ids that dodge the hyphen shape', () => {
+  const { engine } = engineOnFreshAdapter();
+  expect(engine.logCoachingNote('they struggled on ml13.q1 last time')).toEqual({
+    stored: false,
+    reason: 'answer-content',
+  });
+  expect(engine.logCoachingNote('see ml13 q2 again next session')).toEqual({
+    stored: false,
+    reason: 'answer-content',
+  });
+});
+
 test('answer-cache guard allows benign notes and short option fragments', () => {
   const { engine } = engineOnFreshAdapter();
   expect(

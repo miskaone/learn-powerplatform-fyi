@@ -269,6 +269,46 @@ describe('MasteryEngineFacade', () => {
     });
   });
 
+  test('explicit lessonKey overrides the ambient active lesson on every setter (cross-review fix)', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    // Ambient active lesson deliberately DIFFERENT from the explicit key —
+    // page surfaces pass the slug they render under, so read/write keys can
+    // never diverge even if the ambient state lags or is unset.
+    const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+      getActiveLesson: () => ({
+        slug: 'some-other-lesson',
+        title: 'Other',
+        objectiveId: 'obj-1',
+        sectionAnchors: [],
+      }),
+    });
+    expect(
+      facade.setLessonAim('debug isolation', 'plugin-isolation').lessonKey,
+    ).toBe('plugin-isolation');
+    expect(
+      facade.setRuleCompression('sandbox the call', 'plugin-isolation')
+        .lessonKey,
+    ).toBe('plugin-isolation');
+    expect(
+      facade.setRunCommitment('audit one plugin', 'plugin-isolation').lessonKey,
+    ).toBe('plugin-isolation');
+    const state = facade.getLearnerState();
+    expect(state.lessonAims).toEqual({ 'plugin-isolation': 'debug isolation' });
+    expect(state.ruleCompressions).toEqual({
+      'plugin-isolation': 'sandbox the call',
+    });
+    expect(state.runCommitments).toEqual({
+      'plugin-isolation': 'audit one plugin',
+    });
+    // Omitting the key preserves the ambient contract the tools rely on.
+    expect(facade.setLessonAim('ambient aim').lessonKey).toBe(
+      'some-other-lesson',
+    );
+  });
+
   test('stored lesson aim cannot pass as score_rubric verbatim evidence', () => {
     const { facade } = makeFacade();
     primeAttempt(facade);

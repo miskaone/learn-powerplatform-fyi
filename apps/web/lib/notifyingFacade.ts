@@ -50,24 +50,24 @@ export class NotifyingFacade implements EngineFacade {
     return result;
   }
 
-  setLessonAim(aim: string) {
-    const result = this.inner.setLessonAim(aim);
+  setLessonAim(aim: string, lessonKey?: string) {
+    const result = this.inner.setLessonAim(aim, lessonKey);
     if (result.stored === true) {
       this.notify();
     }
     return result;
   }
 
-  setRuleCompression(text: string) {
-    const result = this.inner.setRuleCompression(text);
+  setRuleCompression(text: string, lessonKey?: string) {
+    const result = this.inner.setRuleCompression(text, lessonKey);
     if (result.stored === true) {
       this.notify();
     }
     return result;
   }
 
-  setRunCommitment(text: string) {
-    const result = this.inner.setRunCommitment(text);
+  setRunCommitment(text: string, lessonKey?: string) {
+    const result = this.inner.setRunCommitment(text, lessonKey);
     if (result.stored === true) {
       this.notify();
     }

@@ -106,8 +106,19 @@ export interface CoachCalibrationSummary {
 
 /** Verbatim option-text window length for the coaching-note answer-cache guard. */
 export const ANSWER_TEXT_WINDOW = 20;
+/**
+ * Options whose normalized text is shorter than the sliding window are checked
+ * as whole (token-bounded) phrases when at least this long. Anything shorter —
+ * single common words like "Blocked" or "Filter" — is deliberately unguarded:
+ * rejecting every note that mentions such a word would gut the memory feature,
+ * and a bare word with no question binding is the same free-prose residual the
+ * ISA already documents (the guard stops verbatim key stashing, not paraphrase).
+ */
+export const ANSWER_TEXT_MIN_PHRASE = 12;
 
 const QUESTION_ID_IN_NOTE = /\bml\d+-q\d+(?:-[a-z0-9]+)?\b/i;
+/** Id shapes surviving punctuation-stripping normalization ("ml13.q1", "ml13 q1 c"). */
+const QUESTION_ID_IN_NORMALIZED_NOTE = /\bml\d+ ?q\d+\b/;
 
 export interface LessonTextResult {
   stored: boolean;
@@ -1005,8 +1016,35 @@ function copyStringMap(record: Record<string, string>): Record<string, string> {
   return copy;
 }
 
+/**
+ * Case-, whitespace-, AND punctuation-insensitive canonical form: lowercase,
+ * every non-alphanumeric run collapses to a single space (cross-review fix,
+ * 2026-08-28 — punctuation between words no longer breaks a verbatim match).
+ */
 function normalizeAnswerText(value: string): string {
-  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/**
+ * Squashed canonical form: alphanumerics only, no separators at all. Catches
+ * punctuation inserted MID-word ("Regis-ter Permi-ssion…"), which the spaced
+ * form cannot — stripping to spaces splits the token instead of healing it.
+ */
+function squashAnswerText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function slidingWindowMatch(
+  haystack: string,
+  needle: string,
+  window: number,
+): boolean {
+  for (let i = 0; i <= needle.length - window; i += 1) {
+    if (haystack.includes(needle.slice(i, i + window))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function containsAnswerContent(
@@ -1017,21 +1055,44 @@ function containsAnswerContent(
     return true;
   }
   const normalizedNote = normalizeAnswerText(note);
+  if (QUESTION_ID_IN_NORMALIZED_NOTE.test(normalizedNote)) {
+    return true;
+  }
+  const paddedNote = ` ${normalizedNote} `;
+  const squashedNote = squashAnswerText(note);
   for (const question of manifest.questions) {
     for (const option of question.options) {
       const normalizedOption = normalizeAnswerText(option.text);
-      if (normalizedOption.length < ANSWER_TEXT_WINDOW) {
-        continue;
-      }
-      for (
-        let i = 0;
-        i <= normalizedOption.length - ANSWER_TEXT_WINDOW;
-        i += 1
+      const squashedOption = squashAnswerText(option.text);
+      // Long options: verbatim sliding windows over BOTH canonical forms —
+      // spaced (word-separated verbatim runs) and squashed (mid-word
+      // punctuation insertion).
+      if (
+        normalizedOption.length >= ANSWER_TEXT_WINDOW &&
+        slidingWindowMatch(normalizedNote, normalizedOption, ANSWER_TEXT_WINDOW)
       ) {
+        return true;
+      }
+      if (
+        squashedOption.length >= ANSWER_TEXT_WINDOW &&
+        slidingWindowMatch(squashedNote, squashedOption, ANSWER_TEXT_WINDOW)
+      ) {
+        return true;
+      }
+      // Short options never reach the sliding window; check them whole so
+      // short CORRECT answers ("Azure Function", "A number of minutes")
+      // cannot be stashed verbatim: token-bounded in the spaced form, plain
+      // inclusion in the squashed form.
+      if (normalizedOption.length < ANSWER_TEXT_WINDOW) {
         if (
-          normalizedNote.includes(
-            normalizedOption.slice(i, i + ANSWER_TEXT_WINDOW),
-          )
+          normalizedOption.length >= ANSWER_TEXT_MIN_PHRASE &&
+          paddedNote.includes(` ${normalizedOption} `)
+        ) {
+          return true;
+        }
+        if (
+          squashedOption.length >= ANSWER_TEXT_MIN_PHRASE &&
+          squashedNote.includes(squashedOption)
         ) {
           return true;
         }
