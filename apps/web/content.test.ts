@@ -8,6 +8,7 @@ import {
 } from "@learn/mastery-gate/engine";
 import { MasteryEngineFacade } from "@learn/mastery-gate/webmcp";
 import { DEMO_MASTERY_QUOTE, lessonSections, manifest } from "./lib/content";
+import { anchorOwnerSlug, lessonSectionAnchors } from "./lib/lessonIndex";
 import {
   QUARANTINED_TOOLS,
   registrySnapshot,
@@ -194,4 +195,22 @@ test("exam on the live app manifest: mass revocation, submit, debrief tool", () 
   // concepts land in missedConceptIds without leaking option ids.
   expect(debrief.missedConceptIds.length).toBeGreaterThan(0);
   expect(JSON.stringify(debrief)).not.toContain("OptionId");
+});
+
+test("lessonSectionAnchors returns the six lesson-page anchors", () => {
+  const slug = "delegable-date-window-gallery";
+  expect(lessonSectionAnchors(slug)).toEqual([
+    `${slug}-rule`,
+    `${slug}-exam-clue`,
+    `${slug}-scenario`,
+    `${slug}-production`,
+    `${slug}-compress`,
+    `${slug}-run`,
+  ]);
+});
+
+test("anchorOwnerSlug resolves the compress and run anchors to their lesson", () => {
+  const slug = "delegable-date-window-gallery";
+  expect(anchorOwnerSlug(`${slug}-compress`)).toBe(slug);
+  expect(anchorOwnerSlug(`${slug}-run`)).toBe(slug);
 });

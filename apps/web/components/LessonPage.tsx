@@ -9,6 +9,7 @@ import {
   persistScenarioCommit,
   readScenarioCommit,
 } from "../lib/scenarioStorage";
+import { LessonAim, RuleCompression, RunCommitment } from "./LessonReflection";
 import { LessonPracticeSection } from "./LessonPracticeSection";
 
 const DRILL_ORDER = [
@@ -245,6 +246,7 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
             <p className="lp-mnemonic">Mnemonic: {lesson.mnemonic}</p>
           ) : null}
         </div>
+        <LessonAim slug={lesson.slug} />
       </header>
 
       <section className="lp-section" id={`${lesson.slug}-scenario`}>
@@ -258,9 +260,20 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
         <ScenarioCommit slug={lesson.slug} />
       </section>
 
+      <section className="lp-section" id={`${lesson.slug}-compress`}>
+        <div className="lp-section-head">
+          <span className="lp-label">02 / COMPRESS THE RULE</span>
+          <h2>State the load-bearing rule in one line.</h2>
+        </div>
+        <RuleCompression
+          slug={lesson.slug}
+          governingRule={lesson.governingRule}
+        />
+      </section>
+
       <section className="lp-section">
         <div className="lp-section-head">
-          <span className="lp-label">02 / CONCEPT HIERARCHY</span>
+          <span className="lp-label">03 / CONCEPT HIERARCHY</span>
           <h2>The ideas that change the answer.</h2>
         </div>
         <div className="lp-grid-2">
@@ -279,7 +292,7 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
       <section className="lp-section">
         <div className="lp-section-head">
           <span className="lp-label">
-            03 / {lesson.visual.type.toUpperCase()}
+            04 / {lesson.visual.type.toUpperCase()}
           </span>
           <h2>{lesson.visual.title}</h2>
         </div>
@@ -288,7 +301,7 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
 
       <section className="lp-section">
         <div className="lp-section-head">
-          <span className="lp-label">04 / DISTRACTORS</span>
+          <span className="lp-label">05 / DISTRACTORS</span>
           <h2>Why the tempting choices fail.</h2>
         </div>
         <div className="lp-grid-2">
@@ -318,7 +331,7 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
       <section id="practice" className="lp-practice-band">
         <div className="lp-section">
           <div className="lp-section-head">
-            <span className="lp-label">05 / RETRIEVAL LAB</span>
+            <span className="lp-label">06 / RETRIEVAL LAB</span>
             <h2>Practice this lesson against the live engine.</h2>
           </div>
           <LessonPracticeSection
@@ -331,7 +344,7 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
 
       <section className="lp-section">
         <div className="lp-section-head">
-          <span className="lp-label">06 / TARGETED DRILLS</span>
+          <span className="lp-label">07 / TARGETED DRILLS</span>
           <h2>Strengthen the weakest dimension.</h2>
         </div>
         <div className="lp-grid-2">
@@ -363,6 +376,14 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
             ))}
           </ul>
         </div>
+      </section>
+
+      <section className="lp-section" id={`${lesson.slug}-run`}>
+        <div className="lp-section-head">
+          <span className="lp-label">08 / RUN</span>
+          <h2>Decide what this changes.</h2>
+        </div>
+        <RunCommitment slug={lesson.slug} />
       </section>
 
       <section className="lp-final">

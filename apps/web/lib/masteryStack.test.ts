@@ -62,6 +62,8 @@ describe("active lesson scoping", () => {
     "delegable-date-window-gallery-exam-clue",
     "delegable-date-window-gallery-scenario",
     "delegable-date-window-gallery-production",
+    "delegable-date-window-gallery-compress",
+    "delegable-date-window-gallery-run",
   ];
 
   test("setActiveLesson scopes the current question and lesson context, and is idempotent", () => {
@@ -115,6 +117,16 @@ describe("active lesson scoping", () => {
         correct: 0,
         total: 2,
       });
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
+  test("getStuckRevocations returns [] with no registry", () => {
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      expect(stack.registry).toBeNull();
+      expect(stack.getStuckRevocations()).toEqual([]);
     } finally {
       stack.stopRuntimeDetection();
     }

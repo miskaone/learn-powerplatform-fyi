@@ -27,13 +27,15 @@ export function getLessonIndexEntry(
   return lessonIndex.find((entry) => entry.slug === slug);
 }
 
-/** The four remediation-anchor targets every lesson page renders. */
+/** The six remediation-anchor targets every lesson page renders. */
 export function lessonSectionAnchors(slug: string): string[] {
   return [
     `${slug}-rule`,
     `${slug}-exam-clue`,
     `${slug}-scenario`,
     `${slug}-production`,
+    `${slug}-compress`,
+    `${slug}-run`,
   ];
 }
 

@@ -341,6 +341,20 @@ button.pl400-btn,
   vertical-align: middle;
 }
 
+.tool-stuck-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--pl400-warn);
+  border: 1px solid color-mix(in srgb, var(--pl400-warn) 40%, var(--pl400-border));
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  vertical-align: middle;
+  background: var(--pl400-warn-soft);
+}
+
 .tool-locked {
   opacity: 0.55;
   text-decoration: line-through;

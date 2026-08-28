@@ -190,6 +190,7 @@ export function Pl400App() {
         <aside className="pl400-aside">
           <ToolRoster
             tools={gate.rosterTools}
+            stuckTools={gate.stuckTools}
             flashes={gate.flashes}
             errorNotice={gate.syncError ?? undefined}
             modeLabel={

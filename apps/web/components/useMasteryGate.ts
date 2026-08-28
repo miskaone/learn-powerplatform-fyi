@@ -58,6 +58,7 @@ export interface MasteryGateView {
    * UI (cross-review BLOCKER 4).
    */
   examActive: boolean;
+  stuckTools: string[];
 }
 
 export function useMasteryGate(): MasteryGateView {
@@ -75,6 +76,7 @@ export function useMasteryGate(): MasteryGateView {
   const [nextAction, setNextAction] = useState<UiNextAction | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [examActive, setExamActive] = useState(false);
+  const [stuckTools, setStuckTools] = useState<string[]>([]);
   const [runtimeTick, setRuntimeTick] = useState(0);
   const { flashes, flash } = useToolRosterHighlights();
 
@@ -150,10 +152,12 @@ export function useMasteryGate(): MasteryGateView {
       },
       s.facade,
     );
+    setStuckTools(s.registry?.getStuckRevocations() ?? []);
     if (s.registry) {
       void syncRegistryRoster(s.registry, snapshot, {
         onNames: (names) => {
           handleRosterNamesRef.current(names);
+          setStuckTools(s.registry?.getStuckRevocations() ?? []);
         },
         onSyncError: (notice) => {
           setSyncError(notice);
@@ -267,5 +271,6 @@ export function useMasteryGate(): MasteryGateView {
     agentDetected,
     storageDegraded,
     examActive,
+    stuckTools,
   };
 }

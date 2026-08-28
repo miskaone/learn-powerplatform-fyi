@@ -91,6 +91,7 @@ export function LessonPracticeSection(props: {
           <summary>Tool Roster — {gate.rosterNames.length} live</summary>
           <ToolRoster
             tools={gate.rosterTools}
+            stuckTools={gate.stuckTools}
             flashes={gate.flashes}
             errorNotice={gate.syncError ?? undefined}
             modeLabel={

@@ -51,6 +51,7 @@ export function useToolRosterHighlights(): {
 export function ToolRoster(props: {
   tools: ToolRosterEntry[];
   lockedTools?: string[];
+  stuckTools?: string[];
   flashes?: Record<string, "register" | "revoke">;
   notice?: string;
   /** Non-blocking error line (e.g. a failed registry sync). */
@@ -58,6 +59,7 @@ export function ToolRoster(props: {
   modeLabel?: string;
 }) {
   const locked = new Set(props.lockedTools ?? []);
+  const stuck = new Set(props.stuckTools ?? []);
   const flashes = props.flashes ?? {};
   const count = props.tools.length;
 
@@ -94,6 +96,9 @@ export function ToolRoster(props: {
               <code>{tool.name}</code>
               {tool.dynamic ? (
                 <span className="tool-dynamic-badge">dynamic</span>
+              ) : null}
+              {stuck.has(tool.name) ? (
+                <span className="tool-stuck-badge">revoking — draining</span>
               ) : null}
               {isLocked ? (
                 <span className="tool-lock-label">locked</span>

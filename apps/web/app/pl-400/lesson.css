@@ -262,6 +262,30 @@
   line-height: 1.6;
 }
 
+.lp-commit-error {
+  margin: 0.75rem 0 0;
+  color: var(--lp-amber);
+  font-size: 0.9rem;
+}
+
+.lp-hero .lp-commit {
+  margin-top: 1.6rem;
+  max-width: 52rem;
+  color: var(--text);
+}
+
+.lp-hero .lp-commit p {
+  color: var(--text);
+}
+
+.lp-hero .lp-commit .lp-commit-help {
+  color: var(--muted);
+}
+
+.lp-hero .lp-commit .lp-commit-error {
+  color: var(--lp-amber);
+}
+
 .lp textarea {
   font: inherit;
   width: 100%;

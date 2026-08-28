@@ -397,6 +397,15 @@ export function PracticePanel(props: {
           onActivate={handleNextAction}
         />
       ) : null}
+      {nextAction === "rubric_interview" ? (
+        <div className="pl400-banner pl400-banner-info" role="status">
+          The engine invites a rubric interview — your MCQ coverage is
+          sufficient to judge. A connected coach asks 5-8 open questions and
+          scores the rubric with verbatim evidence. Working agent-less? The
+          self-assessment control on the hub drives the same score_rubric
+          engine call.
+        </div>
+      ) : null}
       {advancedBanner ? (
         <div className="pl400-banner pl400-banner-success" role="status">
           Module complete.
@@ -415,7 +424,7 @@ export function PracticePanel(props: {
               className="pl400-btn"
               onClick={handleMasterRubric}
             >
-              Score rubric at mastery (demo)
+              Self-assess rubric (demo evidence, scores 3/3/3/3)
             </button>
           ) : null}
           <button

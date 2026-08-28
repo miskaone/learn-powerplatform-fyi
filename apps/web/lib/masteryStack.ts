@@ -44,6 +44,8 @@ export interface MasteryStack {
   stopRuntimeDetection: () => void;
   setActiveLesson(slug: string | null): void;
   getActiveLessonSlug(): string | null;
+  /** Live read of tools whose revocation drain has exceeded the warn threshold. */
+  getStuckRevocations(): string[];
 }
 
 /**
@@ -84,7 +86,10 @@ export function createMasteryStack(
   const facade = new NotifyingFacade(inner, onEngineMutation);
   const ctx = resolveModelContext(host);
   const registry = ctx
-    ? new ToolRegistry(ctx, facade, { disabledTools: QUARANTINED_TOOLS })
+    ? new ToolRegistry(ctx, facade, {
+        disabledTools: QUARANTINED_TOOLS,
+        onStuckRevocation: () => onEngineMutation(),
+      })
     : null;
   const watcher = ctx ? new ToolSurfaceWatcher(ctx) : null;
   const toolset = createToolset(facade);
@@ -140,10 +145,19 @@ export function createMasteryStack(
     getActiveLessonSlug(): string | null {
       return activeLesson === null ? null : activeLesson.slug;
     },
+    getStuckRevocations(): string[] {
+      return this.registry?.getStuckRevocations() ?? [];
+    },
   };
 
   if (ctx === null) {
-    stack.stopRuntimeDetection = startRuntimeDetection(stack, facade, host, onRuntimeDetected);
+    stack.stopRuntimeDetection = startRuntimeDetection(
+      stack,
+      facade,
+      host,
+      onRuntimeDetected,
+      onEngineMutation,
+    );
   }
   return stack;
 }
@@ -172,7 +186,8 @@ function startRuntimeDetection(
   stack: MasteryStack,
   facade: EngineFacade,
   host: Parameters<typeof resolveModelContext>[0],
-  onRuntimeDetected?: () => void,
+  onRuntimeDetected: (() => void) | undefined,
+  onEngineMutation: () => void,
 ): () => void {
   let attempts = 0;
   let stopped = false;
@@ -188,6 +203,7 @@ function startRuntimeDetection(
     }
     stack.registry = new ToolRegistry(late, facade, {
       disabledTools: QUARANTINED_TOOLS,
+      onStuckRevocation: () => onEngineMutation(),
     });
     stack.watcher = new ToolSurfaceWatcher(late);
     stack.agentRuntimeDetected = true;
