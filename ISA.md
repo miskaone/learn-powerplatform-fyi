@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 46/74
+progress: 47/74
 mode: build
 started: 2026-08-26
 updated: 2026-08-28
@@ -105,7 +105,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 
 ### Day-1 spikes, repo, and deploy chain
 
-- [ ] ISC-1: WebMCP namespace verdict for Chrome-behind-flag recorded in the repo (which of `navigator.modelContext` / `document.modelContext` resolves, with probe output)
+- [x] ISC-1: WebMCP namespace verdict for Chrome-behind-flag recorded in the repo (which of `navigator.modelContext` / `document.modelContext` resolves, with probe output)
 - [x] ISC-2: WebMCP namespace verdict for the ChatGPT in-app browser recorded in the repo
 - [ ] ISC-3: Adapter shim feature-detects both namespaces and passes unit tests against a mock of each
 - [x] ISC-4: Dynamic deregistration spike verdict recorded in Decisions — Exam Mode mode chosen (real revocation | refusal fallback) before any dependent work starts
@@ -544,3 +544,12 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   OK, static export clean (per-route redaction grep: prerendered HTML zero answer-key hits;
   scenario expectedAnswer only in post-commit-fetched JSON; the client-engine manifest chunk is
   the accepted baseline).
+- **2026-08-29** — ISC-1 verified on Chrome 152 (the judges' stable release; evidence in
+  `docs/spike-verdicts.md`): `document.modelContext` present, `navigator` absent,
+  `toolchange` events PRESENT (opposite of ChatGPT), late registration and
+  AbortSignal revocation both working — and **in-flight abort empirically kills the
+  executing call**, reproducing the Chrome<153 landmine in the exact browser judges
+  will use and validating the drain-first rule with a live reproduction rather than a
+  spec reading. Both ToolSurfaceWatcher modes are now confirmed against real runtimes:
+  events in Chrome, polling in ChatGPT. Remaining: exercise the product itself (not the
+  spike page) in Chrome-with-flag — the events path has never run live.
