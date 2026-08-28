@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 27/61
+progress: 33/61
 mode: build
 started: 2026-08-26
 updated: 2026-08-27
@@ -137,9 +137,9 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [ ] ISC-24: `advance_module` absent from `getTools()` while any rubric dimension <3
 - [ ] ISC-25: `advance_module` appears via `toolchange` when the gate passes (integration test)
 - [ ] ISC-26: `get_misconception_brief` registers only after the same misconception fires twice (test)
-- [ ] ISC-27: `reveal_outcome` registers only after `commit_prediction` lands — commit-then-reveal enforced by tool availability (test)
-- [ ] ISC-28: `start_exam` revokes the coaching toolset per the ISC-4 verdict (deregistration observed in `getTools()`, or every coaching tool returns proctor-refusal states)
-- [ ] ISC-29: `get_exam_debrief` registers only after `submit_exam` (test)
+- [x] ISC-27: `reveal_outcome` registers only after `commit_prediction` lands — commit-then-reveal enforced by tool availability (test) — registry transition test observes it in `getTools()`; also exercised live agent-less 2026-08-27 (Reveal appeared only after commit)
+- [x] ISC-28: `start_exam` revokes the coaching toolset per the ISC-4 verdict (deregistration observed in `getTools()`, or every coaching tool returns proctor-refusal states) — deregister-mode registry test asserts the exam-only set via `getTools()`; refusal fallback tested behind the same interface; live roster collapse to exam tools re-confirmed on production 2026-08-27
+- [x] ISC-29: `get_exam_debrief` registers only after `submit_exam` (test) — registry test asserts absent pre-submit, present post-submit
 - [x] ISC-30: `score_rubric` rejects submissions missing verbatim evidence quotes and clamps out-of-range scores (unit tests)
 
 ### UI (`/pl-400`)
@@ -149,8 +149,8 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [ ] ISC-33: Rubric panel renders all four dimensions separately (no averaged display)
 - [x] ISC-34: `navigate_to_anchor` scrolls to and visibly highlights the target section — probed 2026-08-27: same-page (coach action → scroll + `anchor-highlight` class observed) and cross-page live (hub → `mastery-gate:navigate-anchor` event → router push to the owning lesson → anchor scrolled into view; highlight auto-clears after 2s as designed)
 - [ ] ISC-35: Every engine path is completable agent-less via page controls (manual walkthrough, scripted checklist)
-- [ ] ISC-36: Flip-Condition drill playable end-to-end: mutate assumption → commit prediction → reveal outcome
-- [ ] ISC-37: Exam Mode UI shows timer and locked/unlocked tool state per the ISC-4 verdict
+- [x] ISC-36: Flip-Condition drill playable end-to-end: mutate assumption → commit prediction → reveal outcome — walked live on production 2026-08-27 (flip "External users?" → commit "Power Pages" + reasoned why → reveal: prediction held, transfer result recorded to ledger)
+- [x] ISC-37: Exam Mode UI shows timer and locked/unlocked tool state per the ISC-4 verdict — verified live 2026-08-27: mm:ss countdown ticking, full locked-tool list rendered from real registry state (every coaching tool LOCKED mid-exam), roster restored on return to practice
 - [ ] ISC-38: Full flow renders and operates in the ChatGPT in-app browser (manual probe, screenshots)
 
 ### Content (two objectives)
@@ -164,7 +164,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 
 ### Submission package
 
-- [ ] ISC-45: Package README contains the registerTool example with name, description, inputSchema, and execute verbatim
+- [x] ISC-45: Package README contains the registerTool example with name, description, inputSchema, and execute verbatim — grep-verified: one `document.modelContext.registerTool` example carries all four fields
 - [ ] ISC-46: Demo video public on YouTube, under 3 minutes, with audio, showing all three scripted beats
 - [ ] ISC-47: Devpost text docs filed — use-case fit, UX improvement, collaboration story, implementation description
 - [ ] ISC-48: Devpost submission confirmed complete before 2026-09-03 1pm PDT
@@ -349,3 +349,35 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   would add unreviewed questions and mutate the ratified taxonomy). Merged to main (`3dc2aaa`)
   and verified live: hub + all five lesson routes 200 with the new structure, redaction greps
   clean per route, catalog prose absent from shared chunks.
+- **2026-08-27** — State machines shipped: Exam Mode runs REAL revocation with drain-first
+  discipline end-to-end on production, and the flip drill + exam surfaces are live agent-less.
+  Stage commits `9019042` (surface activation: un-quarantined exam/drill tools, ExamSection with
+  UI-owned countdown reading engine truth, locked-tools list from the real registry roster) and
+  `add3490` (adversarial cross-review disposition). What the review found and what shipped:
+  the exam was escapable through five independent paths — ALL closed at the ENGINE, not the
+  registry (deregistration is now defense-in-depth, not the only guard): coaching methods
+  (`requestHint`/`scoreRubric`/`logCoachingNote`/`resetQuestions`, facade
+  `getMisconceptionBrief`/`advanceModule`/context concepts) refuse mid-exam; `submit_answer`
+  withholds correctness until submit (`correct: null` mid-exam — no per-question oracle);
+  recorded exam answers are final (the last-question re-answer fallback is gone); the exam
+  question renders ONLY in ExamSection (practice panels lock on `examActive` on the hub and
+  every lesson page); storage cross-validates phase↔exam↔activeDrill so a type-valid tampered
+  reload cannot resurrect the coaching surface mid-exam. The exam clock carries a `lastSeenAt`
+  high-water mark (OS clock rollback cannot rewind or un-expire), reload clamps duration and
+  rejects future `startedAt`, and an answer landing at the expiry boundary refuses instead of
+  silently burning a practice attempt. The flip drill now grades by exclusive match (shotgun
+  predictions naming rival outcomes fail) and requires a 10-char reason. The registry survived
+  three more findings: stale registerTool rejections delete only their own controller,
+  `sync()` resolves only after registrations settle, and a NEW invocation during a draining
+  revocation refuses (`tool-revoked`) while in-flight executions still settle — the drain-first
+  law holds. Deliberate partial: retakes rotate the fixed exam form deterministically rather
+  than sampling — the fixed form is the deterministic referee's public artifact, and unlimited
+  retakes are a learning-product choice (review finding 13, documented not "fixed"). The
+  manifest now ships an explicit 10-question/600s exam form balanced across both objectives
+  (validator enforces existence, id integrity, and ≥30s per item). 17 regression tests pin all
+  of it (261 pass). Verified live on production post-deploy: full agent-less loop — practice
+  attempt → demo rubric gate → drill mutate/commit/reveal (transfer result on ledger) → exam
+  start (timer, roster collapse, every coaching tool LOCKED) → submit → per-dimension debrief
+  with missed concepts → return to practice (roster restored). ISC-27/28/29/36/37/45 ticked;
+  ChatGPT in-app-browser halves of the tool-surface ISCs (21-26, 50) stay open for the judge-
+  environment pass.
