@@ -1,0 +1,815 @@
+[
+  {
+    "id": "PL400-ML-13",
+    "slug": "entra-graph-connector-order",
+    "title": "Order an Entra-Graph Connector Integration",
+    "topic": {
+      "id": "api-integration-custom-connectors",
+      "title": "API Integration & Custom Connectors"
+    },
+    "objectiveId": "custom-connectors-azure-integration",
+    "questionIds": [
+      "ml13-q1",
+      "ml13-q2",
+      "ml13-q3",
+      "ml13-q4",
+      "ml13-q5",
+      "ml13-q6",
+      "ml13-q7"
+    ],
+    "heroEpigraph": "Identity first; approval before access; call last.",
+    "governingRule": "For a Canvas app that calls Microsoft Graph through a custom connector on behalf of the signed-in user, register the Entra app, request Graph permissions, grant required consent, configure the connector, then call it from the app.",
+    "examClue": "Register → Permission → Consent → Connect → Call.",
+    "mnemonic": "Register → Permission → Consent → Connect → Call.",
+    "scenario": {
+      "prompt": "A mobile Canvas app must identify the logged-in user, inspect that user's Microsoft Entra role through Microsoft Graph, and allow only authorized administrators to manage users. Put these components in dependency order: register a Microsoft Entra application, request Graph permissions, grant administrator consent, create the custom connector, and call it from the Canvas app."
+    },
+    "concepts": [
+      {
+        "id": "app-registration",
+        "label": "Entra app registration",
+        "importance": "foundational",
+        "summary": "The registration gives the connector an application identity and OAuth configuration such as client ID, tenant, redirect URI, and requested API access."
+      },
+      {
+        "id": "graph-permission",
+        "label": "Graph permission",
+        "importance": "foundational",
+        "summary": "A permission declares the Graph access the application requests. Choose the least privilege needed by the exact endpoint."
+      },
+      {
+        "id": "consent",
+        "label": "Administrator consent",
+        "importance": "foundational",
+        "summary": "Consent authorizes a requested permission when required. It cannot occur before the permission is configured."
+      },
+      {
+        "id": "connector",
+        "label": "Custom connector",
+        "importance": "important distinction",
+        "summary": "The connector packages OAuth and Graph operations into a reusable Power Apps/Power Automate API surface."
+      },
+      {
+        "id": "canvas-app",
+        "label": "Canvas app",
+        "importance": "important distinction",
+        "summary": "The Canvas app calls the connector and can use returned user membership/role data to guide navigation and experience."
+      },
+      {
+        "id": "server-authorization",
+        "label": "Protected-operation authorization",
+        "importance": "production nuance",
+        "summary": "Hiding an admin screen is not enforcement. The protected operation must validate identity and authorization independently."
+      }
+    ],
+    "distractors": [
+      {
+        "choice": "Grant consent before requesting permission",
+        "whyTempting": "Consent sounds like a generic tenant setup action.",
+        "whyWrong": "Consent approves an already-requested permission, so permission configuration must precede it."
+      },
+      {
+        "choice": "Application permissions for the interactive user",
+        "whyTempting": "Directory information feels privileged.",
+        "whyWrong": "A signed-in Canvas user normally implies delegated access; application permissions fit unattended daemon/background processes."
+      },
+      {
+        "choice": "Directory role equals Graph consent",
+        "whyTempting": "Both involve administrators.",
+        "whyWrong": "A role is assigned to a user; Graph permission is requested by an app; consent approves the app request."
+      },
+      {
+        "choice": "Hiding the screen is authorization",
+        "whyTempting": "The role check prevents ordinary navigation.",
+        "whyWrong": "A protected service/API must independently authorize the operation even if a user bypasses client navigation."
+      }
+    ],
+    "productionNuance": [
+      "Use the exact Graph endpoint to choose least-privileged delegated permissions; do not request broad directory access by default.",
+      "`/me/memberOf` is a signed-in-user endpoint and is delegated-access shaped; distinguish direct from transitive membership and directory roles from groups.",
+      "Canvas app sharing, Entra directory roles, Graph permissions, consent, and Dataverse/Power Platform roles are separate controls.",
+      "Treat client-side role checks as user-experience gates, never as the only protection for user-management actions."
+    ],
+    "visual": {
+      "type": "OAuth dependency chain",
+      "title": "Build the authorization chain before the app call",
+      "steps": [
+        {
+          "label": "Register identity",
+          "state": "Microsoft Entra app registration",
+          "detail": "Create the application identity and configure its OAuth properties."
+        },
+        {
+          "label": "Request scope",
+          "state": "Microsoft Graph permissions",
+          "detail": "Add the least-privileged delegated permissions required by the Graph operation."
+        },
+        {
+          "label": "Approve scope",
+          "state": "Administrator consent",
+          "detail": "Approve the requested permission when policy or permission type requires it."
+        },
+        {
+          "label": "Package the call",
+          "state": "OAuth custom connector",
+          "detail": "Use the registration configuration and define the Graph operation and response contract."
+        },
+        {
+          "label": "Call as user",
+          "state": "Canvas app → connector → Graph",
+          "detail": "The signed-in user invokes the connector, normally using delegated access."
+        },
+        {
+          "label": "Enforce the action",
+          "state": "Protected API checks authorization",
+          "detail": "Use UI role checks for experience, but enforce authorization at the protected operation too."
+        }
+      ]
+    },
+    "drills": {
+      "recall": "Recite Register → Permission → Consent → Connect → Call and name the output of each stage.",
+      "connections": "Draw three separate lanes for Graph permission, admin consent, and user directory role.",
+      "application": "Choose one Graph endpoint, identify whether the caller is interactive, then write its least-privileged permission and connector operation.",
+      "transfer": "Change the design from Canvas user interaction to a nightly daemon and explain every identity/permission change."
+    },
+    "reflection": [
+      "Which two authorization concepts were easiest to merge?",
+      "Where could client-side navigation be mistaken for security?",
+      "Which Graph call would you validate for least privilege next?"
+    ],
+    "references": [
+      {
+        "label": "PL-400 study guide",
+        "url": "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/pl-400"
+      },
+      {
+        "label": "Permissions and consent",
+        "url": "https://learn.microsoft.com/en-us/entra/identity-platform/permissions-consent-overview"
+      },
+      {
+        "label": "Grant tenant-wide admin consent",
+        "url": "https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-admin-consent"
+      },
+      {
+        "label": "List user memberships",
+        "url": "https://learn.microsoft.com/en-us/graph/api/user-list-memberof?view=graph-rest-1.0"
+      }
+    ]
+  },
+  {
+    "id": "PL400-ML-11",
+    "slug": "webhook-function-etl-boundary",
+    "title": "Separate Event Delivery from ETL Compute",
+    "topic": {
+      "id": "api-integration-custom-connectors",
+      "title": "API Integration & Custom Connectors"
+    },
+    "objectiveId": "custom-connectors-azure-integration",
+    "questionIds": [
+      "ml11-q1",
+      "ml11-q2",
+      "ml11-q3",
+      "ml11-q4",
+      "ml11-q5",
+      "ml11-q6",
+      "ml11-q7"
+    ],
+    "heroEpigraph": "A signal starts work; compute changes data.",
+    "governingRule": "A Dataverse webhook delivers a Dataverse server event to an external handler; an Azure Function supplies custom compute. For an external-to-Dataverse migration, choose a trigger that originates outside Dataverse and use the Function or another ETL compute layer for transformation.",
+    "examClue": "Heavy transformation → Azure Function; event notification → webhook.",
+    "mnemonic": "Signal triggers; compute transforms; API loads.",
+    "scenario": {
+      "prompt": "CompanyA must retrieve existing data from legacy applications, perform complex transformation into the Dataverse schema, and load the results into Dataverse. In this exam-style component comparison, which pair is the intended answer: Webhook + Azure Function, Web Resource + Dataverse Web API, Custom Connector + Microsoft Graph, or Power Automate + Microsoft Graph? Then identify the production-direction check before implementing it."
+    },
+    "concepts": [
+      {
+        "id": "event-origin",
+        "label": "Event origin",
+        "importance": "foundational",
+        "summary": "Start architecture reasoning by naming which system creates the event. This prevents an outbound Dataverse webhook from being mistaken for a general-purpose inbound migration scheduler."
+      },
+      {
+        "id": "delivery-mechanism",
+        "label": "Delivery mechanism",
+        "importance": "foundational",
+        "summary": "A Dataverse webhook POSTs a JSON payload for a Dataverse server event to an external handler. It is a notification/invocation mechanism, not the code that transforms records."
+      },
+      {
+        "id": "custom-compute",
+        "label": "Azure Function compute",
+        "importance": "foundational",
+        "summary": "An Azure Function is a suitable external handler and custom-code host for mapping, validation, cleansing, aggregation, and conversion. It can then call Dataverse through the Web API or SDK."
+      },
+      {
+        "id": "dataverse-api",
+        "label": "Dataverse Web API or SDK",
+        "importance": "important distinction",
+        "summary": "The Web API and SDK perform Dataverse data operations. They are the load interface, not an independent ETL engine that retrieves and transforms arbitrary legacy data by themselves."
+      },
+      {
+        "id": "web-resource",
+        "label": "Web resource",
+        "importance": "important distinction",
+        "summary": "A web resource is a Dataverse-stored static browser asset such as JavaScript, HTML, CSS, or an image used to extend model-driven app UI. It has no server-side execution capability and is not a migration engine."
+      },
+      {
+        "id": "custom-connector",
+        "label": "Custom connector",
+        "importance": "important distinction",
+        "summary": "A custom connector defines an API's operations, data structures, security, and optional code so flows and apps can call it. It is an API interface, not automatically a durable, large-scale ETL runtime."
+      },
+      {
+        "id": "service-bus",
+        "label": "Azure Service Bus",
+        "importance": "production nuance",
+        "summary": "For high-scale Dataverse event processing, Service Bus provides queuing. Direct webhooks scale only as far as the hosted handler can process messages; the choice is about delivery characteristics, not transformation language."
+      }
+    ],
+    "distractors": [
+      {
+        "choice": "Web Resource + Dataverse Web API",
+        "whyTempting": "A web resource can contain browser JavaScript and can call Dataverse services.",
+        "whyWrong": "Web resources are static assets processed by the browser for model-driven app UI; they have no server-side execution capability. The Web API is a load endpoint, not a background ETL engine."
+      },
+      {
+        "choice": "Custom Connector + Microsoft Graph",
+        "whyTempting": "A custom connector can expose operations from an external REST API to apps and flows.",
+        "whyWrong": "A connector describes/calls an API, but does not by itself become a general ETL runtime. Graph is appropriate only when the source is a supported Microsoft-cloud resource, not arbitrary legacy applications."
+      },
+      {
+        "choice": "Power Automate + Microsoft Graph",
+        "whyTempting": "Cloud flows can orchestrate modest transformations and call connectors.",
+        "whyWrong": "It can be viable for smaller, simple workloads, but Graph is not a general legacy-data API and a transformation-heavy or high-volume job often needs stronger custom compute and operational control."
+      },
+      {
+        "choice": "Webhook performs the transformation",
+        "whyTempting": "The webhook appears first in an integration diagram, so it can look like the active processing component.",
+        "whyWrong": "Webhook is event delivery. The external handler—such as an Azure Function—runs the custom code and then calls the destination API."
+      },
+      {
+        "choice": "Use a Dataverse webhook to schedule legacy extraction",
+        "whyTempting": "The intended exam pair contains a webhook and Azure Function.",
+        "whyWrong": "Dataverse webhooks originate from Dataverse server events. A scheduled legacy pull needs a timer, pipeline, dataflow, or another source-side/orchestration trigger."
+      }
+    ],
+    "productionNuance": [
+      "Treat the exam answer as an intended component comparison: Webhook supplies event delivery and Azure Function supplies custom compute. Do not silently generalize it into a claim that every migration should start with a Dataverse webhook.",
+      "For Dataverse event integration, register the webhook step for the intended Dataverse operation and secure the receiving endpoint. Dataverse sends a POST JSON payload to the external handler.",
+      "For high-scale event workloads, compare Azure Service Bus: Microsoft documents queuing and higher-scale processing there, while direct webhooks scale only to the hosted handler's capacity.",
+      "For bulk loads, design idempotency, alternate keys/upsert behavior, throttling/retry, lookup order, error logging, reconciliation, source identifiers, and service-to-service authorization separately from the trigger choice.",
+      "A custom connector describes how Power Apps, Power Automate, Logic Apps, or agents call an API. Its optional custom code has product limits and does not make the connector a substitute for a durable ETL platform.",
+      "A web resource is a client-side model-driven application extension. Keep browser UI customization separate from server-side migration processing even if the browser can call a Web API."
+    ],
+    "visual": {
+      "type": "integration direction decision trace",
+      "title": "Trace the signal before choosing the component",
+      "steps": [
+        {
+          "label": "Name the source",
+          "state": "Dataverse event or legacy schedule?",
+          "detail": "First ask which system creates the signal. A design cannot choose a correct trigger until its direction is clear."
+        },
+        {
+          "label": "Classify the job",
+          "state": "Extract · Transform · Load",
+          "detail": "Retrieval, custom transformation, and Dataverse writes are separate responsibilities. Do not give all three to an endpoint name."
+        },
+        {
+          "label": "Deliver a Dataverse event",
+          "state": "Dataverse → Webhook → handler",
+          "detail": "A registered Dataverse webhook sends a POST JSON payload outward to an external web application after the configured server event."
+        },
+        {
+          "label": "Run custom compute",
+          "state": "Azure Function maps and validates",
+          "detail": "The Function performs the code-heavy work: mapping, cleansing, validation, aggregation, and conversion."
+        },
+        {
+          "label": "Load Dataverse",
+          "state": "Function → Web API or SDK → Dataverse",
+          "detail": "Use a Dataverse data interface for the create, update, upsert, or batch operation. It loads; it does not itself design the transformation."
+        },
+        {
+          "label": "Correct migration direction",
+          "state": "Timer/pipeline/source trigger → Function → Dataverse",
+          "detail": "For a one-time or scheduled legacy migration, originate the workflow outside Dataverse. Use the Function for transformation when its custom-code fit remains valid."
+        }
+      ]
+    },
+    "drills": {
+      "recall": "For each label—webhook, Azure Function, Web API, web resource, custom connector, Service Bus—state its one primary job in six words or fewer.",
+      "connections": "Draw both arrows: Dataverse event → webhook → handler, and timer/source trigger → transform → Dataverse. Circle the arrow direction that changes the trigger choice.",
+      "application": "Take one integration requirement and assign Extract, Transform, Load, and Trigger to distinct components. Defend why no component is doing a job it does not own.",
+      "transfer": "Rewrite the design for a high-volume event stream, then for a nightly migration. State the delivery mechanism, compute layer, Dataverse write interface, reliability controls, and why each changed."
+    },
+    "reflection": [
+      "Which component name most tempted you to give it two jobs?",
+      "Where did event origin change the architecture more than the data destination?",
+      "What existing integration can you redraw as Extract, Transform, Load, and Trigger?"
+    ],
+    "references": [
+      {
+        "label": "PL-400 study guide",
+        "url": "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/pl-400"
+      },
+      {
+        "label": "Dataverse webhooks",
+        "url": "https://learn.microsoft.com/en-us/power-apps/developer/data-platform/use-webhooks"
+      },
+      {
+        "label": "Azure Functions overview",
+        "url": "https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview"
+      },
+      {
+        "label": "Web resources in model-driven apps",
+        "url": "https://learn.microsoft.com/en-us/power-apps/developer/model-driven-apps/web-resources"
+      },
+      {
+        "label": "Create a custom connector from scratch",
+        "url": "https://learn.microsoft.com/en-us/connectors/custom-connectors/define-blank"
+      }
+    ]
+  },
+  {
+    "id": "PL400-ML-09",
+    "slug": "dlp-effective-policy-intersection",
+    "title": "Reason About the Effective DLP Policy",
+    "topic": {
+      "id": "power-platform-security-governance",
+      "title": "Power Platform Security & Governance"
+    },
+    "objectiveId": "custom-connectors-azure-integration",
+    "questionIds": [
+      "ml09-q1",
+      "ml09-q2",
+      "ml09-q3",
+      "ml09-q4",
+      "ml09-q5",
+      "ml09-q6",
+      "ml09-q7"
+    ],
+    "heroEpigraph": "A policy is not a vote; it is a boundary.",
+    "governingRule": "Evaluate every data policy applicable to the resource's environment together: any Blocked classification prohibits the connector, and two unblocked connectors may coexist only when their Business/Non-Business classifications match in every applicable policy.",
+    "examClue": "Any Blocked wins; otherwise compare the whole policy fingerprint—not one label from one policy.",
+    "mnemonic": "Blocked beats all; matching vectors mix.",
+    "scenario": {
+      "prompt": "A cloud flow in one environment uses SharePoint and Salesforce. Policy A classifies both as Business. Policy B classifies SharePoint as Business and Salesforce as Non-Business. Neither connector is Blocked. Will the flow comply, and what happens if it is already running when Policy B becomes applicable?"
+    },
+    "concepts": [
+      {
+        "id": "applicable-policy-set",
+        "label": "Applicable policy set",
+        "importance": "foundational",
+        "summary": "Start with the environment where the app or flow resides. Tenant-level and environment-level policies whose scopes include that environment are evaluated together at design time and runtime."
+      },
+      {
+        "id": "blocked-precedence",
+        "label": "Blocked precedence",
+        "importance": "foundational",
+        "summary": "If any applicable policy classifies a connector as Blocked, that connector cannot be used in an app or flow in the environment. A Business or Non-Business label in another policy does not override Blocked."
+      },
+      {
+        "id": "classification-fingerprint",
+        "label": "Classification fingerprint",
+        "importance": "foundational",
+        "summary": "For an unblocked connector, record its Business or Non-Business classification under every applicable policy. The ordered vector is the connector's effective grouping fingerprint."
+      },
+      {
+        "id": "coexistence-test",
+        "label": "Coexistence test",
+        "importance": "foundational",
+        "summary": "Two unblocked connectors can be used together only if their fingerprints match across every applicable policy. One mismatched position fragments them into different effective groups."
+      },
+      {
+        "id": "policy-fragmentation",
+        "label": "Policy fragmentation",
+        "importance": "important distinction",
+        "summary": "With n Business/Non-Business policies there can be up to 2^n classification fingerprints. The effective result is not a single winning Business or Non-Business label; it is the intersection of all groupings."
+      },
+      {
+        "id": "enforcement-surface",
+        "label": "Design-time and runtime enforcement",
+        "importance": "production nuance",
+        "summary": "Power Apps blocks conflicting connections and affected app use. Power Automate can save a violating flow but marks it Suspended and will not execute it. Later policy changes can invalidate existing resources; suspension uses polling and may not appear immediately."
+      },
+      {
+        "id": "minimal-policy-design",
+        "label": "Minimal policy design",
+        "importance": "production nuance",
+        "summary": "Apply the minimum number of policies needed to an environment, document scope, and assess existing app and flow dependencies before changing classifications."
+      }
+    ],
+    "distractors": [
+      {
+        "choice": "The environment-level policy always overrides the tenant-level policy",
+        "whyTempting": "Many configuration systems use a nearest-scope or child-overrides-parent precedence model.",
+        "whyWrong": "Power Platform evaluates all applicable data policies together. Scope decides whether a policy participates; it does not create a simple environment-over-tenant override."
+      },
+      {
+        "choice": "The most recent policy wins",
+        "whyTempting": "Last-write-wins is common in settings and deployment systems.",
+        "whyWrong": "Creation or modification time is not the governing mechanism. Applicable policies combine, with Blocked taking precedence and Business/Non-Business groupings intersecting."
+      },
+      {
+        "choice": "Business is more permissive, so it overrides Non-Business",
+        "whyTempting": "The labels sound like ranks on a permissiveness scale.",
+        "whyWrong": "Business and Non-Business are separation groups, not allow and deny levels. Compatibility depends on whether two connectors stay together under every applicable policy."
+      },
+      {
+        "choice": "A policy change affects only new or edited resources",
+        "whyTempting": "Design-time validation is the most visible maker experience.",
+        "whyWrong": "Policies are enforced at runtime too. Existing apps and flows can become noncompliant after a change; flow suspension is polled and may not be instantaneous."
+      },
+      {
+        "choice": "If two connectors share one policy group, they can be used together",
+        "whyTempting": "A single policy view can look conclusive when both connectors appear in the same column.",
+        "whyWrong": "They must share the same classification fingerprint across all applicable policies. A mismatch in any policy separates them."
+      }
+    ],
+    "productionNuance": [
+      "Inventory every policy applicable to the resource's environment before diagnosing a connector conflict; policy names and creation order do not establish precedence.",
+      "Treat Business and Non-Business as data-boundary groups, not as trusted and untrusted connector quality ratings.",
+      "Assess connector pairs used by each app or flow. Looking at one connector in isolation cannot prove that the resource is compliant.",
+      "Power Apps prevents adding a conflicting connection; Power Automate may save a violating flow but marks it Suspended and does not execute it.",
+      "Policy changes can affect resources that were compliant when created. Because the suspension process polls, allow for propagation time before concluding that enforcement failed.",
+      "Provide an admin contact and governance reference link in policy error experiences so makers have a supported remediation route.",
+      "Minimize overlapping policies where practical because n binary groupings can fragment connectors into as many as 2^n effective groups.",
+      "This lesson covers classic Power Platform data-policy combination and enforcement. It does not imply that DLP replaces Dataverse security roles, connection authorization, tenant app controls, or advanced connector policy evaluation."
+    ],
+    "visual": {
+      "type": "policy fingerprint intersection",
+      "title": "Build the fingerprint, then test compatibility",
+      "steps": [
+        {
+          "label": "1 · Resolve scope",
+          "state": "Policy A + Policy B apply to the environment",
+          "detail": "Do not inspect only the policy whose name looks most relevant. Begin with the resource's environment and enumerate every tenant-level and environment-level policy that applies."
+        },
+        {
+          "label": "2 · Check Blocked",
+          "state": "Neither SharePoint nor Salesforce is Blocked",
+          "detail": "A single Blocked classification would end the analysis for that connector because Blocked is the final outcome across multiple policies."
+        },
+        {
+          "label": "3 · Fingerprint SharePoint",
+          "state": "SharePoint = [Business, Business]",
+          "detail": "Read the connector's classification under Policy A and then Policy B. Preserve the same policy order for every connector."
+        },
+        {
+          "label": "4 · Fingerprint Salesforce",
+          "state": "Salesforce = [Business, Non-Business]",
+          "detail": "Salesforce matches SharePoint under Policy A but differs under Policy B. One differing position is enough to place it in another effective group."
+        },
+        {
+          "label": "5 · Compare vectors",
+          "state": "[B, B] is not equal to [B, N]",
+          "detail": "The connectors cannot coexist in this app or flow. Policy A's shared Business grouping does not cancel Policy B's separation."
+        },
+        {
+          "label": "6 · Predict enforcement",
+          "state": "Conflict at design time and runtime",
+          "detail": "A conflicting Power Automate flow can be saved but is Suspended and does not run. A later policy change can also suspend an existing flow through a background polling process."
+        }
+      ]
+    },
+    "drills": {
+      "recall": "Write the two-part rule from memory: any Blocked wins; otherwise matching fingerprints may mix.",
+      "connections": "For four connectors, write their Business/Non-Business vector across three policies, then cluster identical vectors without looking at connector names.",
+      "application": "Take one real or fictional flow, list its connector pairs, enumerate applicable policies, check Blocked first, and compare full fingerprints. Predict both the maker symptom and runtime outcome.",
+      "transfer": "Change one policy's scope, then one connector's classification. Recompute the fingerprints after each change and explain exactly why compatibility changes or remains the same."
+    },
+    "reflection": [
+      "What surprised you about Business and Non-Business behaving as group labels rather than permission ranks?",
+      "Which step—resolving scope, checking Blocked, or comparing fingerprints—still feels easiest to skip?",
+      "Where will you use the fingerprint method in your next app or flow design review?"
+    ],
+    "references": [
+      {
+        "label": "PL-400 study guide",
+        "url": "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/pl-400"
+      },
+      {
+        "label": "Impact of data policies on apps and flows",
+        "url": "https://learn.microsoft.com/en-us/power-platform/admin/dlp-impact-policies-apps-flows"
+      },
+      {
+        "label": "Combined effect of multiple data policies",
+        "url": "https://learn.microsoft.com/en-us/power-platform/admin/dlp-combined-effect-multiple-policies"
+      }
+    ]
+  },
+  {
+    "id": "PL400-ML-12",
+    "slug": "bulk-document-migration",
+    "title": "Design a Document Architecture for Dataverse",
+    "topic": {
+      "id": "api-integration-custom-connectors",
+      "title": "API Integration & Custom Connectors"
+    },
+    "objectiveId": "dataverse-extensibility-platform-limits",
+    "questionIds": [
+      "ml12-q1",
+      "ml12-q2",
+      "ml12-q3",
+      "ml12-q4",
+      "ml12-q5",
+      "ml12-q6"
+    ],
+    "heroEpigraph": "Store the file for the work; route the work for the scale.",
+    "governingRule": "Choose document storage from the user experience and capacity requirement, match business records with stable identifiers, and choose orchestration from the workload shape. For native model-driven document management at scale, that means SharePoint, an alternate-key lookup, and recoverable batch code.",
+    "examClue": "Record context + many documents = SharePoint; initial volume = recoverable code; source ID = alternate key.",
+    "mnemonic": "Place, match, run: SharePoint, alternate key, recoverable code.",
+    "scenario": {
+      "prompt": "You are designing a document architecture for a model-driven app. Users must open customer documents from the correct account or contact, document binaries should not consume substantial Dataverse capacity, and an initial load may contain many files. Before choosing technology, separate three decisions: where the binary lives, how the business record is identified, and how the work is run. Apply that framework to CompanyA's Oracle migration of invoices, contracts, and identity documents: which three components are the best fit—Console Application (C#), SharePoint, and Dataverse Web API; or Azure Blob Storage, Power Automate, and Notes?"
+    },
+    "concepts": [
+      {
+        "id": "migration-compute",
+        "label": "Recoverable batch compute",
+        "importance": "foundational",
+        "summary": "Choose a purpose-built console application for a high-volume initial migration: it can batch, checkpoint, retry, reconcile failures, and resume."
+      },
+      {
+        "id": "customer-record",
+        "label": "Dataverse customer match",
+        "importance": "foundational",
+        "summary": "The Dataverse Web API or SDK resolves the account or contact. An alternate key based on a stable source identifier avoids mutable names and unknown GUIDs."
+      },
+      {
+        "id": "sharepoint-content",
+        "label": "SharePoint document content",
+        "importance": "foundational",
+        "summary": "Start with the user experience: SharePoint stores and manages documents in model-driven app record context, with document lists and collaboration behavior."
+      },
+      {
+        "id": "dataverse-attachments",
+        "label": "Notes and file attachments",
+        "importance": "important distinction",
+        "summary": "Notes/attachments suit occasional record attachments, not a large document repository. They consume Dataverse capacity and lack SharePoint document-management strengths."
+      },
+      {
+        "id": "blob-storage",
+        "label": "Azure Blob Storage",
+        "importance": "important distinction",
+        "summary": "Blob Storage can be scalable and economical, but model-driven record-context access needs deliberate metadata, authorization, integration, and UI rather than standard SharePoint document management."
+      },
+      {
+        "id": "ongoing-automation",
+        "label": "Ongoing automation",
+        "importance": "production nuance",
+        "summary": "Power Automate can be appropriate for modest event-driven operations. The workload shape—not the file type—changes the orchestration choice."
+      }
+    ],
+    "distractors": [
+      {
+        "choice": "Azure Blob Storage",
+        "whyTempting": "It is scalable and economical for unstructured objects.",
+        "whyWrong": "It needs a custom record-to-blob experience; SharePoint provides the standard document-management experience in model-driven record context."
+      },
+      {
+        "choice": "Power Automate",
+        "whyTempting": "Flows can copy files and automate straightforward ongoing processes.",
+        "whyWrong": "A high-volume initial migration needs controlled batching, checkpoints, reconciliation, and restartability that a purpose-built batch application handles more directly."
+      },
+      {
+        "choice": "Dataverse Notes",
+        "whyTempting": "Notes can hold record-level attachments.",
+        "whyWrong": "They are suitable for occasional attachments, not a large enterprise document collection that should avoid substantial Dataverse capacity consumption."
+      },
+      {
+        "choice": "Dataverse Web API stores SharePoint files",
+        "whyTempting": "It is the selected Dataverse component.",
+        "whyWrong": "The Web API matches/updates Dataverse business data. The C# application separately uses an appropriate SharePoint interface to upload document content."
+      }
+    ],
+    "productionNuance": [
+      "Do not begin with a tool name. First decide the storage experience, then record identity, then workload orchestration; each decision has a different owner and failure mode.",
+      "SharePoint integration stores and manages documents in the context of model-driven app records; the document binary is in SharePoint, not Dataverse.",
+      "Use alternate keys for data integration when a stable source identifier is available and the Dataverse GUID is not known.",
+      "Blob Storage can be valid when custom document UI and integration are acceptable; it is not the native SharePoint document-management choice.",
+      "Build idempotency, retries, throttling handling, source-ID preservation, logging, reconciliation, and least-privilege service authentication into bulk migration code."
+    ],
+    "visual": {
+      "type": "document-architecture decision map",
+      "title": "Make three decisions before choosing the components",
+      "steps": [
+        {
+          "label": "Choose document storage",
+          "state": "Need native customer-record document work → SharePoint",
+          "detail": "Choose storage from the required user experience and capacity boundary. SharePoint is the standard record-context document-management fit."
+        },
+        {
+          "label": "Identify the record",
+          "state": "Stable source ID → Dataverse alternate key",
+          "detail": "Use the Web API or SDK to resolve the right account/contact without fragile name matching or pre-known GUIDs."
+        },
+        {
+          "label": "Classify the workload",
+          "state": "Initial high volume → recoverable batch code",
+          "detail": "A console application supplies explicit batching, checkpointing, retries, logging, and reconciliation."
+        },
+        {
+          "label": "Apply the scenario",
+          "state": "Oracle documents → C# + Web API + SharePoint",
+          "detail": "The Oracle migration is one application of the framework: code moves, the Web API matches, and SharePoint stores."
+        },
+        {
+          "label": "Keep alternatives in category",
+          "state": "Blob = custom experience; flow = modest ongoing work; Notes = occasional attachment",
+          "detail": "These are not impossible technologies; they solve different constraints than the stated native, high-volume migration."
+        },
+        {
+          "label": "Prove the result",
+          "state": "Source ID + status log + retry outcome",
+          "detail": "Reconcile every source document so the migration can resume safely and establish completeness."
+        }
+      ]
+    },
+    "drills": {
+      "recall": "Name the three architecture decisions: binary location, record identity, and workload orchestration.",
+      "connections": "Draw source ID → alternate key → account/contact → SharePoint location. Mark where the binary is stored.",
+      "application": "For the Oracle case, design one retryable batch: source ID, customer match, upload, success log, and failure/retry status.",
+      "transfer": "Compare high-volume initial migration with modest ongoing automation. Change only the orchestrator/compute choice, then justify what remains."
+    },
+    "reflection": [
+      "Which of the three architecture decisions were you most likely to collapse into one tool choice?",
+      "Where would a stable source identifier prevent a document-to-customer error?",
+      "Which document workload in your environment belongs in SharePoint rather than Dataverse?"
+    ],
+    "references": [
+      {
+        "label": "PL-400 study guide",
+        "url": "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/pl-400"
+      },
+      {
+        "label": "SharePoint integration",
+        "url": "https://learn.microsoft.com/en-us/power-platform/admin/set-up-sharepoint-integration"
+      },
+      {
+        "label": "Dataverse attachments and files",
+        "url": "https://learn.microsoft.com/en-us/power-apps/developer/data-platform/attachment-annotation-files?tabs=sdk"
+      },
+      {
+        "label": "Use an alternate key",
+        "url": "https://learn.microsoft.com/en-us/power-apps/developer/data-platform/use-alternate-key-reference-record"
+      }
+    ]
+  },
+  {
+    "id": "PL400-ML-14",
+    "slug": "delegable-date-window-gallery",
+    "title": "Build a Delegable Date-Window Gallery",
+    "topic": {
+      "id": "power-apps-component-selection",
+      "title": "Power Apps Component Selection"
+    },
+    "objectiveId": "dataverse-extensibility-platform-limits",
+    "questionIds": [
+      "ml14-q1",
+      "ml14-q2",
+      "ml14-q3",
+      "ml14-q4",
+      "ml14-q5",
+      "ml14-q6",
+      "ml14-q7"
+    ],
+    "heroEpigraph": "Set the boundary once; filter the rows that belong inside it.",
+    "governingRule": "A gallery needs a table, so use Filter for all matching rows. Compute a reusable date boundary separately when it makes the data-source predicate simpler, then verify delegation for the actual connector, operators, and column type.",
+    "examClue": "Many gallery rows → Filter; future date → DateAdd; reusable boundary → Set.",
+    "mnemonic": "DateAdd dates; Filter finds many; LookUp finds one.",
+    "scenario": {
+      "prompt": "A Canvas app gallery shows Orders. A delegation warning appears for Filter(Orders, 'Shipping Date' <= DateAdd(Today(), 7, Days)). The exam asks for two formulas: one to calculate a seven-day cutoff and one to return all orders through that cutoff. The options include Set(DateDuration, DateAdd(Today(), 7, Days)), Filter(Orders, 'Shipping Date' <= DateDuration), LookUp(Orders, 'Shipping Date' = DateDuration), and Set(DateDuration, DateDiff(Now(), Today(), Minutes))."
+    },
+    "concepts": [
+      {
+        "id": "date-boundary",
+        "label": "Scalar date boundary",
+        "importance": "foundational",
+        "summary": "DateAdd(Today(), 7, Days) creates a future date value. Storing it in DateDuration separates a scalar calculation from each row evaluation."
+      },
+      {
+        "id": "set-global",
+        "label": "Set global variable",
+        "importance": "foundational",
+        "summary": "Set creates or updates an app-wide global variable in a behavior formula. It keeps its value until updated or until the app closes; it does not automatically recalculate as the day changes."
+      },
+      {
+        "id": "server-predicate",
+        "label": "Delegable predicate",
+        "importance": "foundational",
+        "summary": "Filter(Orders, 'Shipping Date' <= DateDuration) asks for all matching rows using a simple column-to-scalar comparison. Delegation still depends on the specific connector, operator, and column type."
+      },
+      {
+        "id": "gallery-table",
+        "label": "Filter returns a table",
+        "importance": "important distinction",
+        "summary": "Filter returns zero or more matching records as a table, which fits a gallery Items property. LookUp returns the first matching record, not a gallery data set."
+      },
+      {
+        "id": "lookup-record",
+        "label": "LookUp returns one record",
+        "importance": "important distinction",
+        "summary": "Use LookUp when the job is to find one record. It also cannot turn an equality test on the cutoff date into the required range of matching orders."
+      },
+      {
+        "id": "date-window",
+        "label": "Production date window",
+        "importance": "production nuance",
+        "summary": "An upper bound alone includes older orders. For a true next-seven-days requirement, define both boundaries; for date-time data, an exclusive next-day upper boundary avoids missing later times on day seven."
+      }
+    ],
+    "distractors": [
+      {
+        "choice": "LookUp(Orders, 'Shipping Date' = DateDuration)",
+        "whyTempting": "It appears to retrieve an order using the calculated date.",
+        "whyWrong": "LookUp returns one record and equality finds only orders exactly on the cutoff, not the table of all orders through it."
+      },
+      {
+        "choice": "Set(DateDuration, DateDiff(Now(), Today(), Minutes))",
+        "whyTempting": "It uses a date function and Minutes may sound like a current-time calculation.",
+        "whyWrong": "DateDiff returns a number of units between two date/time values; it does not produce a date seven days in the future."
+      },
+      {
+        "choice": "Set(...) as a separate statement in Gallery.Items",
+        "whyTempting": "The gallery needs the variable, so it may seem natural to calculate it there.",
+        "whyWrong": "Set is a behavior-only function with no return value. Gallery.Items is a data formula that must evaluate to a table."
+      },
+      {
+        "choice": "Assume Filter is always delegable",
+        "whyTempting": "Filter commonly delegates and the formula looks simple.",
+        "whyWrong": "Delegation is connector-, operator-, and column-type-specific. A warning means the gallery may be working on only a limited local subset."
+      }
+    ],
+    "productionNuance": [
+      "The MeasureUp answer uses an upper bound only. That is the keyed answer, but it does not by itself mean 'scheduled in the next seven days' because older orders also qualify.",
+      "For a date-only requirement, store StartDate and EndDate, then filter Shipping Date >= StartDate && Shipping Date <= EndDate when that matches the stated inclusive boundary.",
+      "For a date-time requirement that must include all of day seven, use an exclusive upper boundary such as EndExclusive = DateAdd(StartDate, 8, Days) and Shipping Date < EndExclusive.",
+      "A Set variable does not automatically refresh. Update date boundaries on an appropriate lifecycle or refresh action, and validate delegation for the actual connector rather than relying on a generic rule."
+    ],
+    "visual": {
+      "type": "delegation query journey",
+      "title": "Turn an unstable expression into a clear date-window query",
+      "steps": [
+        {
+          "label": "Read the gallery need",
+          "state": "Many matching orders → table result",
+          "detail": "A gallery Items property needs a table, so choose Filter rather than a single-record retrieval function."
+        },
+        {
+          "label": "Calculate the cutoff",
+          "state": "Today + 7 days → DateAdd result",
+          "detail": "DateAdd returns a new date/time value. DateDiff would instead return a numeric difference."
+        },
+        {
+          "label": "Store the scalar",
+          "state": "Behavior property → Set(DateDuration, ...)",
+          "detail": "Run Set from App.OnStart, Screen.OnVisible, or another behavior property; do not make it a separate statement in Gallery.Items."
+        },
+        {
+          "label": "Send the simple predicate",
+          "state": "Shipping Date <= DateDuration",
+          "detail": "The connector can evaluate a supported column-to-scalar condition. Check the delegation list for the real data source."
+        },
+        {
+          "label": "Return the rows",
+          "state": "Filter → matching-orders table → gallery",
+          "detail": "Filter returns all records that satisfy the condition. LookUp would return only the first record that satisfies its formula."
+        },
+        {
+          "label": "Harden the requirement",
+          "state": "StartDate <= Shipping Date < EndExclusive",
+          "detail": "For production next-seven-days logic, add a lower bound and choose date/time boundaries deliberately. Refresh stored dates when the app can remain open."
+        }
+      ]
+    },
+    "drills": {
+      "recall": "Say the jobs out loud: DateAdd makes a date, Set stores it, Filter returns rows, LookUp returns one row, DateDiff makes a number.",
+      "connections": "Trace the query: behavior property → DateDuration scalar → supported Shipping Date predicate → table returned to gallery.",
+      "application": "Write the two keyed exam formulas, then annotate where Set runs and where Filter runs.",
+      "transfer": "Rewrite the formula for a date-time window that includes all of day seven. Name the changed boundary and the connector-specific delegation check."
+    },
+    "reflection": [
+      "Which function did you previously confuse: table-returning Filter or record-returning LookUp?",
+      "Where would a stale global date boundary make your app incorrect?",
+      "Which current gallery could you test against its connector's delegation support?"
+    ],
+    "references": [
+      {
+        "label": "Set function",
+        "url": "https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-set"
+      },
+      {
+        "label": "Filter and LookUp functions",
+        "url": "https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-filter-lookup"
+      },
+      {
+        "label": "DateAdd and DateDiff functions",
+        "url": "https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-dateadd-datediff"
+      },
+      {
+        "label": "PL-400 study guide",
+        "url": "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/pl-400"
+      }
+    ]
+  }
+]

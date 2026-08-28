@@ -146,7 +146,12 @@ describe('MasteryEngineFacade', () => {
     expect(verdict.attemptNumber).toBe(1);
     expect(verdict.attemptsRemaining).toBe(MAX_ATTEMPTS_PER_QUESTION - 1);
     expect(JSON.stringify(verdict)).not.toContain('correctOptionId');
-    expect(JSON.stringify(verdict)).not.toContain('rationale');
+    // Rationale key exists but is gated null until the question resolves;
+    // the authored rationale text itself must not appear.
+    expect(verdict.rationale).toBeNull();
+    expect(JSON.stringify(verdict)).not.toContain(
+      FIXTURE_MANIFEST.questions[0].rationale,
+    );
   });
 
   test('submitAnswer rejects a stale questionId', () => {
@@ -566,5 +571,84 @@ describe('MasteryEngineFacade', () => {
     attemptAllQuestions(complete);
     complete.scoreRubric(rubric(3, 3, 3, 3));
     expect(complete.getRegistrySnapshot().moduleComplete).toBe(true);
+  });
+
+  test('getCurrentContext.lesson is null by default', () => {
+    const { facade } = makeFacade();
+    expect(facade.getCurrentContext().lesson).toBe(null);
+  });
+
+  test('getCurrentContext copies the active lesson field-by-field', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    const lesson = {
+      slug: 'x',
+      title: 'X',
+      objectiveId: 'obj-1',
+      sectionAnchors: ['x-rule'],
+    };
+    const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+      getActiveLesson: () => lesson,
+    });
+    const context = facade.getCurrentContext();
+    expect(context.lesson).toEqual({
+      slug: 'x',
+      title: 'X',
+      objectiveId: 'obj-1',
+      sectionAnchors: ['x-rule'],
+    });
+    context.lesson?.sectionAnchors.push('mutated');
+    expect(facade.getCurrentContext().lesson).toEqual({
+      slug: 'x',
+      title: 'X',
+      objectiveId: 'obj-1',
+      sectionAnchors: ['x-rule'],
+    });
+  });
+});
+
+describe('getCurrentContext lesson/objective consistency (cross-review finding 4)', () => {
+  test('scope exhausted on a lesson: objectiveId follows the active lesson, not the manifest tail', () => {
+    const engine = new MasteryEngine(FIXTURE_MANIFEST, new MemoryStorageAdapter());
+    const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+      getActiveLesson: () => ({
+        slug: 'lesson-one',
+        title: 'Lesson One',
+        objectiveId: 'obj-1',
+        sectionAnchors: ['lesson-one-rule'],
+      }),
+    });
+    engine.setQuestionScope(['q1', 'q2']);
+    facade.submitAnswer('q1', 'q1-a');
+    facade.submitAnswer('q2', 'q2-b');
+    // Scope exhausted: no current question, but the route still names obj-1.
+    expect(engine.getCurrentQuestion()).toBeNull();
+    const context = facade.getCurrentContext();
+    expect(context.lesson?.objectiveId).toBe('obj-1');
+    expect(context.objectiveId).toBe('obj-1');
+    expect(context.sectionTitle).toBe(FIXTURE_MANIFEST.objectives[0].title);
+  });
+
+  test('no active lesson and no question keeps the historical manifest-tail fallback', () => {
+    const engine = new MasteryEngine(FIXTURE_MANIFEST, new MemoryStorageAdapter());
+    const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST);
+    engine.setQuestionScope([]);
+    const context = facade.getCurrentContext();
+    expect(context.lesson).toBeNull();
+    expect(context.objectiveId).toBe('obj-2');
+  });
+});
+
+describe('submitAnswer verdict rationale/anchor plumbing (cross-review findings 2/12)', () => {
+  test('miss with attempts remaining: anchor present, rationale withheld; resolution releases rationale', () => {
+    const { facade } = makeFacade();
+    const miss = facade.submitAnswer('q1', 'q1-b');
+    expect(miss.remediationAnchor).toBe('anchor-q1-sandbox');
+    expect(miss.rationale).toBeNull();
+    const hit = facade.submitAnswer('q1', 'q1-a');
+    expect(hit.remediationAnchor).toBeNull();
+    expect(hit.rationale).toBe(FIXTURE_MANIFEST.questions[0].rationale);
   });
 });

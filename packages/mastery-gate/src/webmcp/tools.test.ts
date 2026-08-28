@@ -1,5 +1,8 @@
 import { test, expect } from 'bun:test';
+import { MasteryEngine, MemoryStorageAdapter } from '../engine';
+import { FIXTURE_MANIFEST } from '../engine/fixtures';
 import type { DebriefSegment, QuestionPublic } from '../schema';
+import { MasteryEngineFacade } from './engine-adapter';
 import type {
   ComposeDebriefResultPublic,
   EngineFacade,
@@ -74,6 +77,7 @@ function createStubEngine(options?: {
       sectionTitle: 'Plugin isolation',
       concepts: ['IOrganizationService'],
       prerequisites: [],
+      lesson: null,
     }),
     getCurrentQuestion: () => question,
     submitAnswer: (questionId, optionId) => {
@@ -85,6 +89,8 @@ function createStubEngine(options?: {
           misconceptionId: 'mc-http-from-plugin',
           attemptNumber: 1,
           attemptsRemaining: 1,
+          rationale: null,
+          remediationAnchor: 'lesson-plugin-services',
         }
       );
     },
@@ -423,4 +429,43 @@ test('navigate_to_anchor delegates the anchor string verbatim', async () => {
     ok: true,
     anchor: 'lesson-plugin-services',
   });
+});
+
+test('get_current_context serializes the active lesson and omits answer-key fields', async () => {
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST,
+    new MemoryStorageAdapter(),
+  );
+  const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+    getActiveLesson: () => ({
+      slug: 'x',
+      title: 'X',
+      objectiveId: 'obj-1',
+      sectionAnchors: ['x-rule'],
+    }),
+  });
+  const tools = createToolset(facade);
+  const response = await tools.get_current_context.execute({});
+  const text = textOf(response);
+  const payload = asRecord(payloadOf(response));
+  const lesson = asRecord(payload['lesson']);
+  expect(lesson['slug']).toBe('x');
+  expect(lesson['title']).toBe('X');
+  expect(lesson['objectiveId']).toBe('obj-1');
+  expect(lesson['sectionAnchors']).toEqual(['x-rule']);
+  expect(text).not.toContain('correctOptionId');
+  expect(text).not.toContain('rationale');
+});
+
+test('submit_answer serializes the remediation anchor on a miss and withholds rationale until resolution', async () => {
+  const { engine } = createStubEngine();
+  const tools = createToolset(engine);
+  const response = await tools.submit_answer.execute({
+    questionId: 'q-plugin-isolation',
+    optionId: 'opt-b',
+  });
+  const payload = asRecord(payloadOf(response));
+  expect(payload['remediationAnchor']).toBe('lesson-plugin-services');
+  expect(payload['rationale']).toBeNull();
+  expect(textOf(response)).not.toContain('correctOptionId');
 });

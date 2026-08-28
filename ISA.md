@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 25/61
+progress: 27/61
 mode: build
 started: 2026-08-26
 updated: 2026-08-27
@@ -144,10 +144,10 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 
 ### UI (`/pl-400`)
 
-- [ ] ISC-31: Lesson + quiz flow serves at `learn.powerplatform.fyi/pl-400`
+- [x] ISC-31: Lesson + quiz flow serves at `learn.powerplatform.fyi/pl-400` — verified 2026-08-27 post micro-lesson restore: hub (track overview + full-track practice) and all five `/pl-400/[slug]` lesson pages return 200 live with the designed arc (scenario commit → concepts → visual → distractors → retrieval lab → drills → references); quiz flow probed end-to-end in real Chrome (miss verdict names misconception + contrast, resolution releases rationale, per-lesson scope shows "N of 7", hub shows "N of 34")
 - [ ] ISC-32: Tool Roster panel lists currently registered tools and updates live on `toolchange`
 - [ ] ISC-33: Rubric panel renders all four dimensions separately (no averaged display)
-- [ ] ISC-34: `navigate_to_anchor` scrolls to and visibly highlights the target section
+- [x] ISC-34: `navigate_to_anchor` scrolls to and visibly highlights the target section — probed 2026-08-27: same-page (coach action → scroll + `anchor-highlight` class observed) and cross-page live (hub → `mastery-gate:navigate-anchor` event → router push to the owning lesson → anchor scrolled into view; highlight auto-clears after 2s as designed)
 - [ ] ISC-35: Every engine path is completable agent-less via page controls (manual walkthrough, scripted checklist)
 - [ ] ISC-36: Flip-Condition drill playable end-to-end: mutate assumption → commit prediction → reveal outcome
 - [ ] ISC-37: Exam Mode UI shows timer and locked/unlocked tool state per the ISC-4 verdict
@@ -325,3 +325,27 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   Owner ratified the taxonomy at 17 (rejected both candidate merges) on 2026-08-27; review record
   in docs/content-port-review.md. Queued: dimension field on Question (schema.ts, post-lane),
   second flip scenario (ISC-43).
+- **2026-08-27** — Micro-lesson architecture restored per owner feedback ("you lumped it all
+  together, blows the micro lessons concept out of the water"). The single-page /pl-400 shell is
+  RETIRED as the lesson surface; the design contract is the owner's original rendered lessons
+  (PL400-ML-{09,11,12,13,14} HTML): each lesson is its own statically-exported route at
+  `/pl-400/[slug]` mirroring the original arc — hero + epigraph → commit-before-reveal scenario
+  → governing rule/exam clue → concept hierarchy → interactive visual walkthrough → distractor
+  teardown + production nuance → retrieval lab against the live engine → drills + reflection →
+  final mental model + references. The hub is now a track overview (objective cards with real
+  ledger progress, lesson cards, full-track practice loop, Start Coaching). Engine gained
+  runtime-only question scoping (`setQuestionScope`, route-derived, never persisted) and
+  lesson-scoped retake (`resetQuestions`); `get_current_context` carries the route lesson
+  ({slug, title, objectiveId, sectionAnchors}) consistently with its objective fields.
+  Hardened through a 14-finding cross-review (all fixed or documented, commit `8c9edec`):
+  remediation now routes on the question's own same-lesson anchor (shared-misconception anchors
+  could eject the learner into a different lesson); the scenario expected answer no longer ships
+  in the prerendered page (fetched post-commit from `/pl-400/scenario/<slug>.json`); the full
+  teaching catalog left the client chunks (generated `lesson-index.json` is the only
+  client-importable lesson artifact); the authored per-question rationale and misconception
+  contrast now reach agent-less learners (rationale gated until question resolution); lesson
+  pages end with the mastery profile + prescribed drill, per the original design. ML-08/ML-10
+  are documented as deliberately unported (owner contract scoped five lessons; porting them
+  would add unreviewed questions and mutate the ratified taxonomy). Merged to main (`3dc2aaa`)
+  and verified live: hub + all five lesson routes 200 with the new structure, redaction greps
+  clean per route, catalog prose absent from shared chunks.

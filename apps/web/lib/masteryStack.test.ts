@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { MockModelContext } from "@learn/mastery-gate/webmcp";
-import { createMasteryStack } from "./masteryStack";
+import { createMasteryStack, lessonProgress } from "./masteryStack";
 
 const POLL_MS = 500;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -51,5 +51,72 @@ describe("late-binding runtime detection", () => {
     await sleep(POLL_MS + 200);
     expect(stack.agentRuntimeDetected).toBe(false);
     expect(stack.registry).toBeNull();
+  });
+});
+
+describe("active lesson scoping", () => {
+  const agentLessHost = { document: {} } as never;
+  const gallerySlug = "delegable-date-window-gallery";
+  const galleryAnchors = [
+    "delegable-date-window-gallery-rule",
+    "delegable-date-window-gallery-exam-clue",
+    "delegable-date-window-gallery-scenario",
+    "delegable-date-window-gallery-production",
+  ];
+
+  test("setActiveLesson scopes the current question and lesson context, and is idempotent", () => {
+    let notifies = 0;
+    const stack = createMasteryStack(
+      () => {
+        notifies += 1;
+      },
+      undefined,
+      agentLessHost,
+    );
+    try {
+      stack.setActiveLesson(gallerySlug);
+      expect(stack.facade.getCurrentQuestion()?.id).toBe("ml14-q1");
+      expect(stack.facade.getCurrentContext().lesson).toEqual({
+        slug: gallerySlug,
+        title: "Build a Delegable Date-Window Gallery",
+        objectiveId: "dataverse-extensibility-platform-limits",
+        sectionAnchors: galleryAnchors,
+      });
+      expect(notifies).toBe(1);
+
+      stack.setActiveLesson(gallerySlug);
+      expect(notifies).toBe(1);
+
+      stack.setActiveLesson(null);
+      expect(stack.facade.getCurrentContext().lesson).toBeNull();
+      expect(stack.facade.getCurrentQuestion()?.id).toBe("ml13-q1");
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
+  test("unknown slug leaves the lesson null and the engine unscoped", () => {
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      stack.setActiveLesson("not-a-real-lesson");
+      expect(stack.facade.getCurrentContext().lesson).toBeNull();
+      expect(stack.engine.getQuestionScope()).toBeNull();
+      expect(stack.facade.getCurrentQuestion()?.id).toBe("ml13-q1");
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
+  test("lessonProgress on a fresh ledger counts total only", () => {
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      expect(lessonProgress(stack, ["ml14-q1", "ml14-q2"])).toEqual({
+        attempted: 0,
+        correct: 0,
+        total: 2,
+      });
+    } finally {
+      stack.stopRuntimeDetection();
+    }
   });
 });
