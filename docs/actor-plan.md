@@ -83,7 +83,11 @@ Disposition of that review, verified before adoption:
 ## 7. Transparency + Memory pass — approved 2026-08-28 (expanded and locked 2026-08-28 night), runs immediately after this pass ships
 
 Consolidates the research-brief riders AND the agent-memory leverage thread,
-owner-approved in full. Own branch, Grok-build/Forge-review/ship. Adds ISC-67…72.
+owner-approved in full. Own branch, Grok-build/Forge-review/ship. Adds ISC-67…69
+and ISC-73…75. (Id note, 2026-08-28 ship merge: this section was drafted as
+ISC-67…72, but the ACTOR pass had already claimed ISC-70/71 for the response-hint
+and description-audit items — they are implemented, tested, and ticked in the ISA,
+the append-only id registry. The un-started items here renumber to 73…75.)
 Everything else from the gap lists stays post-contest roadmap (incl. the
 `get_due_reviews` tool — the zero-build spacing line below covers the contest).
 
@@ -99,17 +103,17 @@ Everything else from the gap lists stays post-contest roadmap (incl. the
 3. **Success-card myth-naming** (ISC-69, tiny): correct-answer rationale names
    which distractor-myth it defeats.
 
-**B. Dual-profile riders (ISC-70…71)**
-4. **Agent report card, minimal** (ISC-70, ≈0.25d): ledger logs the agent's
+**B. Dual-profile riders (ISC-73…74)**
+4. **Agent report card, minimal** (ISC-73, ≈0.25d): ledger logs the agent's
    confidence hints and rubric proposals against outcomes; one calibration line
    in the "Your model" panel and in the debrief data ("coach said high-confidence
    on questions missed N%"). Deterministic; never touches routing or the gate.
-5. **Profile-annotated descriptions, lite** (ISC-71, ≈0.5d): at REGISTRATION time
+5. **Profile-annotated descriptions, lite** (ISC-74, ≈0.5d): at REGISTRATION time
    (never mid-session churn), 2–3 tool descriptions gain profile-composed
    suffixes for returning learners (e.g. get_hint notes the learner's repeated
    misconception names). Demo-tested before demo-claimed.
 
-**C. Memory contract (ISC-72, ≈0.5d total)**
+**C. Memory contract (ISC-75, ≈0.5d total)**
 6. Schema: get_learner_state exposes coachingNotes; log_coaching_note gains
    kind: observation|preference|context; **answer-cache guard** — deterministic
    rejection of notes containing question/option id patterns (ml\d+-q\d+) or long
