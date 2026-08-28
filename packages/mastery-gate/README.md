@@ -100,7 +100,7 @@ document.modelContext.registerTool(
 ```
 
 In this package the descriptors are built by `createToolset(facade)` in
-`src/webmcp/tools.ts` (all 22 tools, every input validated and clamped before
+`src/webmcp/tools.ts` (all 23 tools, every input validated and clamped before
 it touches the engine) and registered/revoked by the phase-driven
 `ToolRegistry` in `src/webmcp/registry.ts`. The host app never touches the raw
 API outside the `resolveModelContext` shim.
@@ -110,7 +110,21 @@ API outside the `resolveModelContext` shim.
 **Static (registered on page load):** `get_learner_state`,
 `get_current_context`, `navigate_to_anchor`, `log_coaching_note`,
 `get_current_question`, `submit_answer`, `get_hint`, `request_next_action`,
-`prescribe_drill`, `score_rubric`.
+`prescribe_drill`, `score_rubric`, `set_lesson_aim`.
+
+Every description is written as agent-facing UX: it says WHEN to call the
+tool, not just what it does. Because ChatGPT's WebMCP implementation has no
+`toolchange` events, **tool responses are the only push channel** — at every
+registration-changing moment the response carries a `toolChangeHint` naming
+what appeared or vanished (`score_rubric` gate-pass → `advance_module` +
+`start_exam`; a misconception's second fire → `get_misconception_brief`;
+`start_exam` → the mass revocation; `submit_exam` → the restoration +
+`get_exam_debrief`). `request_next_action` can also return the
+`rubric_interview` verdict: when per-dimension MCQ coverage is sufficient but
+the gate has not passed, the deterministic referee hands the mic to the agent
+for the one thing only it can do — judge free-form explanations — with the
+interview contract (5–8 open questions, verbatim evidence per dimension)
+carried in the verdict's guidance and in `score_rubric`'s description.
 
 **Dynamic (earned):** `advance_module`, `get_misconception_brief`,
 `mutate_assumption`, `commit_prediction`, `reveal_outcome`, `start_exam`,
@@ -128,7 +142,7 @@ full and `*Public` shapes.
 | `Question` → `QuestionPublic` | One bank item | Public shape drops `correctOptionId`, `rationale`, `remediationAnchor`, and per-option `misconceptionId` |
 | `Misconception` | Named wrong-model: `contrast`, `socraticSeeds`, remediation `anchor` | Served only via `get_misconception_brief` after it actually fired |
 | `RubricScores` | Four 0–4 dimensions | No average field exists, by construction |
-| `Ledger` | Persisted learner state: attempts, misconception fire counts, scores, coach notes, phase, `drillResults`, `activeDrill`, `exam`, `debrief`, `learnerName` | Loaded through field-by-field validation (`src/engine/storage.ts`); tampered state → clean defaults, oversized state → clamped |
+| `Ledger` | Persisted learner state: attempts, misconception fire counts, scores, coach notes, phase, `drillResults`, `activeDrill`, `exam`, `debrief`, `learnerName`, and the ACTOR records `lessonAims` / `ruleCompressions` / `runCommitments` (learner-authored, per lesson, clamped, exam-guarded, never admitted to the rubric evidence corpus) | Loaded through field-by-field validation (`src/engine/storage.ts`); tampered state → clean defaults, oversized state → clamped |
 | `ExamState` / `ExamVerdict` | Exam lifecycle: injected clock, duration clamped 60–7200 s, unanswered = incorrect, expiry auto-submits | Mid-exam verdicts carry `misconceptionId: null`; per-question verdicts release only in the debrief |
 | `DrillSessionState` / `DrillResultRecord` | Flip-Condition drill: one mutation per round, irreversible commit, decision-table evaluation, transfer-dimension ledger record | Outcome unreachable before `commit_prediction` |
 | `DebriefState` / `NarrationCue` | Mastery Debrief playlist; segments rejected unless their misconception actually fired in the ledger | `getNarrationScript` returns only engine-approved lines |

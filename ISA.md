@@ -5,10 +5,10 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 33/61
+progress: 40/68
 mode: build
 started: 2026-08-26
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 
 # ISA — Mastery Gate (learn.powerplatform.fyi)
@@ -188,6 +188,16 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [ ] ISC-60: Debrief degrades to the text debrief card when the graft is cut or audio is unavailable, behind one feature flag (flag test)
 - [ ] ISC-61: Anti: the shipped site makes zero runtime calls to ElevenLabs or any TTS/LLM API (static probe + network audit during a full session)
 
+### ACTOR pass (aim / compress / run / own + rubric interview + surface adoption)
+
+- [x] ISC-62: `set_lesson_aim` tool + lesson-page aim input persist a validated, clamped (≤200 chars) aim per lesson on the ledger, exposed via `get_learner_state`, excluded from the rubric evidence corpus, refused mid-exam at the engine (unit tests)
+- [x] ISC-63: Compress-the-rule commit-then-reveal on every lesson page persists the learner's one-line rule per lesson on the ledger, reveals the authored governing rule for comparison, and is ledger-exposed for coach critique (unit tests + page section)
+- [x] ISC-64: Run-commitment field at lesson end persists per lesson with specificity-demanding copy and is ledger-exposed for the future debrief (unit tests + page section)
+- [x] ISC-65: Kickoff prompt and the misconception-brief socratic seeds demand teach-back — the learner explains the concept back in their own words before advancing (prompt text + tool-layer seed, unit test)
+- [x] ISC-66: `request_next_action` returns `rubric_interview` when per-dimension MCQ coverage thresholds are met (≥2 distinct attempted questions per dimension, deterministic) and the gate has not passed — never during an active exam; `score_rubric`'s description, the verdict's guidance, and the kickoff prompt carry the 5–8-question interview contract; the agent-less self-assessment path relabeled honestly (unit tests)
+- [x] ISC-70: Gate-crossing tool responses carry a `toolChangeHint` naming newly available/revoked tools at score_rubric gate-pass, misconception second fire, and exam start/submit — present only at the crossing; the response channel as the only push channel (unit tests)
+- [x] ISC-71: Every tool description states WHEN to call it (audit table in the ACTOR-pass record), and stuck revocations surface as a draining badge in the Tool Roster via getStuckRevocations/onStuckRevocation
+
 ## Test Strategy
 
 | isc | type | check | threshold | tool |
@@ -214,6 +224,11 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 | 50 | adversarial | ask for the answer through every tool; audit schemas | zero leaks | Interceptor |
 | 51 | git | `git log` on flagship repo since 2026-08-26 | no feature commits | Bash |
 | 54 | git | `git grep` token patterns over tracked files | zero hits | Bash |
+| 62–64 | unit+page | engine lesson-text setters (clamp/validate/exam-guard/persist/reload) + corpus-exclusion probe + lesson-page sections | green | bun test + Read |
+| 65 | unit+file | teach-back seed appended in get_misconception_brief; kickoff prompt text | present | bun test + Read |
+| 66 | unit | readiness thresholds, routing precedence rows, exam-safety; interview contract strings | green | bun test |
+| 70 | unit | toolChangeHint at all four crossings, absent at non-crossings | green | bun test |
+| 71 | review+unit | description audit (before/after in the ACTOR-pass commit); stuck badge renders from getStuckRevocations | recorded | Read + bun test |
 
 ## Features
 
@@ -228,6 +243,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 | Mastery Debrief (graft) | Motion scenes, baked ElevenLabs audio, `compose_debrief`, live-narrator handshake, text-card degrade | ISC-56…61 | Engine core; WebMCP tool surface; go/no-go at Day-6 checkpoint | no |
 | Submission package | README example, Devpost docs, checklist re-verify | ISC-45, 47…49, 51…53 | all above (MSP gate, Sep 1) | no |
 | Demo video | Three-beat script, rehearsal, record in ChatGPT browser, publish | ISC-46, 55 | Submission package (MSP) | no |
+| ACTOR pass | Aim/compress/run ledger records + inputs, teach-back prompt layer, rubric-interview routing, response hints, description audit, stuck badge | ISC-62…66, 70…71 | Engine core; WebMCP tool surface; state machines | no |
 
 ## Decisions
 
@@ -381,3 +397,37 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
   with missed concepts → return to practice (roster restored). ISC-27/28/29/36/37/45 ticked;
   ChatGPT in-app-browser halves of the tool-surface ISCs (21-26, 50) stay open for the judge-
   environment pass.
+- **2026-08-28** — ACTOR pass shipped on `build/actor` (branch fast-forwarded onto the
+  state-machines ship `fc98593` first — the rubric interview's exam-safety and the exam-crossing
+  response hints depend on the live exam lifecycle). Aim/Compress/Test/Own/Run is now enforced by
+  protocol design rather than prompt hope, per docs/actor-plan.md (ids renumbered: the adopted
+  surface-review items ship as ISC-70/71 because main reserved ISC-67..69 for the transparency
+  pass). **Engine (`3a27c59`)**: three learner-authored ledger records (lessonAims,
+  ruleCompressions, runCommitments) — validated, trimmed, clamped (200/200/300 chars, 24 keys),
+  exam-guarded at the ENGINE, persisted through the validating storage path (absent field →
+  default, wrong type → reject, tampered value → deterministic clamp), exposed via
+  get_learner_state, and proven un-launderable into rubric evidence; Question.dimension landed as
+  the queued required schema field (validator enforces it, toQuestionPublic still redacts it);
+  isRubricInterviewReady() (>=2 distinct attempted questions per dimension; false when the gate is
+  open or an exam is live) feeds the new rubric_interview routing verdict, slotted after go_deeper
+  so miss-handling always wins. **Tool surface (`5cfa4bd`)**: set_lesson_aim is the 11th static
+  tool (23 total; revoked in exam deregister mode like every coaching tool) and its description
+  orders the agent to ask for the aim as the FIRST question of every session; gate-crossing
+  responses carry toolChangeHint — the agent's only push channel (no toolchange events in
+  ChatGPT): score_rubric gate-pass names advance_module/start_exam, the exact second misconception
+  fire names get_misconception_brief, exam start/submit name the revocation/restoration;
+  request_next_action returns { verdict, guidance? } with the 5-8-question interview contract on
+  rubric_interview; every misconception brief's socraticSeeds now end with the teach-back seed;
+  all 23 descriptions rewritten as agent-facing UX (each states WHEN to call it — before/after in
+  that commit's diff). **UI (`f9d1fe0`)**: lesson pages gain the AIM input (hero), the 02/COMPRESS
+  commit-then-reveal against the authored governing rule, and the 08/RUN commitment section — all
+  writing through the same NotifyingFacade the tools call (agent-less parity), with -compress/-run
+  added to lessonSectionAnchors so navigate_to_anchor can put the critique on screen; the kickoff
+  prompt opens with the aim question, demands teach-back, critiques the compression, and carries
+  the interview contract; PracticePanel surfaces the rubric_interview invitation agent-lessly and
+  the demo rubric button is relabeled "Self-assess rubric (demo evidence, scores 3/3/3/3)"; the
+  Tool Roster renders a "revoking — draining" badge from getStuckRevocations/onStuckRevocation.
+  REJECTED per the plan's verified disposition: the static /.well-known manifest (no such
+  discovery mechanism exists in the WebMCP spec). Gates at ship: 312 tests green, tsc clean,
+  static export clean, validate:content OK. Browser probes (ISC-38 family) remain open for the
+  ChatGPT in-app pass.
