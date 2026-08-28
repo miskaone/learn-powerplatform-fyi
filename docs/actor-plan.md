@@ -34,6 +34,28 @@ pieces below add the missing steps. Implementation adds ISC-62…65 to the ISA
   advancing, the learner explains the concept back in their own words.
 - No new tools; tool descriptions are the enforcement surface.
 
+## 5. Rubric interview — the engine invites the agent's judgment (≈0.5d) → ISC-66
+
+Approved 2026-08-27 ("proceed") from the owner's proxy critique: today the agent
+mostly relays engine verdicts; its irreplaceable lane — judging free-form
+explanations — has rails but no invitation.
+
+- Routing addition: when MCQ coverage is sufficient (per-dimension attempt
+  thresholds met but rubric unscored or any dimension <3), `request_next_action`
+  returns a new verdict `rubric_interview` — the deterministic referee explicitly
+  hands the mic to the agent for the part only AI can do.
+- `score_rubric`'s description + the kickoff prompt describe the interview
+  contract: 5–8 open questions across recall/connections/application/transfer
+  (one at a time, never answering for the learner), then submit dimension scores
+  WITH verbatim evidence quotes from the lesson corpus grounding each judgment.
+  Engine validation unchanged: attempts precondition, corpus check, clamping,
+  every-dimension-≥3 gate.
+- Agent-less parity: the page offers a self-assessment path to the same
+  `score_rubric` engine call (existing demo-rubric control, relabeled honestly).
+- Devpost line this enables: "the AI does what only AI can — understand
+  explanations and adapt teaching; the site does what AI must not — grade, gate,
+  and certify. The rubric interview is where they meet."
+
 ## Sequencing
 
 micro-lessons lane ships → state-machines workflow resumes (surface stage
