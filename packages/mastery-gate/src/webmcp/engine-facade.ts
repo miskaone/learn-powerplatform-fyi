@@ -38,7 +38,12 @@ export interface CurrentContextPublic {
 
 export interface SubmitAnswerVerdictPublic {
   questionId: string;
-  correct: boolean;
+  /**
+   * Practice: the graded verdict. Exam: always null — correctness is
+   * withheld until submit so submit_answer is never a mid-exam answer
+   * oracle.
+   */
+  correct: boolean | null;
   misconceptionId: string | null;
   attemptNumber: number;
   attemptsRemaining: number;
@@ -99,6 +104,12 @@ export interface MutateAssumptionResultPublic {
 export interface CommitPredictionResultPublic {
   committed: boolean;
   scenarioId: string;
+  /**
+   * Engine refusal code on a rejected commit (e.g. 'reason-too-short',
+   * 'no-mutation-this-round'). Process state only — never answer-key
+   * material. Null when committed.
+   */
+  refusalReason: string | null;
 }
 
 export interface RevealOutcomeResultPublic {

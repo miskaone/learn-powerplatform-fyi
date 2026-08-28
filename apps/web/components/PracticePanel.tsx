@@ -121,7 +121,9 @@ export function PracticePanel(props: {
         : null;
       setVerdict({
         questionId: result.questionId,
-        correct: result.correct,
+        // Mid-exam verdicts carry correct: null, but this panel is locked
+        // during an exam — practice verdicts are always graded booleans.
+        correct: result.correct === true,
         misconceptionId: result.misconceptionId,
         misconceptionName: result.misconceptionId
           ? (brief?.name ?? null)
@@ -282,6 +284,20 @@ export function PracticePanel(props: {
       : "Reset session (entire track)";
   const currentHint =
     hint && question && hint.questionId === question.id ? hint.text : null;
+
+  // Exam lock (cross-review BLOCKER 4): during a live exam the engine's
+  // current question IS the exam question, and every coaching affordance
+  // (hints, options, reset) must vanish from the practice surface — on the
+  // hub AND on every lesson page. The exam renders only in ExamSection.
+  if (gate.examActive) {
+    return (
+      <div className="pl400-banner pl400-banner-info" role="status">
+        Exam in progress — practice and hints are locked until the exam is
+        submitted.{" "}
+        <a href="/pl-400/#exam">Go to the exam.</a>
+      </div>
+    );
+  }
 
   return (
     <>

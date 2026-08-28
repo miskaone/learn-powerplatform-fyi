@@ -125,6 +125,7 @@ function cloneExam(exam: ExamState | null): ExamState | null {
   return {
     startedAt: exam.startedAt,
     durationSeconds: exam.durationSeconds,
+    lastSeenAt: exam.lastSeenAt,
     questionIds: exam.questionIds.slice(),
     answers: copyStringRecord(exam.answers),
     submitted: exam.submitted,

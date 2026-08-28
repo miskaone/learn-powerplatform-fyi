@@ -158,7 +158,19 @@ test("exam on the live app manifest: mass revocation, submit, debrief tool", () 
   });
   const status = facade.startExam();
   expect(status.active).toBe(true);
-  expect(status.questionsTotal).toBe(manifest.questions.length);
+  // The manifest ships an explicit exam form — the exam must NOT fall back
+  // to every bank question in the default duration (cross-review MAJOR 9).
+  const examConfig = manifest.exam;
+  if (examConfig === undefined) {
+    throw new Error("manifest.exam is required");
+  }
+  expect(status.questionsTotal).toBe(examConfig.questionIds.length);
+  expect(examConfig.questionIds.length).toBeLessThan(
+    manifest.questions.length,
+  );
+  expect(
+    examConfig.durationSeconds / examConfig.questionIds.length,
+  ).toBeGreaterThanOrEqual(30);
   // Registry truth mid-exam: only the exam toolset survives.
   const midExam = wouldRegisterToolNames(
     registrySnapshot(

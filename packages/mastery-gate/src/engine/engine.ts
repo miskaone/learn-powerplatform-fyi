@@ -51,6 +51,7 @@ import {
   applyCreateExam,
   applyExpireIfNeeded,
   applyExitExam,
+  applyObserveExamClock,
   applyRecordExamAnswer,
   applySubmitExam,
   buildExamDebrief,
@@ -76,7 +77,12 @@ export interface LearnerStatePublic {
 export interface SubmitAnswerResult {
   questionId: string;
   optionId: string;
-  correct: boolean;
+  /**
+   * Practice: the graded verdict. Exam: always null — correctness is
+   * withheld until submit so submit_answer cannot serve as a per-question
+   * answer oracle mid-exam (cross-review BLOCKER 2, 2026-08-27).
+   */
+  correct: boolean | null;
   misconceptionId: string | null;
   attemptNumber: number;
   /**
@@ -117,7 +123,7 @@ export class MasteryEngine {
     this.manifest = manifest;
     this.adapter = adapter;
     this.now = options?.now ?? Date.now;
-    const persisted = loadState(adapter);
+    const persisted = loadState(adapter, this.now());
     if (persisted) {
       this.ledger = persisted.ledger;
       this.hints = persisted.hints;
@@ -198,6 +204,7 @@ export class MasteryEngine {
   }
 
   submitAnswer(optionId: string): SubmitAnswerResult {
+    const wasExamActive = isExamActive(this.ledger.exam);
     this.maybeAutoSubmitExpiredExam();
     if (isExamActive(this.ledger.exam)) {
       const { ledger, result } = applyRecordExamAnswer(
@@ -207,9 +214,17 @@ export class MasteryEngine {
       );
       this.ledger = ledger;
       this.persist();
-      // Mid-exam, rationale and remediation stay withheld — nothing that
-      // could steer remaining exam answers leaves the engine before submit.
+      // Mid-exam, correctness, rationale, and remediation all stay withheld
+      // — nothing that could steer remaining exam answers leaves the engine
+      // before submit.
       return { ...result, rationale: null, remediationAnchor: null };
+    }
+    if (wasExamActive) {
+      // The exam expired between the click and this call. The answer must
+      // NOT silently fall through to practice grading — that would burn a
+      // practice attempt on a different question and release its rationale
+      // (cross-review MAJOR 11, 2026-08-27).
+      throw new Error('refused: exam-expired');
     }
 
     const question = this.findCurrentQuestion();
@@ -236,7 +251,27 @@ export class MasteryEngine {
     };
   }
 
+  /**
+   * True while an exam is running. Refreshes expiry first, so an expired
+   * exam never reads as active. The coaching guard below and the facade's
+   * exam guards both key off this.
+   */
+  isExamActive(): boolean {
+    this.maybeAutoSubmitExpiredExam();
+    return isExamActive(this.ledger.exam);
+  }
+
   requestHint(): HintResult {
+    // Exam guard: the hint ladder is a coaching surface and must not run
+    // during an exam — deregistration alone was the only guard, so any
+    // registry desync was a total bypass (cross-review BLOCKER 1).
+    if (this.isExamActive()) {
+      return {
+        granted: false,
+        questionId: '',
+        reason: 'exam-active',
+      };
+    }
     const question = this.findCurrentQuestion();
     if (!question) {
       return {
@@ -279,6 +314,14 @@ export class MasteryEngine {
         ],
       };
     }
+    // Exam guard: the gate must not open (or scores mutate) during a live
+    // exam (cross-review BLOCKER 1 — scoreRubric opened the gate mid-exam).
+    if (this.isExamActive()) {
+      return {
+        ok: false,
+        errors: ['exam-active: rubric scoring is locked during an exam'],
+      };
+    }
     const result = validateRubricSubmission(input, corpus);
     if (!result.ok) {
       return result;
@@ -306,6 +349,11 @@ export class MasteryEngine {
    */
   logCoachingNote(note: string): void {
     if (typeof note !== 'string') {
+      return;
+    }
+    // Exam guard: no coaching-surface mutation during a live exam
+    // (cross-review BLOCKER 1).
+    if (this.isExamActive()) {
       return;
     }
     const trimmed = note.trim().slice(0, MAX_COACH_NOTE_LENGTH);
@@ -351,6 +399,11 @@ export class MasteryEngine {
    * scores — untouched. "Reset" on a lesson page must not destroy the track.
    */
   resetQuestions(questionIds: readonly string[]): void {
+    // Exam guard: the ledger must not be mutated mid-exam
+    // (cross-review BLOCKER 1 — resetQuestions mutated the ledger mid-exam).
+    if (this.isExamActive()) {
+      return;
+    }
     const scoped = new Set(questionIds);
     const next = cloneLedger(this.ledger);
     next.attempts = next.attempts.filter(
@@ -379,6 +432,9 @@ export class MasteryEngine {
   }
 
   startDrill(scenarioId?: string): StartDrillResult {
+    // An expired-but-unobserved exam must auto-submit before the drill
+    // refusal check, or a stale exam record would wrongly block drills.
+    this.maybeAutoSubmitExpiredExam();
     const { ledger, result } = applyStartDrill(
       this.manifest,
       this.ledger,
@@ -527,6 +583,10 @@ export class MasteryEngine {
   }
 
   getExamState(): ExamState | null {
+    // Expiry must be observable from ANY read path — the registry snapshot
+    // reads this, and a years-expired exam must not report un-submitted
+    // until some other method happens to run (cross-review MINOR 15).
+    this.maybeAutoSubmitExpiredExam();
     return cloneLedger(this.ledger).exam;
   }
 
@@ -593,7 +653,12 @@ export class MasteryEngine {
   }
 
   private maybeAutoSubmitExpiredExam(): void {
-    const next = applyExpireIfNeeded(this.manifest, this.ledger, this.now());
+    const now = this.now();
+    // Record the clock high-water mark FIRST: expiry is then computed
+    // against max(now, lastSeenAt), so a clock rollback cannot un-expire
+    // a running exam (cross-review MAJOR 6).
+    let next = applyObserveExamClock(this.ledger, now);
+    next = applyExpireIfNeeded(this.manifest, next, now);
     if (next === this.ledger) {
       return;
     }

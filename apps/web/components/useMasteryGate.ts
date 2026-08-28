@@ -49,6 +49,12 @@ export interface MasteryGateView {
   flashes: Record<string, "register" | "revoke">;
   agentDetected: boolean;
   storageDegraded: boolean;
+  /**
+   * True while an exam is running. Practice, drill, and coaching surfaces
+   * must lock on it — the exam question must never render outside the exam
+   * UI (cross-review BLOCKER 4).
+   */
+  examActive: boolean;
 }
 
 export function useMasteryGate(): MasteryGateView {
@@ -67,6 +73,7 @@ export function useMasteryGate(): MasteryGateView {
     null,
   );
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [examActive, setExamActive] = useState(false);
   const [runtimeTick, setRuntimeTick] = useState(0);
   const { flashes, flash } = useToolRosterHighlights();
 
@@ -114,8 +121,13 @@ export function useMasteryGate(): MasteryGateView {
       gatePassed: state.gatePassed,
       attemptCount: state.attemptCount,
     });
-    setQuestion(s.facade.getCurrentQuestion());
-    setNextAction(s.facade.requestNextAction());
+    const examStatus = s.facade.getExamStatus();
+    const examRunning = examStatus.active && !examStatus.submitted;
+    setExamActive(examRunning);
+    // The exam question must never leak into the practice surfaces — while
+    // an exam runs, only ExamSection renders it (cross-review BLOCKER 4).
+    setQuestion(examRunning ? null : s.facade.getCurrentQuestion());
+    setNextAction(examRunning ? null : s.facade.requestNextAction());
     // Practice is "started" the moment the shared ledger holds an attempt —
     // whether it came from a page button on another route or from an agent
     // driving submit_answer. Route changes must not re-gate an in-flight
@@ -253,5 +265,6 @@ export function useMasteryGate(): MasteryGateView {
     flashes,
     agentDetected,
     storageDegraded,
+    examActive,
   };
 }

@@ -58,7 +58,7 @@ test('startDrill() auto-selects fewest-completions, falling through to the next 
   expect(first.scenarioId).toBe(UI);
 
   expect(gate.mutateAssumption(UI, 'ui-root').accepted).toBe(true);
-  expect(gate.commitPrediction(UI, 'Power Pages', 'external').committed).toBe(
+  expect(gate.commitPrediction(UI, 'Power Pages', 'external audience').committed).toBe(
     true,
   );
   t = 1100;
@@ -229,7 +229,7 @@ test('reveal advances the round, completes the session, and records transfer tim
   gate.startDrill(UI);
 
   expect(gate.mutateAssumption(UI, 'ui-root').accepted).toBe(true);
-  expect(gate.commitPrediction(UI, 'Power Pages', 'external').committed).toBe(
+  expect(gate.commitPrediction(UI, 'Power Pages', 'external audience').committed).toBe(
     true,
   );
   const first = gate.revealOutcome(UI);
@@ -270,7 +270,7 @@ test('active drill session and results survive a second MasteryEngine over the s
   first.startDrill(UI);
   expect(first.mutateAssumption(UI, 'ui-root').accepted).toBe(true);
   expect(
-    first.commitPrediction(UI, 'Power Pages', 'external').committed,
+    first.commitPrediction(UI, 'Power Pages', 'external audience').committed,
   ).toBe(true);
 
   const resumed = new MasteryEngine(FIXTURE_MANIFEST_WITH_DRILLS, adapter, {
@@ -286,7 +286,7 @@ test('active drill session and results survive a second MasteryEngine over the s
   expect(session.currentAssumptionId).toBe('ui-root');
   expect(session.prediction).toEqual({
     text: 'Power Pages',
-    reason: 'external',
+    reason: 'external audience',
   });
 
   const revealed = resumed.revealOutcome(UI);
@@ -307,7 +307,7 @@ test('two engines on identical call sequences produce deeply equal drillResults 
     });
     gate.startDrill(UI);
     gate.mutateAssumption(UI, 'ui-root');
-    gate.commitPrediction(UI, 'Power Pages', 'external');
+    gate.commitPrediction(UI, 'Power Pages', 'external audience');
     gate.revealOutcome(UI);
     t = 2000;
     gate.mutateAssumption(UI, 'ui-relational');
@@ -344,12 +344,15 @@ test('startDrill throws when an unsubmitted exam is on the ledger', () => {
   ledger.exam = {
     startedAt: 1,
     durationSeconds: 60,
+    lastSeenAt: 1,
     questionIds: ['q1'],
     answers: {},
     submitted: false,
     submittedAt: null,
     verdicts: [],
   };
+  // Storage cross-validation requires an active exam to carry phase 'exam'.
+  ledger.phase = 'exam';
   saveState(adapter, {
     version: 1,
     ledger,
@@ -360,4 +363,29 @@ test('startDrill throws when an unsubmitted exam is on the ledger', () => {
     now: () => 1000,
   });
   expect(() => gate.startDrill()).toThrow('refused: exam-active');
+});
+
+test('a shotgun prediction naming every outcome fails the round', () => {
+  const { engine: gate } = engine();
+  gate.startDrill(UI);
+  expect(gate.mutateAssumption(UI, 'ui-root').accepted).toBe(true);
+  expect(
+    gate.commitPrediction(
+      UI,
+      'Canvas app Model-driven app Power Pages',
+      'covering all bases here',
+    ).committed,
+  ).toBe(true);
+  const revealed = gate.revealOutcome(UI);
+  expect(revealed.outcomeComponent).toBe('Power Pages');
+  expect(revealed.predictionWasCorrect).toBe(false);
+});
+
+test('a junk reason is refused as reason-too-short', () => {
+  const { engine: gate } = engine();
+  gate.startDrill(UI);
+  expect(gate.mutateAssumption(UI, 'ui-root').accepted).toBe(true);
+  const refused = gate.commitPrediction(UI, 'Power Pages', 'x');
+  expect(refused.committed).toBe(false);
+  expect(refused.refusalReason).toBe('reason-too-short');
 });

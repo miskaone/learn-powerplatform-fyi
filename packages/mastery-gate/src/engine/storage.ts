@@ -20,6 +20,10 @@ import {
   MAX_PREDICTION_LENGTH,
   MAX_PREDICTION_REASON_LENGTH,
 } from './drill';
+import {
+  MAX_EXAM_DURATION_SECONDS,
+  MIN_EXAM_DURATION_SECONDS,
+} from './exam';
 
 export const STORAGE_KEY = 'mastery-gate:v1';
 
@@ -146,7 +150,10 @@ export function saveState(
   adapter.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-export function loadState(adapter: StorageAdapter): PersistedState | null {
+export function loadState(
+  adapter: StorageAdapter,
+  now: number = Date.now(),
+): PersistedState | null {
   try {
     const raw = adapter.getItem(STORAGE_KEY);
     if (raw === null) {
@@ -160,7 +167,7 @@ export function loadState(adapter: StorageAdapter): PersistedState | null {
     if (parsed.version !== 1) {
       return null;
     }
-    const ledger = validateLedger(parsed.ledger);
+    const ledger = validateLedger(parsed.ledger, now);
     const hints = validateHints(parsed.hints);
     if (ledger === null || hints === null) {
       return null;
@@ -340,6 +347,13 @@ function validateActiveDrill(value: unknown): DrillSessionState | null {
     if (typeof prediction.text !== 'string' || typeof prediction.reason !== 'string') {
       return null;
     }
+    // One-mutation-per-round invariant: a committed prediction requires the
+    // assumption lock. A persisted record with prediction set but the lock
+    // cleared would let a fresh assumption be mutated under an old prediction
+    // (cross-review MAJOR 10, 2026-08-27).
+    if (currentAssumptionId === null) {
+      return null;
+    }
     clonedPrediction = {
       text: prediction.text.slice(0, MAX_PREDICTION_LENGTH),
       reason: prediction.reason.slice(0, MAX_PREDICTION_REASON_LENGTH),
@@ -378,13 +392,14 @@ function validateExamVerdict(value: unknown): ExamVerdict | null {
   };
 }
 
-function validateExam(value: unknown): ExamState | null {
+function validateExam(value: unknown, now: number): ExamState | null {
   if (!isRecord(value)) {
     return null;
   }
   const {
     startedAt,
     durationSeconds,
+    lastSeenAt,
     questionIds,
     answers,
     submitted,
@@ -402,6 +417,28 @@ function validateExam(value: unknown): ExamState | null {
   ) {
     return null;
   }
+  // A record whose exam started in the future is tampered or clock-skewed
+  // beyond repair — reject it rather than granting billions of remaining
+  // seconds (cross-review MAJOR 7, 2026-08-27).
+  if (startedAt > now) {
+    return null;
+  }
+  // Duration is clamped on the reload path exactly as on the creation path
+  // — the [MIN, MAX] invariant must hold on every path (cross-review
+  // MAJOR 7).
+  const clampedDuration = Math.min(
+    MAX_EXAM_DURATION_SECONDS,
+    Math.max(MIN_EXAM_DURATION_SECONDS, durationSeconds),
+  );
+  // Absent in records written before the clock watermark landed; never
+  // allowed below startedAt.
+  let validatedLastSeenAt = startedAt;
+  if (lastSeenAt !== undefined) {
+    if (!isFiniteNumber(lastSeenAt)) {
+      return null;
+    }
+    validatedLastSeenAt = Math.max(startedAt, lastSeenAt);
+  }
   const validatedVerdicts: ExamVerdict[] = [];
   for (const verdict of verdicts) {
     const validated = validateExamVerdict(verdict);
@@ -412,7 +449,8 @@ function validateExam(value: unknown): ExamState | null {
   }
   return {
     startedAt,
-    durationSeconds,
+    durationSeconds: clampedDuration,
+    lastSeenAt: validatedLastSeenAt,
     questionIds: questionIds.slice(),
     answers: copyStringRecord(answers),
     submitted,
@@ -504,7 +542,7 @@ function validateLearnerName(value: unknown): string | null | undefined {
   return value.slice(0, MAX_LEARNER_NAME_LENGTH);
 }
 
-function validateLedger(value: unknown): Ledger | null {
+function validateLedger(value: unknown, now: number): Ledger | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -571,11 +609,26 @@ function validateLedger(value: unknown): Ledger | null {
 
   let exam: ExamState | null = null;
   if (value.exam !== undefined && value.exam !== null) {
-    const validated = validateExam(value.exam);
+    const validated = validateExam(value.exam, now);
     if (validated === null) {
       return null;
     }
     exam = validated;
+  }
+
+  // Cross-field consistency (cross-review BLOCKER 5, 2026-08-27): each
+  // field validated in isolation allowed a type-valid record whose phase
+  // said "practice" while an unsubmitted exam was live — a reload then
+  // re-registered the whole coaching surface mid-exam. An active exam
+  // REQUIRES phase 'exam' and no active drill; phase 'exam' REQUIRES an
+  // exam record.
+  if (exam !== null && !exam.submitted) {
+    if (phase !== 'exam' || activeDrill !== null) {
+      return null;
+    }
+  }
+  if (phase === 'exam' && exam === null) {
+    return null;
   }
 
   let debrief: DebriefState | null = null;

@@ -1375,5 +1375,20 @@
       ],
       "anchor": "delegable-date-window-gallery-production"
     }
-  ]
+  ],
+  "exam": {
+    "questionIds": [
+      "ml13-q1",
+      "ml13-q4",
+      "ml11-q2",
+      "ml11-q5",
+      "ml09-q3",
+      "ml09-q6",
+      "ml12-q2",
+      "ml12-q5",
+      "ml14-q3",
+      "ml14-q6"
+    ],
+    "durationSeconds": 600
+  }
 }

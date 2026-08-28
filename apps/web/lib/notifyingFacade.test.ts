@@ -68,7 +68,11 @@ function succeedingFacade(): EngineFacade {
       round: 1,
       assumptionText: "a",
     }),
-    commitPrediction: (scenarioId) => ({ committed: true, scenarioId }),
+    commitPrediction: (scenarioId) => ({
+      committed: true,
+      scenarioId,
+      refusalReason: null,
+    }),
     revealOutcome: () => ({
       outcome: "o",
       predictionWasCorrect: true,

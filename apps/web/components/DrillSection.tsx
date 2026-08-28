@@ -123,7 +123,11 @@ export function DrillSection({ gate }: { gate: MasteryGateView }) {
         reasonText,
       );
       if (!result.committed) {
-        setError("The engine refused that prediction.");
+        setError(
+          result.refusalReason === "reason-too-short"
+            ? "The engine refused that prediction: the reason must carry real reasoning (at least 10 characters)."
+            : `The engine refused that prediction${result.refusalReason ? ` (${result.refusalReason})` : "."}`,
+        );
         return;
       }
       setError(null);

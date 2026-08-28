@@ -418,6 +418,7 @@ describe('MasteryEngineFacade', () => {
     expect(committed).toEqual({
       committed: true,
       scenarioId: UI_SCENARIO,
+      refusalReason: null,
     });
 
     const revealed = facade.revealOutcome(UI_SCENARIO);
@@ -545,7 +546,7 @@ describe('MasteryEngineFacade', () => {
     const { engine: drillEngine, facade: drillFacade } = makeDrillFacade();
     drillEngine.startDrill(UI_SCENARIO);
     drillFacade.mutateAssumption(UI_SCENARIO, 'ui-root');
-    drillFacade.commitPrediction(UI_SCENARIO, 'Power Pages', 'external');
+    drillFacade.commitPrediction(UI_SCENARIO, 'Power Pages', 'external audience');
     const afterCommit = drillFacade.getRegistrySnapshot();
     expect(afterCommit.predictionCommitted).toBe(true);
     expect(afterCommit.phase).toBe('drill');
@@ -651,4 +652,31 @@ describe('submitAnswer verdict rationale/anchor plumbing (cross-review findings 
     expect(hit.remediationAnchor).toBeNull();
     expect(hit.rationale).toBe(FIXTURE_MANIFEST.questions[0].rationale);
   });
+});
+
+test('exam guards on the facade: brief, advance, verdict, context', () => {
+  let t = 1_000_000;
+  const { facade } = makeExamFacade(() => t);
+  const miss = facade.submitAnswer('q1', 'q1-b');
+  expect(miss.misconceptionId).toBe('mc-shared');
+  const gated = facade.scoreRubric(rubric(3, 3, 3, 3));
+  expect(gated.gatePassed).toBe(true);
+  expect(facade.getMisconceptionBrief('mc-shared')).not.toBeNull();
+
+  facade.startExam();
+  expect(facade.getMisconceptionBrief('mc-shared')).toBe(null);
+  expect(facade.advanceModule()).toEqual({
+    advanced: false,
+    nextObjectiveId: null,
+  });
+
+  const currentExamQuestionId = facade.getCurrentQuestion()?.id;
+  expect(currentExamQuestionId === undefined).toBe(false);
+  if (currentExamQuestionId === undefined) {
+    return;
+  }
+  expect(
+    facade.submitAnswer(currentExamQuestionId, 'q1-b').correct,
+  ).toBe(null);
+  expect(facade.getCurrentContext().concepts).toEqual([]);
 });

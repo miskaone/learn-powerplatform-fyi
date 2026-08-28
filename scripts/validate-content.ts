@@ -440,6 +440,56 @@ async function validateFlipScenarios(
   return count;
 }
 
+
+/**
+ * The manifest MUST ship an explicit exam form: without one the engine
+ * falls back to every manifest question in DEFAULT_EXAM_DURATION_SECONDS
+ * (34 questions in 600s — cross-review MAJOR 9, 2026-08-27). The form's
+ * ids must exist, must not repeat, and the duration must sit inside the
+ * engine's clamp range so creation and reload agree.
+ */
+function validateExamConfig(manifest: ContentManifest, errors: string[]): void {
+  const exam = (manifest as { exam?: unknown }).exam;
+  if (exam === undefined) {
+    errors.push('manifest.exam is missing — an explicit exam form is required');
+    return;
+  }
+  if (!isRecord(exam)) {
+    errors.push('manifest.exam is not an object');
+    return;
+  }
+  const ids = asArray(exam.questionIds);
+  if (!ids || ids.length < 1) {
+    errors.push('manifest.exam.questionIds is missing or empty');
+    return;
+  }
+  const known = new Set(manifest.questions.map((question) => question.id));
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (typeof id !== 'string') {
+      errors.push('manifest.exam.questionIds contains a non-string entry');
+      continue;
+    }
+    if (!known.has(id)) {
+      errors.push(`manifest.exam question '${id}' is not in the bank`);
+    }
+    if (seen.has(id)) {
+      errors.push(`manifest.exam question '${id}' is listed twice`);
+    }
+    seen.add(id);
+  }
+  const duration = exam.durationSeconds;
+  if (typeof duration !== 'number' || !Number.isFinite(duration)) {
+    errors.push('manifest.exam.durationSeconds is not a number');
+  } else if (duration < 60 || duration > 7200) {
+    errors.push('manifest.exam.durationSeconds must be within [60, 7200]');
+  } else if (duration / ids.length < 30) {
+    errors.push(
+      'manifest.exam allots under 30 seconds per question — shrink the form or extend the duration',
+    );
+  }
+}
+
 const errors: string[] = [];
 
 const manifestParsed = await readJson(manifestPath);
@@ -474,6 +524,7 @@ if (manifestParsed.ok) {
     validateQuestions(manifest, misconceptionIds, errors);
     validateAnchors(manifest, anchors, errors);
     validateMisconceptions(manifest, errors);
+    validateExamConfig(manifest, errors);
   }
 }
 

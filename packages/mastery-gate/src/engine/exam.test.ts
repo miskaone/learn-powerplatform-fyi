@@ -218,7 +218,8 @@ test('submitAnswer during active exam grades without leaking misconceptions or t
   const miss = engine.submitAnswer('q1-b');
   expect(miss.questionId).toBe('q1');
   expect(miss.optionId).toBe('q1-b');
-  expect(miss.correct).toBe(false);
+  // Correctness is withheld mid-exam — never an answer oracle.
+  expect(miss.correct).toBe(null);
   expect(miss.misconceptionId).toBe(null);
   expect(miss.attemptNumber).toBe(1);
   expect(engine.getExamStatus().questionsAnswered).toBe(1);
@@ -239,13 +240,12 @@ test('submitAnswer during active exam grades without leaking misconceptions or t
   engine.submitAnswer('q2-b');
   expect(engine.getExamStatus().questionsAnswered).toBe(2);
   engine.submitAnswer('q3-b');
-  expect(engine.getCurrentQuestion()?.id).toBe('q3');
-  const overwritten = engine.submitAnswer('q3-c');
-  expect(overwritten.questionId).toBe('q3');
-  expect(overwritten.correct).toBe(false);
-  expect(overwritten.misconceptionId).toBe(null);
+  // Fully answered: no current question, no overwrite — a recorded exam
+  // answer is final (cross-review BLOCKER 3).
+  expect(engine.getCurrentQuestion()).toBe(null);
+  expect(() => engine.submitAnswer('q3-c')).toThrow('no current question');
   expect(engine.getExamStatus().questionsAnswered).toBe(3);
-  expect(engine.getExamState()?.answers['q3']).toBe('q3-c');
+  expect(engine.getExamState()?.answers['q3']).toBe('q3-b');
 });
 
 test('getCurrentQuestion during exam is first unanswered, then last, then practice after submit', () => {
@@ -278,7 +278,11 @@ test('getCurrentQuestion during exam is first unanswered, then last, then practi
   engine.submitAnswer('q2-b');
   expect(engine.getCurrentQuestion()?.id).toBe('q3');
   engine.submitAnswer('q3-b');
-  expect(engine.getCurrentQuestion()?.id).toBe('q3');
+  // Every question answered: no current question, and no answer can be
+  // overwritten (re-answer laundering — cross-review BLOCKER 3).
+  expect(engine.getCurrentQuestion()).toBe(null);
+  expect(() => engine.submitAnswer('q3-a')).toThrow('no current question');
+  expect(engine.getExamState()?.answers['q3']).toBe('q3-b');
 
   engine.submitExam();
   expect(engine.getCurrentQuestion()?.id).toBe('q2');
@@ -426,14 +430,18 @@ test('timer expiry auto-submits on the next interaction with deterministic submi
   practice.startExam();
   practice.submitAnswer('q1-a');
   t2 = 1_000_000 + 300_000 + 1;
-  const practiceHit = practice.submitAnswer('q2-c');
+  // An answer clicked at the expiry boundary must NOT fall through to
+  // practice grading — it would burn a practice attempt on a different
+  // question and release its rationale (cross-review MAJOR 11). The engine
+  // refuses instead, and the practice ledger stays untouched.
+  expect(() => practice.submitAnswer('q2-c')).toThrow('refused: exam-expired');
   expect(practice.getExamStatus().submitted).toBe(true);
   expect(practice.getExamState()?.answers['q2']).toBe(undefined);
   expect(practice.getExamState()?.verdicts[1]?.chosenOptionId).toBe(null);
-  expect(practiceHit.questionId).toBe('q2');
-  expect(practiceHit.misconceptionId).toBe('mc-q2-post');
-  expect(practice.getLearnerState().attemptsCount).toBe(attemptsBefore + 1);
-  expect(practice.getLearnerState().misconceptionFires['mc-q2-post']).toBe(1);
+  expect(practice.getLearnerState().attemptsCount).toBe(attemptsBefore);
+  expect(
+    practice.getLearnerState().misconceptionFires['mc-q2-post'],
+  ).toBeUndefined();
 });
 
 test('exam answers, submit, and debrief survive engine reload over the same adapter', () => {
@@ -516,4 +524,112 @@ test('two engines with identical sequences and clocks produce deeply equal exam 
   }
 
   expect(run()).toEqual(run());
+});
+
+test('coaching surface refuses during an active exam: hint, rubric, note, reset', () => {
+  let t = 1_000_000;
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST_WITH_EXAM,
+    new MemoryStorageAdapter(),
+    { now: () => t },
+  );
+  passGate(engine);
+  engine.startExam();
+
+  const hint = engine.requestHint();
+  expect(hint.granted).toBe(false);
+  if (hint.granted) {
+    return;
+  }
+  expect(hint.questionId).toBe('');
+  expect(hint.reason).toBe('exam-active');
+
+  const scoresBefore = { ...engine.getLearnerState().scores };
+  const scored = engine.scoreRubric(
+    passingRubric(FIXTURE_MANIFEST_WITH_EXAM, 4),
+    corpusOf(FIXTURE_MANIFEST_WITH_EXAM),
+  );
+  expect(scored.ok).toBe(false);
+  if (scored.ok) {
+    return;
+  }
+  expect(scored.errors.some((error) => error.includes('exam-active'))).toBe(
+    true,
+  );
+  expect(engine.getLearnerState().scores).toEqual(scoresBefore);
+
+  const notesBefore = engine.getCoachNotes();
+  engine.logCoachingNote('mid-exam note');
+  expect(engine.getCoachNotes()).toEqual(notesBefore);
+
+  const attemptsBefore = engine.getLearnerState().attemptsCount;
+  engine.resetQuestions(['q1']);
+  expect(engine.getLearnerState().attemptsCount).toBe(attemptsBefore);
+});
+
+test('clock rollback never rewinds or un-expires the exam', () => {
+  let t = 1_000_000;
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST_WITH_EXAM,
+    new MemoryStorageAdapter(),
+    { now: () => t },
+  );
+  passGate(engine);
+  engine.startExam();
+  t += 120_000;
+  expect(engine.getExamStatus().remainingSeconds).toBe(180);
+
+  t = 1_000_000;
+  expect(engine.getExamStatus().remainingSeconds).toBe(180);
+
+  t = 1_000_000 + 301_000;
+  expect(engine.getExamStatus().submitted).toBe(true);
+
+  t = 1_000_000;
+  expect(engine.getExamStatus().submitted).toBe(true);
+});
+
+test('getExamState alone observes expiry', () => {
+  let t = 1_000_000;
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST_WITH_EXAM,
+    new MemoryStorageAdapter(),
+    { now: () => t },
+  );
+  passGate(engine);
+  engine.startExam();
+  t = 1_000_000 + 301_000;
+  const exam = engine.getExamState();
+  expect(exam === null).toBe(false);
+  if (exam === null) {
+    return;
+  }
+  expect(exam.submitted).toBe(true);
+});
+
+test('exam retake rotates the form deterministically', () => {
+  function runRetake(): { ids1: string[]; ids2: string[] } {
+    let t = 1_000_000;
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST_WITH_EXAM,
+      new MemoryStorageAdapter(),
+      { now: () => t },
+    );
+    passGate(engine);
+    engine.startExam();
+    const ids1 = engine.getExamState()?.questionIds.slice() ?? [];
+    engine.submitExam();
+    engine.exitExam();
+    engine.startExam();
+    const ids2 = engine.getExamState()?.questionIds.slice() ?? [];
+    return { ids1, ids2 };
+  }
+
+  const first = runRetake();
+  expect(first.ids2.length).toBe(first.ids1.length);
+  expect(first.ids2[0]).toBe(first.ids1[1]);
+  expect([...first.ids2].sort()).toEqual([...first.ids1].sort());
+
+  const second = runRetake();
+  expect(second.ids2).toEqual(first.ids2);
 });

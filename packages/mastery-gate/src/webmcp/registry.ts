@@ -142,6 +142,13 @@ export class ToolRegistry {
     this.refusalActive =
       this.revocationMode === 'refusal' && snapshot.phase === 'exam';
 
+    // Awaited alongside revocations so sync() does not resolve while
+    // registerTool promises are still pending — getRegisteredNames() must
+    // not report tools the agent cannot yet see (cross-review MINOR 14).
+    // Safe to await: registration settles promptly on real runtimes; the
+    // never-settling hazard is executions, which drain-first already covers.
+    const registrations: Promise<void>[] = [];
+
     for (const name of ALL_TOOL_NAMES) {
       if (!desired.has(name)) {
         continue;
@@ -166,12 +173,22 @@ export class ToolRegistry {
       // registerTool returns a Promise on real runtimes — a rejection must
       // surface through the logger, never as an unhandled rejection, and a
       // failed registration must not leave a phantom controller behind.
-      void Promise.resolve(
+      // The rejection handler compares controller IDENTITY before deleting:
+      // a stale rejection arriving after this tool was revoked and
+      // re-registered must not delete the LATER live controller
+      // (cross-review MAJOR 12, 2026-08-27).
+      const registration = Promise.resolve(
         this.ctx.registerTool(descriptor, { signal: controller.signal }),
-      ).catch((error) => {
-        this.controllers.delete(name);
-        this.logger(`registerTool(${name}) rejected: ${String(error)}`);
-      });
+      ).then(
+        () => undefined,
+        (error) => {
+          if (this.controllers.get(name) === controller) {
+            this.controllers.delete(name);
+          }
+          this.logger(`registerTool(${name}) rejected: ${String(error)}`);
+        },
+      );
+      registrations.push(registration);
     }
 
     const revocations: Promise<void>[] = [];
@@ -188,7 +205,7 @@ export class ToolRegistry {
         }
       }
     }
-    await Promise.all(revocations);
+    await Promise.all([...registrations, ...revocations]);
   }
 
   getRegisteredNames(): ToolName[] {
@@ -309,6 +326,19 @@ export class ToolRegistry {
       description: descriptor.description,
       inputSchema: descriptor.inputSchema,
       execute: async (input: unknown): Promise<ToolResponse> => {
+        // Compensating engine-side refusal for the drain wedge
+        // (cross-review finding 16): while this tool's revocation is
+        // draining, the registration is still live on the runtime — a NEW
+        // invocation arriving in that window must refuse rather than run a
+        // revoked capability (e.g. a coaching tool after start_exam).
+        // Executions already in flight settle normally (drain-first law).
+        if (this.pendingRevocations.has(name)) {
+          return textResponse({
+            refused: true,
+            reason: 'tool-revoked',
+            tool: descriptor.name,
+          });
+        }
         this.inFlight.set(name, (this.inFlight.get(name) ?? 0) + 1);
         try {
           return await descriptor.execute(input);

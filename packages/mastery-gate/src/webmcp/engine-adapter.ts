@@ -103,6 +103,10 @@ export class MasteryEngineFacade implements EngineFacade {
 
   getCurrentContext(): CurrentContextPublic {
     const question = this.engine.getCurrentQuestion();
+    // Exam guard: the live exam question's concept list must not steer
+    // remaining answers through the context payload (cross-review BLOCKER 1
+    // family, 2026-08-27).
+    const examActive = this.engine.isExamActive();
     const l = this.getActiveLesson?.() ?? null;
     // Objective resolution order: the current question's objective, then the
     // route-derived lesson's objective (question scope routinely leaves no
@@ -113,7 +117,7 @@ export class MasteryEngineFacade implements EngineFacade {
       objectiveId: objective ? objective.id : '',
       sectionId: objective ? objective.id : '',
       sectionTitle: objective ? objective.title : '',
-      concepts: question ? question.concepts : [],
+      concepts: !examActive && question ? question.concepts : [],
       prerequisites: [],
       lesson:
         l === null
@@ -230,6 +234,12 @@ export class MasteryEngineFacade implements EngineFacade {
   }
 
   getMisconceptionBrief(misconceptionId: string): Misconception | null {
+    // Exam guard: a misconception contrast is the answer key for any exam
+    // question keyed to it (cross-review BLOCKER 1 — the contrast string
+    // answered the live exam question). Nothing is briefed mid-exam.
+    if (this.engine.isExamActive()) {
+      return null;
+    }
     const fires = this.engine.getLearnerState().misconceptionFires[misconceptionId];
     if (!(fires >= 1)) {
       return null;
@@ -275,6 +285,7 @@ export class MasteryEngineFacade implements EngineFacade {
     return {
       committed: r.committed,
       scenarioId: r.scenarioId,
+      refusalReason: r.refusalReason,
     };
   }
 
@@ -337,6 +348,11 @@ export class MasteryEngineFacade implements EngineFacade {
   advanceModule(): AdvanceModuleResultPublic {
     // TODO(day-2): module-progression state lives in the engine ledger once
     // phase transitions land; today this reports gate status + next objective.
+    // Exam guard: module progression is frozen while an exam is live
+    // (cross-review BLOCKER 1 — advanceModule advanced during the exam).
+    if (this.engine.isExamActive()) {
+      return { advanced: false, nextObjectiveId: null };
+    }
     const state = this.engine.getLearnerState();
     if (!state.gatePassed) {
       return { advanced: false, nextObjectiveId: null };

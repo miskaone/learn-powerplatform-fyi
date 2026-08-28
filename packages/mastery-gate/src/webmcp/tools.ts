@@ -822,6 +822,7 @@ function publicCommit(
   return {
     committed: result.committed,
     scenarioId: result.scenarioId,
+    refusalReason: result.refusalReason,
   };
 }
 

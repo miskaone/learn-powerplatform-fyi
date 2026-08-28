@@ -142,6 +142,7 @@ function createStubEngine(options?: {
     commitPrediction: (scenarioId) => ({
       committed: true,
       scenarioId,
+      refusalReason: null,
     }),
     revealOutcome: () => ({
       outcome: 'sandbox blocks the call',
@@ -627,4 +628,119 @@ test('registry: omitting disabledTools still registers start_exam when gatePasse
   await registry.sync(snap({ gatePassed: true, phase: 'practice' }));
   expect(registry.getRegisteredNames()).toContain('start_exam');
   expect(ctx.getToolNames()).toContain('start_exam');
+});
+
+type PendingRegistration = {
+  name: string;
+  resolve: () => void;
+  reject: (reason?: unknown) => void;
+};
+
+function installControlledRegister(ctx: MockModelContext): PendingRegistration[] {
+  const pending: PendingRegistration[] = [];
+  const originalRegister = ctx.registerTool.bind(ctx);
+  ctx.registerTool = (tool, options) => {
+    originalRegister(tool, options);
+    let resolve!: () => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<void>((res, rej) => {
+      resolve = () => {
+        res();
+      };
+      reject = (reason) => {
+        rej(reason);
+      };
+    });
+    pending.push({ name: tool.name, resolve, reject });
+    return promise;
+  };
+  return pending;
+}
+
+test('a stale registerTool rejection does not delete a later live controller', async () => {
+  const ctx = new MockModelContext();
+  const pending = installControlledRegister(ctx);
+  const { engine } = createStubEngine();
+  const registry = new ToolRegistry(ctx, engine, {
+    logger: () => {
+      return;
+    },
+  });
+
+  const firstSync = registry.sync(snap({ phase: 'practice' }));
+  await Promise.resolve();
+  const wave1 = pending.splice(0);
+  const p1 = wave1.find((entry) => entry.name === 'get_learner_state');
+  expect(p1 !== undefined).toBe(true);
+  if (p1 === undefined) {
+    return;
+  }
+  for (const entry of wave1) {
+    if (entry !== p1) {
+      entry.resolve();
+    }
+  }
+
+  const examSync = registry.sync(snap({ phase: 'exam' }));
+  await Promise.resolve();
+  for (const entry of pending.splice(0)) {
+    entry.resolve();
+  }
+  await examSync;
+
+  const practiceSync = registry.sync(snap({ phase: 'practice' }));
+  await Promise.resolve();
+  for (const entry of pending.splice(0)) {
+    entry.resolve();
+  }
+  await practiceSync;
+  expect(registry.getRegisteredNames()).toContain('get_learner_state');
+
+  p1.reject(new Error('stale'));
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(registry.getRegisteredNames()).toContain('get_learner_state');
+  await firstSync;
+});
+
+test('sync resolves only after registerTool settles', async () => {
+  let resolveRegistration!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    resolveRegistration = resolve;
+  });
+  const ctx = new MockModelContext();
+  const originalRegister = ctx.registerTool.bind(ctx);
+  ctx.registerTool = (tool, options) => {
+    originalRegister(tool, options);
+    if (tool.name === 'get_learner_state') {
+      return pending;
+    }
+  };
+  const { engine } = createStubEngine();
+  const registry = new ToolRegistry(ctx, engine);
+  let settled = false;
+  const syncing = registry.sync(snap({})).then(() => {
+    settled = true;
+  });
+  await Promise.resolve();
+  expect(settled).toBe(false);
+  resolveRegistration();
+  await syncing;
+  expect(settled).toBe(true);
+});
+
+test('a new invocation during a draining revocation is refused', async () => {
+  const { ctx, registry, deferred } = await registerHangingQuestion();
+  const inFlight = ctx.callTool('get_current_question', {});
+  await Promise.resolve();
+  const revoking = registry.sync(snap({ phase: 'exam' }));
+  const refused = await ctx.callTool('get_current_question', {});
+  const payload = asRecord(JSON.parse(textOf(refused)));
+  expect(payload['refused']).toBe(true);
+  expect(payload['reason']).toBe('tool-revoked');
+  expect(payload['tool']).toBe('get_current_question');
+  deferred.resolve(textResponse({ question: null }));
+  await inFlight;
+  await revoking;
+  expect(registry.getRegisteredNames()).not.toContain('get_current_question');
 });

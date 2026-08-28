@@ -146,6 +146,7 @@ function createStubEngine(options?: {
     commitPrediction: (scenarioId) => ({
       committed: true,
       scenarioId,
+      refusalReason: null,
     }),
     revealOutcome: () => ({
       outcome: 'sandbox blocks the call',

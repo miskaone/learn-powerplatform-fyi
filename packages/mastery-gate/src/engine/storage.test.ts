@@ -15,7 +15,12 @@ import {
   saveState,
 } from './storage';
 import type { LocalStorageLike, PersistedState } from './storage';
-import type { DrillResultRecord, DrillSessionState, Ledger } from '../schema';
+import type {
+  DrillResultRecord,
+  DrillSessionState,
+  ExamState,
+  Ledger,
+} from '../schema';
 
 test('MemoryStorageAdapter get/set/remove semantics', () => {
   const adapter = new MemoryStorageAdapter();
@@ -321,7 +326,7 @@ test('tampered activeDrill or drillResults dimension rejects the whole state', (
       scenarioId: 'sample-flip-ui',
       assumptionId: 'ui-root',
       prediction: 'Power Pages',
-      reason: 'external',
+      reason: 'external audience',
       outcomeId: 'ui-pages',
       outcomeComponent: 'Power Pages',
       predictionWasCorrect: true,
@@ -409,4 +414,177 @@ test('saveState/loadState round-trip through a throwing-then-degraded LocalStora
   saveState(adapter, state);
   expect(adapter.isDegraded).toBe(true);
   expect(loadState(adapter)).toEqual(state);
+});
+
+function validUnsubmittedExam(now: number, overrides?: Partial<ExamState>): ExamState {
+  return {
+    startedAt: now,
+    durationSeconds: 300,
+    lastSeenAt: now,
+    questionIds: ['q1', 'q2', 'q3'],
+    answers: {},
+    submitted: false,
+    submittedAt: null,
+    verdicts: [],
+    ...overrides,
+  };
+}
+
+function validIdleDrill(): DrillSessionState {
+  return {
+    scenarioId: 'sample-flip-ui',
+    round: 1,
+    usedAssumptionIds: [],
+    currentAssumptionId: null,
+    prediction: null,
+  };
+}
+
+function persistRaw(payload: unknown): MemoryStorageAdapter {
+  const adapter = new MemoryStorageAdapter();
+  adapter.setItem(STORAGE_KEY, JSON.stringify(payload));
+  return adapter;
+}
+
+test('loadState rejects phase practice with an unsubmitted exam', () => {
+  const now = 1_000_000;
+  const ledger = createEmptyLedger();
+  ledger.phase = 'practice';
+  ledger.exam = validUnsubmittedExam(now);
+  const adapter = persistRaw({
+    version: 1,
+    ledger,
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  expect(loadState(adapter, now)).toBe(null);
+});
+
+test('loadState rejects phase exam without an exam record', () => {
+  const now = 1_000_000;
+  const ledger = createEmptyLedger();
+  ledger.phase = 'exam';
+  ledger.exam = null;
+  const adapter = persistRaw({
+    version: 1,
+    ledger,
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  expect(loadState(adapter, now)).toBe(null);
+});
+
+test('loadState rejects an unsubmitted exam alongside an active drill', () => {
+  const now = 1_000_000;
+  const ledger = createEmptyLedger();
+  ledger.phase = 'exam';
+  ledger.exam = validUnsubmittedExam(now);
+  ledger.activeDrill = validIdleDrill();
+  const adapter = persistRaw({
+    version: 1,
+    ledger,
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  expect(loadState(adapter, now)).toBe(null);
+});
+
+test('loadState clamps persisted exam duration into [60, 7200]', () => {
+  const now = 1_000_000;
+  const highLedger = createEmptyLedger();
+  highLedger.phase = 'exam';
+  highLedger.exam = validUnsubmittedExam(now, { durationSeconds: 999_999_999 });
+  const highAdapter = persistRaw({
+    version: 1,
+    ledger: highLedger,
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  const highLoaded = loadState(highAdapter, now);
+  expect(highLoaded === null).toBe(false);
+  expect(highLoaded?.ledger.exam?.durationSeconds).toBe(7200);
+
+  const lowLedger = createEmptyLedger();
+  lowLedger.phase = 'exam';
+  lowLedger.exam = validUnsubmittedExam(now, { durationSeconds: 5 });
+  const lowAdapter = persistRaw({
+    version: 1,
+    ledger: lowLedger,
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  const lowLoaded = loadState(lowAdapter, now);
+  expect(lowLoaded === null).toBe(false);
+  expect(lowLoaded?.ledger.exam?.durationSeconds).toBe(60);
+});
+
+test('loadState rejects an exam started in the future', () => {
+  const now = 1_000_000;
+  const ledger = createEmptyLedger();
+  ledger.phase = 'exam';
+  ledger.exam = validUnsubmittedExam(now + 86_400_000);
+  const adapter = persistRaw({
+    version: 1,
+    ledger,
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  expect(loadState(adapter, now)).toBe(null);
+});
+
+test('loadState defaults and clamps lastSeenAt', () => {
+  const now = 1_000_000;
+  const startedAt = now;
+  const missingLedger = createEmptyLedger();
+  missingLedger.phase = 'exam';
+  missingLedger.exam = validUnsubmittedExam(startedAt);
+  const missingPayload: Record<string, unknown> = {
+    version: 1,
+    ledger: missingLedger,
+    hints: createHintState(),
+    lastGrade: null,
+  };
+  const missingJson = JSON.parse(JSON.stringify(missingPayload)) as {
+    ledger: { exam: Record<string, unknown> };
+  };
+  delete missingJson.ledger.exam.lastSeenAt;
+  const missingAdapter = persistRaw(missingJson);
+  const missingLoaded = loadState(missingAdapter, now);
+  expect(missingLoaded === null).toBe(false);
+  expect(missingLoaded?.ledger.exam?.lastSeenAt).toBe(startedAt);
+
+  const clampedLedger = createEmptyLedger();
+  clampedLedger.phase = 'exam';
+  clampedLedger.exam = validUnsubmittedExam(startedAt, {
+    lastSeenAt: startedAt - 50_000,
+  });
+  const clampedAdapter = persistRaw({
+    version: 1,
+    ledger: clampedLedger,
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  const clampedLoaded = loadState(clampedAdapter, now);
+  expect(clampedLoaded === null).toBe(false);
+  expect(clampedLoaded?.ledger.exam?.lastSeenAt).toBe(startedAt);
+});
+
+test('loadState rejects a committed prediction with a cleared assumption lock', () => {
+  const now = 1_000_000;
+  const ledger = createEmptyLedger();
+  ledger.phase = 'drill';
+  ledger.activeDrill = {
+    scenarioId: 'sample-flip-ui',
+    round: 1,
+    usedAssumptionIds: [],
+    currentAssumptionId: null,
+    prediction: { text: 'x', reason: 'y' },
+  };
+  const adapter = persistRaw({
+    version: 1,
+    ledger,
+    hints: createHintState(),
+    lastGrade: null,
+  });
+  expect(loadState(adapter, now)).toBe(null);
 });

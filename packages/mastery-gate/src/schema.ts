@@ -159,6 +159,13 @@ export interface ExamVerdict {
 export interface ExamState {
   startedAt: number;
   durationSeconds: number;
+  /**
+   * High-water mark of every clock reading observed while the exam is
+   * active. Elapsed time is computed against max(now, lastSeenAt), so an OS
+   * clock rollback can never un-expire a running exam (cross-review MAJOR,
+   * 2026-08-27).
+   */
+  lastSeenAt: number;
   questionIds: string[];
   answers: Record<string, string>; // questionId -> chosen optionId
   submitted: boolean;

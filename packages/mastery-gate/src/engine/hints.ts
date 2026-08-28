@@ -15,7 +15,7 @@ export type HintResult =
   | {
       granted: false;
       questionId: string;
-      reason: 'tier2-requires-attempt' | 'ladder-exhausted';
+      reason: 'tier2-requires-attempt' | 'ladder-exhausted' | 'exam-active';
     };
 
 export function createHintState(): HintState {

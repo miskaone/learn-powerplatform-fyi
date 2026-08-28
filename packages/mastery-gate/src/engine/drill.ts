@@ -11,6 +11,12 @@ import { cloneLedger } from './ledger';
 
 export const MAX_PREDICTION_LENGTH = 500;
 export const MAX_PREDICTION_REASON_LENGTH = 500;
+/**
+ * A reason must carry at least this many characters after trimming.
+ * "x" is not a reason; the flip drill grades the commit-then-reveal ritual,
+ * and a junk reason defeats the ritual (cross-review MAJOR 8, 2026-08-27).
+ */
+export const MIN_PREDICTION_REASON_LENGTH = 10;
 
 export interface DrillAssumptionPublic {
   id: string;
@@ -169,6 +175,51 @@ function mutateRefusal(
 
 function normalize(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Every distinct outcome component the tree can select, in walk order. */
+function treeOutcomeComponents(tree: DecisionNode): string[] {
+  const components: string[] = [];
+  const seen = new Set<string>();
+  walkTree(tree, (node) => {
+    if (node.kind === 'outcome' && !seen.has(node.component)) {
+      seen.add(node.component);
+      components.push(node.component);
+    }
+  });
+  return components;
+}
+
+/**
+ * Exclusive-match grading: the prediction must name the actual outcome
+ * component AND must not also name any other component the tree could have
+ * selected. A shotgun prediction concatenating every component
+ * ("Canvas app Model-driven app Power Pages") matched under plain substring
+ * inclusion (cross-review MAJOR 8, 2026-08-27); naming rival outcomes now
+ * fails the round. Rival components that are substrings of the target
+ * component itself are ignored (they match trivially whenever the target
+ * does).
+ */
+export function gradePrediction(
+  tree: DecisionNode,
+  predictionText: string,
+  outcomeComponent: string,
+): boolean {
+  const predictionNorm = normalize(predictionText);
+  const target = normalize(outcomeComponent);
+  if (target.length === 0 || !predictionNorm.includes(target)) {
+    return false;
+  }
+  for (const component of treeOutcomeComponents(tree)) {
+    const rival = normalize(component);
+    if (rival === target || rival.length === 0 || target.includes(rival)) {
+      continue;
+    }
+    if (predictionNorm.includes(rival)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function applyStartDrill(
@@ -365,6 +416,16 @@ export function applyCommitPrediction(
       },
     };
   }
+  if (trimmedReason.length < MIN_PREDICTION_REASON_LENGTH) {
+    return {
+      ledger,
+      result: {
+        committed: false,
+        scenarioId: active.scenarioId,
+        refusalReason: 'reason-too-short',
+      },
+    };
+  }
 
   const next = cloneLedger(ledger);
   if (next.activeDrill === null) {
@@ -432,8 +493,10 @@ export function applyRevealOutcome(
 
   const outcomeId = evaluation.outcome.id;
   const outcomeComponent = evaluation.outcome.component;
-  const predictionWasCorrect = normalize(active.prediction.text).includes(
-    normalize(outcomeComponent),
+  const predictionWasCorrect = gradePrediction(
+    tree,
+    active.prediction.text,
+    outcomeComponent,
   );
 
   const record: DrillResultRecord = {

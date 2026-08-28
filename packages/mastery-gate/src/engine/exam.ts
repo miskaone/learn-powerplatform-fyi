@@ -11,7 +11,12 @@ import { cloneLedger } from './ledger';
 export interface ExamAnswerResult {
   questionId: string;
   optionId: string;
-  correct: boolean;
+  /**
+   * Always null mid-exam: correctness is withheld until submit, so
+   * submit_answer cannot be used as a per-question answer oracle
+   * (cross-review BLOCKER 2, 2026-08-27). Grading happens at submit.
+   */
+  correct: null;
   misconceptionId: string | null;
   attemptNumber: number;
 }
@@ -92,8 +97,30 @@ export function resolveExamConfig(manifest: ContentManifest): ResolvedExamConfig
   };
 }
 
+/**
+ * Elapsed time uses the high-water mark of every observed clock reading
+ * (`lastSeenAt`), so setting the OS clock back never rewinds the exam.
+ */
 export function examElapsedSeconds(exam: ExamState, now: number): number {
-  return Math.floor((now - exam.startedAt) / 1000);
+  const effectiveNow = Math.max(now, exam.lastSeenAt);
+  return Math.floor((effectiveNow - exam.startedAt) / 1000);
+}
+
+/**
+ * Records a clock observation on the active exam's high-water mark.
+ * Returns the same ledger when there is nothing to record.
+ */
+export function applyObserveExamClock(ledger: Ledger, now: number): Ledger {
+  const exam = ledger.exam;
+  if (exam === null || exam.submitted || now <= exam.lastSeenAt) {
+    return ledger;
+  }
+  const next = cloneLedger(ledger);
+  if (next.exam === null) {
+    return ledger;
+  }
+  next.exam.lastSeenAt = now;
+  return next;
 }
 
 export function isExamExpired(exam: ExamState, now: number): boolean {
@@ -142,15 +169,15 @@ export function toExamStatus(exam: ExamState | null, now: number): ExamStatus {
 }
 
 export function currentExamQuestionId(exam: ExamState): string | null {
-  if (exam.questionIds.length === 0) {
-    return null;
-  }
   for (const questionId of exam.questionIds) {
     if (!Object.prototype.hasOwnProperty.call(exam.answers, questionId)) {
       return questionId;
     }
   }
-  return exam.questionIds[exam.questionIds.length - 1];
+  // Every question has an answer: there is no current question, and no
+  // answer may be overwritten — a wrong answer must not be laundered into a
+  // correct grade by re-answering (cross-review BLOCKER 3, 2026-08-27).
+  return null;
 }
 
 export function findCurrentExamQuestion(
@@ -222,6 +249,31 @@ function gradeExam(manifest: ContentManifest, exam: ExamState): ExamVerdict[] {
   return verdicts;
 }
 
+/**
+ * Deterministic retake rotation: the question ORDER of a retake is the
+ * configured form rotated one position past the previous run's starting
+ * question. Same ledger, same order — the referee stays deterministic — but
+ * consecutive retakes do not present an identical sequence (cross-review
+ * MAJOR 13, partial mitigation; the item SET is fixed by design — the form
+ * is a public, inspectable artifact of the deterministic engine).
+ */
+function rotatedQuestionIds(
+  configIds: readonly string[],
+  previousExam: ExamState | null,
+): string[] {
+  const ids = configIds.slice();
+  if (previousExam === null || ids.length === 0) {
+    return ids;
+  }
+  const previousFirst = previousExam.questionIds[0];
+  const index = previousFirst === undefined ? -1 : ids.indexOf(previousFirst);
+  if (index < 0) {
+    return ids;
+  }
+  const offset = (index + 1) % ids.length;
+  return [...ids.slice(offset), ...ids.slice(0, offset)];
+}
+
 export function applyCreateExam(
   manifest: ContentManifest,
   ledger: Ledger,
@@ -232,7 +284,8 @@ export function applyCreateExam(
   next.exam = {
     startedAt: now,
     durationSeconds: config.durationSeconds,
-    questionIds: config.questionIds.slice(),
+    lastSeenAt: now,
+    questionIds: rotatedQuestionIds(config.questionIds, ledger.exam),
     answers: {},
     submitted: false,
     submittedAt: null,
@@ -311,7 +364,9 @@ export function applyRecordExamAnswer(
     result: {
       questionId: question.id,
       optionId,
-      correct: optionId === question.correctOptionId,
+      // Correctness is not computed here at all — nothing that grades the
+      // answer exists in this result. Grading happens once, at submit.
+      correct: null,
       misconceptionId: null,
       attemptNumber: 1,
     },
