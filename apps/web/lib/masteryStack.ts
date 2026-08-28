@@ -10,12 +10,13 @@ import {
   STATIC_TOOL_NAMES,
   type ActiveLessonPublic,
   type EngineFacade,
+  type LessonBriefPublic,
   type RegistrySnapshot,
   type ToolName,
 } from "@learn/mastery-gate/webmcp";
 import { navigateToAnchor } from "./anchor";
 import { lessonSections, manifest } from "./content";
-import { getLessonIndexEntry, lessonSectionAnchors } from "./lessonIndex";
+import { getLessonIndexEntry, lessonSectionAnchorEntries } from "./lessonIndex";
 import { NotifyingFacade } from "./notifyingFacade";
 
 /**
@@ -42,7 +43,7 @@ export interface MasteryStack {
   readonly storageDegraded: boolean;
   /** Stops the late-binding runtime detection loop, if one is running. */
   stopRuntimeDetection: () => void;
-  setActiveLesson(slug: string | null): void;
+  setActiveLesson(slug: string | null, brief?: LessonBriefPublic | null): void;
   getActiveLessonSlug(): string | null;
   /** Live read of tools whose revocation drain has exceeded the warn threshold. */
   getStuckRevocations(): string[];
@@ -65,8 +66,12 @@ export function createMasteryStack(
 ): MasteryStack {
   const adapter = new LocalStorageAdapter();
   const engine = new MasteryEngine(manifest, adapter);
-  let activeLesson: (ActiveLessonPublic & { questionIds: readonly string[] }) | null =
-    null;
+  let activeLesson:
+    | (ActiveLessonPublic & {
+        questionIds: readonly string[];
+        brief: LessonBriefPublic | null;
+      })
+    | null = null;
   const inner = new MasteryEngineFacade(engine, manifest, {
     navigate: (anchor) => navigateToAnchor(anchor),
     evidenceCorpus: lessonSections.flatMap((section) => [
@@ -80,8 +85,44 @@ export function createMasteryStack(
             slug: activeLesson.slug,
             title: activeLesson.title,
             objectiveId: activeLesson.objectiveId,
-            sectionAnchors: [...activeLesson.sectionAnchors],
+            sectionAnchors: activeLesson.sectionAnchors.map((entry) => ({
+              anchor: entry.anchor,
+              title: entry.title,
+            })),
           },
+    getLessonBrief: () => {
+      const brief = activeLesson?.brief ?? null;
+      if (brief === null) {
+        return null;
+      }
+      return {
+        id: brief.id,
+        slug: brief.slug,
+        title: brief.title,
+        topicTitle: brief.topicTitle,
+        objectiveId: brief.objectiveId,
+        heroEpigraph: brief.heroEpigraph,
+        governingRule: brief.governingRule,
+        examClue: brief.examClue,
+        mnemonic: brief.mnemonic,
+        scenarioPrompt: brief.scenarioPrompt,
+        concepts: brief.concepts.map((concept) => ({
+          id: concept.id,
+          label: concept.label,
+          importance: concept.importance,
+          summary: concept.summary,
+        })),
+        productionNuance: [...brief.productionNuance],
+        sections: brief.sections.map((section) => ({
+          anchor: section.anchor,
+          title: section.title,
+        })),
+        references: brief.references.map((reference) => ({
+          label: reference.label,
+          url: reference.url,
+        })),
+      };
+    },
   });
   const facade = new NotifyingFacade(inner, onEngineMutation);
   const ctx = resolveModelContext(host);
@@ -114,21 +155,25 @@ export function createMasteryStack(
       return adapter.isDegraded;
     },
     stopRuntimeDetection: () => {},
-    setActiveLesson(slug: string | null): void {
+    setActiveLesson(slug: string | null, brief?: LessonBriefPublic | null): void {
       if (slug !== null) {
         const entry = getLessonIndexEntry(slug);
         if (entry === undefined) {
           console.warn(`setActiveLesson: unknown lesson slug "${slug}"`);
         } else {
           if (activeLesson !== null && activeLesson.slug === slug) {
+            if (activeLesson.brief === null && brief != null) {
+              activeLesson.brief = brief;
+            }
             return;
           }
           activeLesson = {
             slug,
             title: entry.title,
             objectiveId: entry.objectiveId,
-            sectionAnchors: lessonSectionAnchors(slug),
+            sectionAnchors: lessonSectionAnchorEntries(slug),
             questionIds: entry.questionIds,
+            brief: brief ?? null,
           };
           engine.setQuestionScope(entry.questionIds);
           onEngineMutation();

@@ -83,6 +83,7 @@ function createStubEngine(options?: {
       prerequisites: [],
       lesson: null,
     }),
+    getLessonBrief: () => null,
     getCurrentQuestion: () => question,
     submitAnswer: (questionId, optionId) => {
       log.submitAnswer = { questionId, optionId };

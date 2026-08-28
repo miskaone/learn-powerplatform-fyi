@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { MockModelContext } from "@learn/mastery-gate/webmcp";
+import { lessonSectionAnchorEntries } from "./lessonIndex";
 import { createMasteryStack, lessonProgress } from "./masteryStack";
 
 const POLL_MS = 500;
@@ -57,14 +58,6 @@ describe("late-binding runtime detection", () => {
 describe("active lesson scoping", () => {
   const agentLessHost = { document: {} } as never;
   const gallerySlug = "delegable-date-window-gallery";
-  const galleryAnchors = [
-    "delegable-date-window-gallery-rule",
-    "delegable-date-window-gallery-exam-clue",
-    "delegable-date-window-gallery-scenario",
-    "delegable-date-window-gallery-production",
-    "delegable-date-window-gallery-compress",
-    "delegable-date-window-gallery-run",
-  ];
 
   test("setActiveLesson scopes the current question and lesson context, and is idempotent", () => {
     let notifies = 0;
@@ -82,7 +75,7 @@ describe("active lesson scoping", () => {
         slug: gallerySlug,
         title: "Build a Delegable Date-Window Gallery",
         objectiveId: "dataverse-extensibility-platform-limits",
-        sectionAnchors: galleryAnchors,
+        sectionAnchors: lessonSectionAnchorEntries(gallerySlug),
       });
       expect(notifies).toBe(1);
 

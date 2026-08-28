@@ -27,16 +27,33 @@ export function getLessonIndexEntry(
   return lessonIndex.find((entry) => entry.slug === slug);
 }
 
-/** The six remediation-anchor targets every lesson page renders. */
-export function lessonSectionAnchors(slug: string): string[] {
+/**
+ * The six remediation-anchor targets every lesson page renders, each paired
+ * with the title of the section it names — so get_current_context and
+ * get_lesson_brief can tell the agent where it is sending the learner.
+ * Titles must stay verbatim-truthful to the headings LessonPage renders.
+ */
+export function lessonSectionAnchorEntries(
+  slug: string,
+): { anchor: string; title: string }[] {
   return [
-    `${slug}-rule`,
-    `${slug}-exam-clue`,
-    `${slug}-scenario`,
-    `${slug}-production`,
-    `${slug}-compress`,
-    `${slug}-run`,
+    { anchor: `${slug}-rule`, title: "Governing rule" },
+    { anchor: `${slug}-exam-clue`, title: "Exam-recognition clue" },
+    {
+      anchor: `${slug}-scenario`,
+      title: "01 / Scenario — make the decision before seeing the mechanism",
+    },
+    { anchor: `${slug}-production`, title: "Production nuance" },
+    {
+      anchor: `${slug}-compress`,
+      title: "02 / Compress the rule — state the load-bearing rule in one line",
+    },
+    { anchor: `${slug}-run`, title: "08 / Run — decide what this changes" },
   ];
+}
+
+export function lessonSectionAnchors(slug: string): string[] {
+  return lessonSectionAnchorEntries(slug).map((entry) => entry.anchor);
 }
 
 const ANCHOR_OWNER_BY_ID = new Map<string, string>();

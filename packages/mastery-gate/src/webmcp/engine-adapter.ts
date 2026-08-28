@@ -24,6 +24,7 @@ import type {
   ExamStatusPublic,
   HintResultPublic,
   LearnerStatePublic,
+  LessonBriefPublic,
   LessonTextResultPublic,
   MutateAssumptionResultPublic,
   NavigateResultPublic,
@@ -58,6 +59,12 @@ export interface MasteryEngineFacadeOptions {
    * is null. Never persisted; the host rebuilds this from the URL.
    */
   getActiveLesson?: () => ActiveLessonPublic | null;
+  /**
+   * Route-derived authored lesson material, supplied by the host app from
+   * its lesson catalog (the engine package stays content-agnostic). Absent
+   * or returning null → get_lesson_brief reports no brief.
+   */
+  getLessonBrief?: () => LessonBriefPublic | null;
 }
 
 /**
@@ -78,6 +85,9 @@ export class MasteryEngineFacade implements EngineFacade {
   private readonly getActiveLesson:
     | (() => ActiveLessonPublic | null)
     | undefined;
+  private readonly getLessonBriefSource:
+    | (() => LessonBriefPublic | null)
+    | undefined;
 
   constructor(
     engine: MasteryEngine,
@@ -89,6 +99,7 @@ export class MasteryEngineFacade implements EngineFacade {
     this.navigate = options?.navigate;
     this.evidenceCorpus = options?.evidenceCorpus ?? [];
     this.getActiveLesson = options?.getActiveLesson;
+    this.getLessonBriefSource = options?.getLessonBrief;
   }
 
   getLearnerState(): LearnerStatePublic {
@@ -145,8 +156,50 @@ export class MasteryEngineFacade implements EngineFacade {
               slug: l.slug,
               title: l.title,
               objectiveId: l.objectiveId,
-              sectionAnchors: [...l.sectionAnchors],
+              sectionAnchors: l.sectionAnchors.map((entry) => ({
+                anchor: entry.anchor,
+                title: entry.title,
+              })),
             },
+    };
+  }
+
+  getLessonBrief(): LessonBriefPublic | null {
+    // Exam guard at the engine level: authored lesson prose is coaching
+    // material, and every coaching surface is closed while an exam is live.
+    if (this.engine.isExamActive()) {
+      return null;
+    }
+    const brief = this.getLessonBriefSource?.() ?? null;
+    if (brief === null) {
+      return null;
+    }
+    return {
+      id: brief.id,
+      slug: brief.slug,
+      title: brief.title,
+      topicTitle: brief.topicTitle,
+      objectiveId: brief.objectiveId,
+      heroEpigraph: brief.heroEpigraph,
+      governingRule: brief.governingRule,
+      examClue: brief.examClue,
+      mnemonic: brief.mnemonic ?? null,
+      scenarioPrompt: brief.scenarioPrompt,
+      concepts: brief.concepts.map((concept) => ({
+        id: concept.id,
+        label: concept.label,
+        importance: concept.importance,
+        summary: concept.summary,
+      })),
+      productionNuance: [...brief.productionNuance],
+      sections: brief.sections.map((section) => ({
+        anchor: section.anchor,
+        title: section.title,
+      })),
+      references: brief.references.map((reference) => ({
+        label: reference.label,
+        url: reference.url,
+      })),
     };
   }
 

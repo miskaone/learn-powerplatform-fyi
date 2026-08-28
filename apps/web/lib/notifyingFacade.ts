@@ -20,6 +20,10 @@ export class NotifyingFacade implements EngineFacade {
     return this.inner.getCurrentContext();
   }
 
+  getLessonBrief() {
+    return this.inner.getLessonBrief();
+  }
+
   getCurrentQuestion() {
     return this.inner.getCurrentQuestion();
   }

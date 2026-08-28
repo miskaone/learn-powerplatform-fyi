@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import type { LessonBriefPublic } from "@learn/mastery-gate/webmcp";
 import "../app/pl-400/pl400.css";
 import { lessonProgress, type MasteryStack } from "../lib/masteryStack";
 import { PracticePanel } from "./PracticePanel";
@@ -13,8 +14,9 @@ export function LessonPracticeSection(props: {
   slug: string;
   title: string;
   questionIds: readonly string[];
+  brief: LessonBriefPublic;
 }) {
-  const { slug, title, questionIds } = props;
+  const { slug, title, questionIds, brief } = props;
   const gate = useMasteryGate();
   const stack: MasteryStack | null = gate.stack;
 
@@ -22,7 +24,7 @@ export function LessonPracticeSection(props: {
     if (stack == null) {
       return;
     }
-    stack.setActiveLesson(slug);
+    stack.setActiveLesson(slug, brief);
     // The stack is a page-lifetime singleton, so leaving this route must
     // release the lesson scope — otherwise get_current_context and the
     // question scope stay pinned to this lesson on unrelated pages
@@ -33,7 +35,7 @@ export function LessonPracticeSection(props: {
         stack.setActiveLesson(null);
       }
     };
-  }, [slug, stack]);
+  }, [slug, stack, brief]);
 
   const progress =
     stack == null

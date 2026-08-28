@@ -232,7 +232,9 @@ describe('MasteryEngineFacade', () => {
         slug: 'plugin-isolation',
         title: 'Plugin isolation',
         objectiveId: 'obj-1',
-        sectionAnchors: ['plugin-isolation-rule'],
+        sectionAnchors: [
+          { anchor: 'plugin-isolation-rule', title: 'Governing rule' },
+        ],
       }),
     });
     const aim = facade.setLessonAim('  I need to debug isolation  ');
@@ -702,7 +704,7 @@ describe('MasteryEngineFacade', () => {
       slug: 'x',
       title: 'X',
       objectiveId: 'obj-1',
-      sectionAnchors: ['x-rule'],
+      sectionAnchors: [{ anchor: 'x-rule', title: 'Governing rule' }],
     };
     const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
       getActiveLesson: () => lesson,
@@ -712,14 +714,17 @@ describe('MasteryEngineFacade', () => {
       slug: 'x',
       title: 'X',
       objectiveId: 'obj-1',
-      sectionAnchors: ['x-rule'],
+      sectionAnchors: [{ anchor: 'x-rule', title: 'Governing rule' }],
     });
-    context.lesson?.sectionAnchors.push('mutated');
+    context.lesson?.sectionAnchors.push({
+      anchor: 'mutated',
+      title: 'Mutated',
+    });
     expect(facade.getCurrentContext().lesson).toEqual({
       slug: 'x',
       title: 'X',
       objectiveId: 'obj-1',
-      sectionAnchors: ['x-rule'],
+      sectionAnchors: [{ anchor: 'x-rule', title: 'Governing rule' }],
     });
   });
 });
@@ -732,7 +737,9 @@ describe('getCurrentContext lesson/objective consistency (cross-review finding 4
         slug: 'lesson-one',
         title: 'Lesson One',
         objectiveId: 'obj-1',
-        sectionAnchors: ['lesson-one-rule'],
+        sectionAnchors: [
+          { anchor: 'lesson-one-rule', title: 'Governing rule' },
+        ],
       }),
     });
     engine.setQuestionScope(['q1', 'q2']);

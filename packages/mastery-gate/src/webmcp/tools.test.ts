@@ -100,6 +100,7 @@ function createStubEngine(options?: {
       prerequisites: [],
       lesson: null,
     }),
+    getLessonBrief: () => null,
     getCurrentQuestion: () => question,
     submitAnswer: (questionId, optionId) => {
       log.submitAnswer = { questionId, optionId };
@@ -286,11 +287,11 @@ function evidenceQuote(dimension: string): string {
   return `Quoted lesson evidence for ${dimension}.`;
 }
 
-test('createToolset returns exactly 23 tools with closed object schemas', () => {
+test('createToolset returns exactly 24 tools with closed object schemas', () => {
   const { engine } = createStubEngine();
   const tools = createToolset(engine);
   const names = Object.keys(tools);
-  expect(names.length).toBe(23);
+  expect(names.length).toBe(24);
   for (const name of ALL_TOOL_NAMES) {
     expect(names).toContain(name);
     const tool = tools[name];
@@ -495,7 +496,7 @@ test('get_current_context serializes the active lesson and omits answer-key fiel
       slug: 'x',
       title: 'X',
       objectiveId: 'obj-1',
-      sectionAnchors: ['x-rule'],
+      sectionAnchors: [{ anchor: 'x-rule', title: 'Governing rule' }],
     }),
   });
   const tools = createToolset(facade);
@@ -506,7 +507,7 @@ test('get_current_context serializes the active lesson and omits answer-key fiel
   expect(lesson['slug']).toBe('x');
   expect(lesson['title']).toBe('X');
   expect(lesson['objectiveId']).toBe('obj-1');
-  expect(lesson['sectionAnchors']).toEqual(['x-rule']);
+  expect(lesson['sectionAnchors']).toEqual([{ anchor: 'x-rule', title: 'Governing rule' }]);
   expect(text).not.toContain('correctOptionId');
   expect(text).not.toContain('rationale');
 });

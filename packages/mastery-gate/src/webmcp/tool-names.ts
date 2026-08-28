@@ -1,6 +1,7 @@
 export const STATIC_TOOL_NAMES = [
   'get_learner_state',
   'get_current_context',
+  'get_lesson_brief',
   'navigate_to_anchor',
   'log_coaching_note',
   'get_current_question',

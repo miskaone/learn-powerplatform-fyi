@@ -47,6 +47,7 @@ function succeedingFacade(): EngineFacade {
       prerequisites: [],
       lesson: null,
     }),
+    getLessonBrief: () => null,
     getCurrentQuestion: () => null,
     submitAnswer: (questionId) => ({
       questionId,
@@ -189,6 +190,7 @@ test("read-only facade methods never notify", () => {
   });
   facade.getLearnerState();
   facade.getCurrentContext();
+  facade.getLessonBrief();
   facade.getCurrentQuestion();
   facade.requestNextAction();
   facade.prescribeDrill();

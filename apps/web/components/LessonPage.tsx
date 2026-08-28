@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { LessonPageData } from "../lib/lessonPages";
+import { toLessonBrief } from "../lib/lessonBrief";
 import "../app/pl-400/lesson.css";
 import {
   clearScenarioCommit,
@@ -213,6 +214,11 @@ function VisualWalkthrough({
 }
 
 export function LessonPage({ lesson }: { lesson: LessonPageData }) {
+  // Stable identity per lesson: the brief is a dependency of the practice
+  // section's setActiveLesson effect, and a fresh object each render would
+  // re-run that effect (release the lesson scope, re-acquire it, notify) on
+  // every render.
+  const brief = useMemo(() => toLessonBrief(lesson), [lesson]);
   const showMnemonic =
     Boolean(lesson.mnemonic) && lesson.mnemonic !== lesson.examClue;
 
@@ -338,6 +344,7 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
             slug={lesson.slug}
             title={lesson.title}
             questionIds={lesson.questionIds}
+            brief={brief}
           />
         </div>
       </section>

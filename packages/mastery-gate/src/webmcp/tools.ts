@@ -19,6 +19,7 @@ import type {
   ExamStatusPublic,
   HintResultPublic,
   LearnerStatePublic,
+  LessonBriefPublic,
   LessonTextResultPublic,
   MutateAssumptionResultPublic,
   NavigateResultPublic,
@@ -127,7 +128,7 @@ export function createToolset(
     ),
     get_current_context: descriptor(
       'get_current_context',
-      'Read the current objective and, when the learner is on a lesson page, that lesson\'s slug, title, and section anchors. Call first in every session and after any navigation, to orient before coaching.',
+      'Read the current objective and, when the learner is on a lesson page, that lesson\'s slug, title, and section anchors — each anchor carries the title of the section it names, so you can tell the learner where you are sending them. Call first in every session and after any navigation, to orient before coaching. For the lesson\'s actual teaching material, call get_lesson_brief.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -137,9 +138,28 @@ export function createToolset(
         return textResponse(publicContext(engine.getCurrentContext()));
       },
     ),
+    get_lesson_brief: descriptor(
+      'get_lesson_brief',
+      'Read the authored teaching material for the lesson the learner is on: title, epigraph, governing rule, exam-recognition clue, mnemonic, the scenario prompt, the concept hierarchy with summaries, production nuance, the page section anchors with their titles, and the official references. Call this before you begin coaching a lesson and whenever the learner moves to a new lesson. This is the authored curriculum you must teach from — prefer it over your own knowledge, and say so when the lesson\'s framing differs from your prior assumptions. Before asking any probing question, establish the scenario in one or two sentences so the learner is reasoning about something concrete; never ask a question that assumes context you have not just given them. The brief carries exactly what the lesson page shows its reader and nothing it withholds: no scenario answer, no question rationales, no correct options, and no distractor teardown (that stays behind get_misconception_brief).',
+      emptySchema(),
+      async (input) => {
+        const parsed = parseEmpty(input);
+        if (!parsed.ok) {
+          return parsed.response;
+        }
+        const brief = engine.getLessonBrief();
+        if (brief === null) {
+          return textResponse({
+            brief: null,
+            note: 'No lesson brief available: the learner is not on a lesson page, or an exam is in progress. Check get_current_context.lesson and send them to a lesson before coaching one.',
+          });
+        }
+        return textResponse({ brief: publicLessonBrief(brief) });
+      },
+    ),
     navigate_to_anchor: descriptor(
       'navigate_to_anchor',
-      'Scroll the learner\'s page to a named section anchor and highlight it (anchors come from get_current_context.lesson.sectionAnchors or a verdict\'s remediationAnchor). Call when routing says review or coach, or whenever the lesson text you are discussing should be on the learner\'s screen.',
+      'Scroll the learner\'s page to a named section anchor and highlight it (anchors come from get_current_context.lesson.sectionAnchors[].anchor, get_lesson_brief.sections[].anchor, or a verdict\'s remediationAnchor — each names a titled section). Call when routing says review or coach, or whenever the lesson text you are discussing should be on the learner\'s screen.',
       closedObject({ anchor: stringSchema() }, ['anchor']),
       async (input) => {
         const parsed = requireStrings(input, ['anchor'] as const);
@@ -182,7 +202,7 @@ export function createToolset(
     ),
     get_current_question: descriptor(
       'get_current_question',
-      'Fetch the current practice question — prompt and options only; the correct answer is structurally absent. Call at the start of each practice loop and after every submit_answer to load the next question. Let the learner reason aloud before they choose.',
+      'Fetch the current practice question — prompt and options only; the correct answer is structurally absent. Call at the start of each practice loop and after every submit_answer to load the next question. Let the learner reason aloud before they choose, and frame every probing question against THIS lesson\'s scenario from get_lesson_brief — never a generic scenario of your own, and never one that assumes context you have not just given them.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -246,7 +266,7 @@ export function createToolset(
     ),
     get_hint: descriptor(
       'get_hint',
-      'Request the next hint tier for the current question. Call only when the learner is stuck or routing says hint — the engine enforces the ladder and refuses tier 2 before a genuine first attempt. Re-voice the hint Socratically, grounded in the learner\'s world — their stated aim, their work, what get_learner_state shows about their history; never add answer information of your own.' +
+      'Request the next hint tier for the current question. Call only when the learner is stuck or routing says hint — the engine enforces the ladder and refuses tier 2 before a genuine first attempt. Re-voice the hint Socratically inside this lesson\'s own scenario (get_lesson_brief), grounded in the learner\'s world — their stated aim, their work, what get_learner_state shows about their history; never add answer information of your own, and never assume scenario context you have not just given them.' +
         (suffixes === null ? '' : suffixes.hint),
       closedObject({ questionId: stringSchema() }, ['questionId']),
       async (input) => {
@@ -921,8 +941,41 @@ function publicContext(context: CurrentContextPublic): CurrentContextPublic {
             slug: context.lesson.slug,
             title: context.lesson.title,
             objectiveId: context.lesson.objectiveId,
-            sectionAnchors: [...context.lesson.sectionAnchors],
+            sectionAnchors: context.lesson.sectionAnchors.map((entry) => ({
+              anchor: entry.anchor,
+              title: entry.title,
+            })),
           },
+  };
+}
+
+function publicLessonBrief(brief: LessonBriefPublic): LessonBriefPublic {
+  return {
+    id: brief.id,
+    slug: brief.slug,
+    title: brief.title,
+    topicTitle: brief.topicTitle,
+    objectiveId: brief.objectiveId,
+    heroEpigraph: brief.heroEpigraph,
+    governingRule: brief.governingRule,
+    examClue: brief.examClue,
+    mnemonic: brief.mnemonic,
+    scenarioPrompt: brief.scenarioPrompt,
+    concepts: brief.concepts.map((concept) => ({
+      id: concept.id,
+      label: concept.label,
+      importance: concept.importance,
+      summary: concept.summary,
+    })),
+    productionNuance: [...brief.productionNuance],
+    sections: brief.sections.map((section) => ({
+      anchor: section.anchor,
+      title: section.title,
+    })),
+    references: brief.references.map((reference) => ({
+      label: reference.label,
+      url: reference.url,
+    })),
   };
 }
 

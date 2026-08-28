@@ -45,7 +45,61 @@ export interface ActiveLessonPublic {
   title: string;
   /** Manifest objective the lesson's questions are fenced under. */
   objectiveId: string;
-  sectionAnchors: string[];
+  /** Each anchor carries the title of the section it names. */
+  sectionAnchors: LessonSectionAnchorPublic[];
+}
+
+/** A lesson-page section anchor plus the title of the section it names. */
+export interface LessonSectionAnchorPublic {
+  anchor: string;
+  title: string;
+}
+
+export interface LessonBriefConceptPublic {
+  id: string;
+  label: string;
+  importance: string;
+  summary: string;
+}
+
+export interface LessonBriefReferencePublic {
+  label: string;
+  url: string;
+}
+
+/**
+ * The authored teaching material for the active lesson — exactly what a
+ * learner reading the lesson page gets, and nothing that page withholds.
+ *
+ * INCLUDED because the page shows it: title, epigraph, governing rule, exam
+ * clue, mnemonic, the scenario PROMPT, the concept hierarchy with summaries,
+ * production nuance, the section anchors with their titles, references.
+ *
+ * EXCLUDED, structurally (these fields do not exist on this type):
+ * - the scenario's expected answer — the page withholds it until the learner
+ *   commits, and it is not even carried by the app's lesson catalog (it ships
+ *   as a separate post-commit fetch), so the brief provider has no access to
+ *   it at all;
+ * - question rationales, correctOptionId, and option→misconception mapping —
+ *   answer-key material, absent from every tool payload;
+ * - the distractor teardown (whyTempting / whyWrong) — that stays gated
+ *   behind an actual misconception fire via get_misconception_brief.
+ */
+export interface LessonBriefPublic {
+  id: string;
+  slug: string;
+  title: string;
+  topicTitle: string;
+  objectiveId: string;
+  heroEpigraph: string;
+  governingRule: string;
+  examClue: string;
+  mnemonic: string | null;
+  scenarioPrompt: string;
+  concepts: LessonBriefConceptPublic[];
+  productionNuance: string[];
+  sections: LessonSectionAnchorPublic[];
+  references: LessonBriefReferencePublic[];
 }
 
 export interface CurrentContextPublic {
@@ -191,6 +245,12 @@ export interface RegistrySnapshot {
 export interface EngineFacade {
   getLearnerState(): LearnerStatePublic;
   getCurrentContext(): CurrentContextPublic;
+  /**
+   * The authored lesson material for the route-derived active lesson, or
+   * null when no lesson is active or an exam is in progress (engine-level
+   * exam guard — deregistration is defense in depth, not the only guard).
+   */
+  getLessonBrief(): LessonBriefPublic | null;
   getCurrentQuestion(): QuestionPublic | null;
   submitAnswer(questionId: string, optionId: string): SubmitAnswerVerdictPublic;
   getHint(questionId: string): HintResultPublic;
