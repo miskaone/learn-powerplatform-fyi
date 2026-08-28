@@ -57,11 +57,16 @@ export function createEmptyLedger(): Ledger {
 }
 
 /**
- * Tamper-tolerant clamp for ACTOR lesson-text records (aims, rule
- * compressions, run commitments). Drops entries whose value is not a
- * non-empty string after trim, truncates values to `maxLength`, and if
- * more than `MAX_LESSON_TEXT_ENTRIES` remain keeps the first
- * `MAX_LESSON_TEXT_ENTRIES` in sorted-key order (deterministic).
+ * Deterministic clamp for ACTOR lesson-text records (aims, rule
+ * compressions, run commitments). Drops entries whose value trims to
+ * empty, truncates values to `maxLength`, and if more than
+ * `MAX_LESSON_TEXT_ENTRIES` remain keeps the first
+ * `MAX_LESSON_TEXT_ENTRIES` in sorted-key order.
+ *
+ * The non-string-drop branch is defensive only: the storage load path
+ * (`validateLessonTextField`) gates on `isStringRecord` first and rejects
+ * the whole ledger on any non-string value, per the ISA contract
+ * ("wrong type -> reject"), so that branch never executes on load.
  */
 export function clampLessonTextRecord(
   record: Record<string, string>,

@@ -31,6 +31,9 @@ function saveFailureMessage(reason: string | null): string {
   if (reason === "empty") {
     return "Write something first.";
   }
+  if (reason === "too-many-entries") {
+    return "Storage limit reached — edit an existing saved entry instead.";
+  }
   return "Could not save right now.";
 }
 
@@ -118,7 +121,9 @@ export function LessonAim({ slug }: { slug: string }) {
           Edit
         </button>
         <p className="lp-commit-help">
-          Saved per lesson. Your coach opens every session by asking this.
+          {slug === "track"
+            ? "Saved for the whole track. Your coach opens every session by asking this."
+            : "Saved per lesson. Your coach opens every session by asking this."}
         </p>
       </div>
     );

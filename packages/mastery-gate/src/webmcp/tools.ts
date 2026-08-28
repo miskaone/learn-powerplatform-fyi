@@ -74,7 +74,10 @@ const EXAM_START_HINT =
   'Exam started: coaching tools are revoked until submit — only get_exam_status and submit_exam stay registered. Re-check this page\'s tools.';
 
 const EXAM_SUBMIT_HINT =
-  'Exam submitted: coaching tools are restored and get_exam_debrief is now registered — re-check this page\'s tools.';
+  'Exam submitted: get_exam_debrief is now registered — call it to review. Coaching tools return only after the learner clicks "Return to practice" on the exam screen; until then only the exam tools remain. Re-check this page\'s tools.';
+
+const GATE_REGRESS_HINT =
+  'Gate closed: this accepted rescore dropped a dimension below 3 — advance_module and start_exam are revoked. Re-check this page\'s tools (getTools).';
 
 const RUBRIC_INTERVIEW_GUIDANCE =
   'MCQ coverage is sufficient but the gate has not passed — run the rubric interview now: ask 5–8 open questions across recall, connections, application, and transfer, one at a time, never answering for the learner. Then submit score_rubric with a 0–4 score per dimension and a verbatim evidence quote for each.';
@@ -262,14 +265,19 @@ export function createToolset(
         if (!parsed.ok) {
           return parsed.response;
         }
+        const gateWasPassed = engine.getLearnerState().gatePassed;
         const verdict = publicRubricVerdict(engine.scoreRubric(parsed.value));
-        if (verdict.accepted && verdict.gatePassed) {
+        const crossedOpen =
+          verdict.accepted && verdict.gatePassed && !gateWasPassed;
+        const crossedClosed =
+          verdict.accepted && !verdict.gatePassed && gateWasPassed;
+        if (crossedOpen || crossedClosed) {
           return textResponse({
             accepted: verdict.accepted,
             scores: verdict.scores,
             gatePassed: verdict.gatePassed,
             rejectionReason: verdict.rejectionReason,
-            toolChangeHint: GATE_PASS_HINT,
+            toolChangeHint: crossedOpen ? GATE_PASS_HINT : GATE_REGRESS_HINT,
           });
         }
         return textResponse(verdict);
@@ -277,7 +285,7 @@ export function createToolset(
     ),
     set_lesson_aim: descriptor(
       'set_lesson_aim',
-      'Record why the learner is here: "I\'m reading this because I need to ___". ASK for the aim as your FIRST question of every session, before any practice, and store the answer here (200 chars max). It persists per lesson, appears in get_learner_state, and can never be used as rubric evidence. Set it again if the learner\'s goal shifts.',
+      'Record why the learner is here: "I\'m reading this because I need to ___". ASK for the aim as your FIRST question of every session, before any practice, and store the answer here (200 chars max). It persists per lesson — keyed "track" when the learner is on the hub rather than a lesson page — appears in get_learner_state, and can never be used as rubric evidence. Set it again if the learner\'s goal shifts.',
       closedObject({ aim: stringSchema() }, ['aim']),
       async (input) => {
         const parsed = requireStrings(input, ['aim'] as const);
@@ -422,7 +430,7 @@ export function createToolset(
     ),
     submit_exam: descriptor(
       'submit_exam',
-      'Submit the exam, locking all answers, restoring the coaching tools, and unlocking get_exam_debrief. Call when the learner finishes or time is nearly out. The response names the restored tools — re-check the roster.',
+      'Submit the exam, locking all answers and unlocking get_exam_debrief. Coaching tools return only when the learner leaves the exam screen ("Return to practice") — that step is theirs, not yours. Call when the learner finishes or time is nearly out, then watch the response\'s toolChangeHint.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);

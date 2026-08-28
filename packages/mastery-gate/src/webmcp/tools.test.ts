@@ -521,7 +521,10 @@ const EXAM_START_HINT =
   'Exam started: coaching tools are revoked until submit — only get_exam_status and submit_exam stay registered. Re-check this page\'s tools.';
 
 const EXAM_SUBMIT_HINT =
-  'Exam submitted: coaching tools are restored and get_exam_debrief is now registered — re-check this page\'s tools.';
+  'Exam submitted: get_exam_debrief is now registered — call it to review. Coaching tools return only after the learner clicks "Return to practice" on the exam screen; until then only the exam tools remain. Re-check this page\'s tools.';
+
+const GATE_REGRESS_HINT =
+  'Gate closed: this accepted rescore dropped a dimension below 3 — advance_module and start_exam are revoked. Re-check this page\'s tools (getTools).';
 
 const RUBRIC_INTERVIEW_GUIDANCE =
   'MCQ coverage is sufficient but the gate has not passed — run the rubric interview now: ask 5–8 open questions across recall, connections, application, and transfer, one at a time, never answering for the learner. Then submit score_rubric with a 0–4 score per dimension and a verbatim evidence quote for each.';
@@ -649,6 +652,45 @@ test('score_rubric toolChangeHint is present only when accepted and the gate pas
   expect(openedPayload['accepted']).toBe(true);
   expect(openedPayload['gatePassed']).toBe(true);
   expect(openedPayload['toolChangeHint']).toBe(GATE_PASS_HINT);
+});
+
+function stateWithGatePassed(gatePassed: boolean): LearnerStatePublic {
+  return {
+    scores: { ...SAMPLE_SCORES },
+    misconceptionFires: {},
+    phase: 'practice',
+    gatePassed,
+    attemptCount: 1,
+    lessonAims: {},
+    ruleCompressions: {},
+    runCommitments: {},
+  };
+}
+
+test('score_rubric emits no hint when the gate was already open (accepted rescore)', async () => {
+  const { engine } = createStubEngine({
+    learnerState: stateWithGatePassed(true),
+    scoreGatePassed: true,
+  });
+  const payload = asRecord(
+    payloadOf(await createToolset(engine).score_rubric.execute(rubricInput())),
+  );
+  expect(payload['accepted']).toBe(true);
+  expect(payload['gatePassed']).toBe(true);
+  expect(payload['toolChangeHint']).toBeUndefined();
+});
+
+test('score_rubric emits the regress hint when an accepted rescore closes the gate', async () => {
+  const { engine } = createStubEngine({
+    learnerState: stateWithGatePassed(true),
+    scoreGatePassed: false,
+  });
+  const payload = asRecord(
+    payloadOf(await createToolset(engine).score_rubric.execute(rubricInput())),
+  );
+  expect(payload['accepted']).toBe(true);
+  expect(payload['gatePassed']).toBe(false);
+  expect(payload['toolChangeHint']).toBe(GATE_REGRESS_HINT);
 });
 
 test('submit_answer toolChangeHint is present only on the second misconception fire', async () => {

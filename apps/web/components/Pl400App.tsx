@@ -11,6 +11,7 @@ import { lessonIndex } from "../lib/lessonIndex";
 import { lessonProgress, type MasteryStack } from "../lib/masteryStack";
 import { DrillSection } from "./DrillSection";
 import { ExamSection } from "./ExamSection";
+import { LessonAim } from "./LessonReflection";
 import { PracticePanel } from "./PracticePanel";
 import { RubricPanel } from "./RubricPanel";
 import { StartCoaching } from "./StartCoaching";
@@ -150,6 +151,7 @@ export function Pl400App() {
 
           <section id="start-coaching" className="pl400-card">
             <StartCoaching agentDetected={gate.agentDetected} />
+            <LessonAim slug="track" />
           </section>
 
           <section id="practice" className="pl400-card">
