@@ -80,6 +80,21 @@ Disposition of that review, verified before adoption:
   states; quarantined debrief tools are the Day-6 graft decision (Aug 31), with
   backend + tests landing in the state-machines lane.
 
+## 7. Transparency pass — approved 2026-08-28, runs immediately after this pass ships
+
+From the research briefs' gap analyses (docs/research/), owner-approved as the one
+contest-window addition; everything else in those gap lists is post-contest roadmap.
+Own branch, same Grok-build/Forge-review/ship pattern. Adds ISC-67…69.
+
+1. **Learner-facing misconception map** (ISC-67, ≈0.5–1d): a "Your model" panel on
+   the hub rendering the ledger's misconceptionFires with the evidencing questions
+   (evidence, not bare badges — Long & Aleven's calibration caveat). The learner
+   sees exactly what get_learner_state shows the agent: the glass-box completion.
+2. **Export / clear my data** (ISC-68, ≈0.25d): JSON download of mastery-gate:v1 +
+   one-tap erase with confirmation. Copy: "your data never leaves your browser."
+3. **Success-card myth-naming** (ISC-69, tiny): correct-answer rationale names the
+   distractor-myth it defeats (feedback-after-success, Hattie & Timperley).
+
 ## Sequencing
 
 micro-lessons lane ships → state-machines workflow resumes (surface stage

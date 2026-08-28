@@ -90,6 +90,14 @@ https://learn.powerplatform.fyi/spike:
 - We verified against the actual W3C spec that **no static manifest discovery
   exists** — and deliberately shipped none. No coverage theater.
 
+The pedagogy isn't vibes either: two evidence-graded research briefs in-repo
+([learning science](research/learning-science-alignment.md) ·
+[learner modeling](research/learner-profiling-and-adaptation.md)) map every
+mechanism onto the literature — the redacted Socratic constraint against the
+documented LLM over-scaffolding and sycophantic-grading failure modes, exam
+revocation against the "crutch collapses when removed" RCT result, and
+step-level routing on the strong side of the adaptive-instruction meta-analyses.
+
 The engine and full WebMCP surface ship as an MIT package
 (`packages/mastery-gate`) — the pattern generalizes to any content site that
 wants an AI coach without surrendering authority. Every layer was
