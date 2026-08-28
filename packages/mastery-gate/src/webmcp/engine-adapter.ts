@@ -192,6 +192,28 @@ export class MasteryEngineFacade implements EngineFacade {
         summary: concept.summary,
       })),
       productionNuance: [...brief.productionNuance],
+      scenarioExpectedAnswer: brief.scenarioExpectedAnswer ?? null,
+      distractors: brief.distractors.map((d) => ({
+        choice: d.choice,
+        whyTempting: d.whyTempting,
+        whyWrong: d.whyWrong,
+      })),
+      visual: {
+        type: brief.visual.type,
+        title: brief.visual.title,
+        steps: brief.visual.steps.map((s) => ({
+          label: s.label,
+          state: s.state,
+          detail: s.detail,
+        })),
+      },
+      drills: {
+        recall: brief.drills.recall,
+        connections: brief.drills.connections,
+        application: brief.drills.application,
+        transfer: brief.drills.transfer,
+      },
+      reflection: [...brief.reflection],
       sections: brief.sections.map((section) => ({
         anchor: section.anchor,
         title: section.title,

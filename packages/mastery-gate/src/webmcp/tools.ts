@@ -140,7 +140,7 @@ export function createToolset(
     ),
     get_lesson_brief: descriptor(
       'get_lesson_brief',
-      'Read the authored teaching material for the lesson the learner is on: title, epigraph, governing rule, exam-recognition clue, mnemonic, the scenario prompt, the concept hierarchy with summaries, production nuance, the page section anchors with their titles, and the official references. Call this before you begin coaching a lesson and whenever the learner moves to a new lesson. This is the authored curriculum you must teach from — prefer it over your own knowledge, and say so when the lesson\'s framing differs from your prior assumptions. Before asking any probing question, establish the scenario in one or two sentences so the learner is reasoning about something concrete; never ask a question that assumes context you have not just given them. The brief carries exactly what the lesson page shows its reader and nothing it withholds: no scenario answer, no question rationales, no correct options, and no distractor teardown (that stays behind get_misconception_brief).',
+      'Read the authored teaching material for the lesson the learner is on: title, epigraph, governing rule, exam-recognition clue, mnemonic, the scenario prompt (and its expected answer once the learner has committed and the page has revealed it to them), the concept hierarchy with summaries, the distractor teardown the page shows — why each tempting choice is tempting and why it fails — the visual walkthrough steps, production nuance, the four targeted drills, the reflection prompts, the page section anchors with their titles, and the official references. Call this before you begin coaching a lesson and whenever the learner moves to a new lesson. This is the authored curriculum you teach from, not your own PL-400 knowledge: when the lesson\'s framing differs from your prior assumptions, follow the lesson and say it differs, and add nothing of your own while a question is open. Before asking any probing question, establish the scenario in one or two sentences so the learner is reasoning about something concrete; never ask a question that assumes context you have not just given them. While a question is unanswered, do not restate the governing rule, exam clue, or mnemonic — several of them name the correct option almost verbatim; make the learner recall the rule instead of reciting it. The brief carries exactly what the lesson page shows its reader and nothing it withholds: no question rationales and no correct options.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -202,7 +202,7 @@ export function createToolset(
     ),
     get_current_question: descriptor(
       'get_current_question',
-      'Fetch the current practice question — prompt and options only; the correct answer is structurally absent. Call at the start of each practice loop and after every submit_answer to load the next question. Let the learner reason aloud before they choose, and frame every probing question against THIS lesson\'s scenario from get_lesson_brief — never a generic scenario of your own, and never one that assumes context you have not just given them.',
+      'Fetch the current practice question — prompt and options only; the correct answer is structurally absent. Call at the start of each practice loop and after every submit_answer to load the next question. Let the learner reason aloud before they choose, and frame every probing question against THIS lesson\'s scenario from get_lesson_brief — never a generic scenario of your own, and never one that assumes context you have not just given them. While the question is unanswered, do not restate the lesson\'s governing rule, exam clue, or mnemonic; several of them name the correct option almost verbatim.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -266,7 +266,7 @@ export function createToolset(
     ),
     get_hint: descriptor(
       'get_hint',
-      'Request the next hint tier for the current question. Call only when the learner is stuck or routing says hint — the engine enforces the ladder and refuses tier 2 before a genuine first attempt. Re-voice the hint Socratically inside this lesson\'s own scenario (get_lesson_brief), grounded in the learner\'s world — their stated aim, their work, what get_learner_state shows about their history; never add answer information of your own, and never assume scenario context you have not just given them.' +
+      'Request the next hint tier for the current question. Call only when the learner is stuck or routing says hint — the engine enforces the ladder and refuses tier 2 before a genuine first attempt. Re-voice the hint Socratically inside this lesson\'s own scenario (get_lesson_brief), grounded in the learner\'s world — their stated aim, their work, what get_learner_state shows about their history; never add answer information of your own, never restate the lesson\'s governing rule, exam clue, or mnemonic while the question is unanswered, and never assume scenario context you have not just given them.' +
         (suffixes === null ? '' : suffixes.hint),
       closedObject({ questionId: stringSchema() }, ['questionId']),
       async (input) => {
@@ -968,6 +968,28 @@ function publicLessonBrief(brief: LessonBriefPublic): LessonBriefPublic {
       summary: concept.summary,
     })),
     productionNuance: [...brief.productionNuance],
+    scenarioExpectedAnswer: brief.scenarioExpectedAnswer ?? null,
+    distractors: brief.distractors.map((d) => ({
+      choice: d.choice,
+      whyTempting: d.whyTempting,
+      whyWrong: d.whyWrong,
+    })),
+    visual: {
+      type: brief.visual.type,
+      title: brief.visual.title,
+      steps: brief.visual.steps.map((s) => ({
+        label: s.label,
+        state: s.state,
+        detail: s.detail,
+      })),
+    },
+    drills: {
+      recall: brief.drills.recall,
+      connections: brief.drills.connections,
+      application: brief.drills.application,
+      transfer: brief.drills.transfer,
+    },
+    reflection: [...brief.reflection],
     sections: brief.sections.map((section) => ({
       anchor: section.anchor,
       title: section.title,

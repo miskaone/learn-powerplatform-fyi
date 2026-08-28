@@ -40,12 +40,64 @@ const BRIEF: LessonBriefPublic = {
     },
   ],
   productionNuance: ['Never open an outbound socket from a sandboxed plug-in.'],
+  scenarioExpectedAnswer: null,
+  distractors: [
+    {
+      choice: 'Custom API',
+      whyTempting: 'It looks like the platform-native hook.',
+      whyWrong:
+        'It runs outside the sandbox boundary the lesson is about.',
+    },
+  ],
+  visual: {
+    type: 'state walkthrough',
+    title: 'Watch isolation take hold',
+    steps: [
+      {
+        label: 'Register',
+        state: 'Sandboxed',
+        detail: 'The plug-in loads in isolation mode.',
+      },
+    ],
+  },
+  drills: {
+    recall: 'Name the isolation mode.',
+    connections: 'Relate isolation to service calls.',
+    application: 'Pick the isolation mode for a nightly job.',
+    transfer: 'Apply it to your own plug-in.',
+  },
+  reflection: ['Where would this rule have saved you time?'],
   sections: [
     { anchor: 'plugin-isolation-rule', title: 'Governing rule' },
     { anchor: 'plugin-isolation-scenario', title: '01 / Scenario' },
   ],
   references: [{ label: 'Docs', url: 'https://example.invalid/docs' }],
 };
+
+const BRIEF_KEYS = [
+  'concepts',
+  'distractors',
+  'drills',
+  'examClue',
+  'governingRule',
+  'heroEpigraph',
+  'id',
+  'mnemonic',
+  'objectiveId',
+  'productionNuance',
+  'references',
+  'reflection',
+  'scenarioExpectedAnswer',
+  'scenarioPrompt',
+  'sections',
+  'slug',
+  'title',
+  'topicTitle',
+  'visual',
+].sort();
+
+const REVEALED_SCENARIO_ANSWER =
+  'SharePoint, because the records own many documents.';
 
 function payloadOf(response: ToolResponse): Record<string, unknown> {
   const parsed: unknown = JSON.parse(response.content[0].text);
@@ -89,24 +141,7 @@ test('get_lesson_brief serializes exactly the authored fields the page shows', a
   const payload = payloadOf(await tools.get_lesson_brief.execute({}));
   const brief = payload['brief'] as Record<string, unknown>;
 
-  expect(Object.keys(brief).sort()).toEqual(
-    [
-      'concepts',
-      'examClue',
-      'governingRule',
-      'heroEpigraph',
-      'id',
-      'mnemonic',
-      'objectiveId',
-      'productionNuance',
-      'references',
-      'scenarioPrompt',
-      'sections',
-      'slug',
-      'title',
-      'topicTitle',
-    ].sort(),
-  );
+  expect(Object.keys(brief).sort()).toEqual(BRIEF_KEYS);
   expect(brief['governingRule']).toBe(BRIEF.governingRule);
   expect(brief['scenarioPrompt']).toBe(BRIEF.scenarioPrompt);
   expect(brief['sections']).toEqual([
@@ -121,6 +156,22 @@ test('get_lesson_brief serializes exactly the authored fields the page shows', a
       summary: 'Isolation mode constrains what a plug-in may reach.',
     },
   ]);
+  expect(brief['scenarioExpectedAnswer']).toBe(null);
+  expect(brief['distractors']).toEqual(BRIEF.distractors);
+  expect(brief['visual']).toEqual(BRIEF.visual);
+  expect(brief['visual']).toEqual({
+    type: 'state walkthrough',
+    title: 'Watch isolation take hold',
+    steps: [
+      {
+        label: 'Register',
+        state: 'Sandboxed',
+        detail: 'The plug-in loads in isolation mode.',
+      },
+    ],
+  });
+  expect(brief['drills']).toEqual(BRIEF.drills);
+  expect(brief['reflection']).toEqual(BRIEF.reflection);
 });
 
 test('the brief is projected field by field — a widened provider payload cannot leak', () => {
@@ -129,18 +180,17 @@ test('the brief is projected field by field — a widened provider payload canno
     expectedAnswer: 'Sandbox, then IOrganizationService, then write.',
     correctOptionId: 'q1-a',
     rationale: 'Because the sandbox blocks outbound sockets.',
-    distractors: [{ choice: 'HTTP client', whyTempting: 'x', whyWrong: 'y' }],
   } as unknown as LessonBriefPublic;
   const { facade } = makeFacade(contaminated);
   const projected = facade.getLessonBrief();
   const serialized = JSON.stringify(projected);
 
   expect(projected).not.toBeNull();
-  expect(serialized).not.toContain('expectedAnswer');
+  // `scenarioExpectedAnswer` is a legitimate key; the bare substring
+  // `expectedAnswer` is no longer the right instrument.
+  expect(serialized).not.toContain('"expectedAnswer"');
   expect(serialized).not.toContain('correctOptionId');
   expect(serialized).not.toContain('rationale');
-  expect(serialized).not.toContain('whyTempting');
-  expect(serialized).not.toContain('whyWrong');
   expect(serialized).not.toContain('Sandbox, then IOrganizationService');
 });
 
@@ -156,11 +206,25 @@ test('the brief hands back defensive copies, not the provider’s own arrays', (
   });
   first?.sections.push({ anchor: 'injected', title: 'Injected' });
   first?.productionNuance.push('injected');
+  first?.distractors.push({
+    choice: 'injected',
+    whyTempting: 'injected',
+    whyWrong: 'injected',
+  });
+  first?.visual.steps.push({
+    label: 'injected',
+    state: 'injected',
+    detail: 'injected',
+  });
+  first?.reflection.push('injected');
 
   const second = facade.getLessonBrief();
   expect(second?.concepts.length).toBe(1);
   expect(second?.sections.length).toBe(2);
   expect(second?.productionNuance.length).toBe(1);
+  expect(second?.distractors.length).toBe(1);
+  expect(second?.visual.steps.length).toBe(1);
+  expect(second?.reflection.length).toBe(1);
 });
 
 test('no active lesson: the tool reports no brief instead of inventing one', async () => {
@@ -218,6 +282,92 @@ test('exam guard: the tool refuses mid-exam even if it is still reachable', asyn
   expect(serialized).not.toContain(BRIEF.governingRule);
   expect(serialized).not.toContain(BRIEF.examClue);
   expect(serialized).not.toContain(BRIEF.scenarioPrompt);
+});
+
+test('scenarioExpectedAnswer passes through when the page has revealed it, and is null when it has not', async () => {
+  const revealed: LessonBriefPublic = {
+    ...BRIEF,
+    scenarioExpectedAnswer: REVEALED_SCENARIO_ANSWER,
+  };
+  const defaultPayload = payloadOf(
+    await createToolset(makeFacade().facade).get_lesson_brief.execute({}),
+  );
+  const revealedPayload = payloadOf(
+    await createToolset(makeFacade(revealed).facade).get_lesson_brief.execute(
+      {},
+    ),
+  );
+  const defaultBrief = defaultPayload['brief'] as Record<string, unknown>;
+  const revealedBrief = revealedPayload['brief'] as Record<string, unknown>;
+
+  expect(defaultBrief['scenarioExpectedAnswer']).toBe(null);
+  expect(revealedBrief['scenarioExpectedAnswer']).toBe(REVEALED_SCENARIO_ANSWER);
+});
+
+test('the exam guard still refuses the widened brief', async () => {
+  let now = 1_000_000;
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST_WITH_EXAM,
+    new MemoryStorageAdapter(),
+    { now: () => now },
+  );
+  const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST_WITH_EXAM, {
+    getLessonBrief: () => BRIEF,
+  });
+  facade.submitAnswer('q1', 'q1-a');
+  facade.scoreRubric(rubric(3));
+  facade.startExam();
+
+  const tools = createToolset(facade);
+  const payload = payloadOf(await tools.get_lesson_brief.execute({}));
+  const serialized = JSON.stringify(payload);
+  expect(payload['brief']).toBe(null);
+  expect(serialized).not.toContain('Custom API');
+  expect(serialized).not.toContain('It looks like the platform-native hook.');
+  expect(serialized).not.toContain(
+    'It runs outside the sandbox boundary the lesson is about.',
+  );
+  expect(serialized).not.toContain('Watch isolation take hold');
+  expect(serialized).not.toContain('The plug-in loads in isolation mode.');
+  expect(serialized).not.toContain('Name the isolation mode.');
+  expect(serialized).not.toContain('Relate isolation to service calls.');
+  expect(serialized).not.toContain(
+    'Pick the isolation mode for a nightly job.',
+  );
+  expect(serialized).not.toContain('Apply it to your own plug-in.');
+  expect(serialized).not.toContain('Where would this rule have saved you time?');
+});
+
+test('publicLessonBrief copies field by field — a spread would leak a widened source', async () => {
+  const contaminated = {
+    ...BRIEF,
+    secretAnswerKey: 'ml11-q2-d',
+  } as unknown as LessonBriefPublic;
+  // The tool boundary is the SECOND independent projection. Feeding the
+  // contaminated brief through a real MasteryEngineFacade would prove nothing
+  // here — the adapter's own field-by-field copy (pinned by the test above)
+  // strips the extra property before publicLessonBrief ever sees it. So hand
+  // createToolset a facade whose getLessonBrief returns the contaminated
+  // object verbatim: this test fails the moment publicLessonBrief is replaced
+  // by a spread. (Verified by mutation: adding `...brief` makes it red.)
+  const base = makeFacade().facade;
+  const leaky = new Proxy(base, {
+    get(target, prop, receiver) {
+      if (prop === 'getLessonBrief') {
+        return () => contaminated;
+      }
+      const value: unknown = Reflect.get(target, prop, receiver);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+  const tools = createToolset(leaky);
+  const payload = payloadOf(await tools.get_lesson_brief.execute({}));
+  const brief = payload['brief'] as Record<string, unknown>;
+  const serialized = JSON.stringify(payload);
+
+  expect(Object.keys(brief).sort()).toEqual(BRIEF_KEYS);
+  expect(serialized).not.toContain('secretAnswerKey');
+  expect(serialized).not.toContain('ml11-q2-d');
 });
 
 test('registry: get_lesson_brief is static — live in lesson and practice, revoked in exam', async () => {

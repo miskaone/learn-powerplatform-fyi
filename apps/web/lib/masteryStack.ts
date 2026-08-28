@@ -44,6 +44,8 @@ export interface MasteryStack {
   /** Stops the late-binding runtime detection loop, if one is running. */
   stopRuntimeDetection: () => void;
   setActiveLesson(slug: string | null, brief?: LessonBriefPublic | null): void;
+  /** Replaces the active lesson's brief in place (no question-scope churn). Ignored unless the slug matches the active lesson AND the brief's own slug. */
+  setLessonBrief(slug: string, brief: LessonBriefPublic | null): void;
   getActiveLessonSlug(): string | null;
   /** Live read of tools whose revocation drain has exceeded the warn threshold. */
   getStuckRevocations(): string[];
@@ -58,6 +60,74 @@ export interface MasteryStack {
  */
 const RUNTIME_POLL_MS = 500;
 const RUNTIME_POLL_MAX_ATTEMPTS = 240; // 2 minutes, then give up quietly
+
+function resolvedBriefForSlug(
+  slug: string,
+  brief: LessonBriefPublic | null | undefined,
+): LessonBriefPublic | null | undefined {
+  if (brief === undefined || brief === null) {
+    return brief;
+  }
+  if (brief.slug !== slug) {
+    console.warn(
+      `setActiveLesson: brief slug "${brief.slug}" does not match lesson "${slug}" — brief ignored`,
+    );
+    return null;
+  }
+  return brief;
+}
+
+function copyBrief(brief: LessonBriefPublic): LessonBriefPublic {
+  return {
+    id: brief.id,
+    slug: brief.slug,
+    title: brief.title,
+    topicTitle: brief.topicTitle,
+    objectiveId: brief.objectiveId,
+    heroEpigraph: brief.heroEpigraph,
+    governingRule: brief.governingRule,
+    examClue: brief.examClue,
+    mnemonic: brief.mnemonic,
+    scenarioPrompt: brief.scenarioPrompt,
+    concepts: brief.concepts.map((concept) => ({
+      id: concept.id,
+      label: concept.label,
+      importance: concept.importance,
+      summary: concept.summary,
+    })),
+    productionNuance: brief.productionNuance.map((line) => line),
+    scenarioExpectedAnswer: brief.scenarioExpectedAnswer ?? null,
+    distractors: brief.distractors.map((d) => ({
+      choice: d.choice,
+      whyTempting: d.whyTempting,
+      whyWrong: d.whyWrong,
+    })),
+    visual: {
+      type: brief.visual.type,
+      title: brief.visual.title,
+      steps: brief.visual.steps.map((s) => ({
+        label: s.label,
+        state: s.state,
+        detail: s.detail,
+      })),
+    },
+    drills: {
+      recall: brief.drills.recall,
+      connections: brief.drills.connections,
+      application: brief.drills.application,
+      transfer: brief.drills.transfer,
+    },
+    reflection: brief.reflection.map((line) => line),
+    sections: brief.sections.map((section) => ({
+      anchor: section.anchor,
+      title: section.title,
+    })),
+    references: brief.references.map((reference) => ({
+      label: reference.label,
+      url: reference.url,
+    })),
+  };
+}
 
 export function createMasteryStack(
   onEngineMutation: () => void,
@@ -113,6 +183,28 @@ export function createMasteryStack(
           summary: concept.summary,
         })),
         productionNuance: [...brief.productionNuance],
+        scenarioExpectedAnswer: brief.scenarioExpectedAnswer ?? null,
+        distractors: brief.distractors.map((d) => ({
+          choice: d.choice,
+          whyTempting: d.whyTempting,
+          whyWrong: d.whyWrong,
+        })),
+        visual: {
+          type: brief.visual.type,
+          title: brief.visual.title,
+          steps: brief.visual.steps.map((s) => ({
+            label: s.label,
+            state: s.state,
+            detail: s.detail,
+          })),
+        },
+        drills: {
+          recall: brief.drills.recall,
+          connections: brief.drills.connections,
+          application: brief.drills.application,
+          transfer: brief.drills.transfer,
+        },
+        reflection: [...brief.reflection],
         sections: brief.sections.map((section) => ({
           anchor: section.anchor,
           title: section.title,
@@ -161,9 +253,11 @@ export function createMasteryStack(
         if (entry === undefined) {
           console.warn(`setActiveLesson: unknown lesson slug "${slug}"`);
         } else {
+          const incoming = resolvedBriefForSlug(slug, brief);
           if (activeLesson !== null && activeLesson.slug === slug) {
-            if (activeLesson.brief === null && brief != null) {
-              activeLesson.brief = brief;
+            if (incoming !== undefined) {
+              activeLesson.brief =
+                incoming === null ? null : copyBrief(incoming);
             }
             return;
           }
@@ -173,7 +267,7 @@ export function createMasteryStack(
             objectiveId: entry.objectiveId,
             sectionAnchors: lessonSectionAnchorEntries(slug),
             questionIds: entry.questionIds,
-            brief: brief ?? null,
+            brief: incoming == null ? null : copyBrief(incoming),
           };
           engine.setQuestionScope(entry.questionIds);
           onEngineMutation();
@@ -186,6 +280,18 @@ export function createMasteryStack(
       activeLesson = null;
       engine.setQuestionScope(null);
       onEngineMutation();
+    },
+    setLessonBrief(slug: string, brief: LessonBriefPublic | null): void {
+      if (activeLesson === null || activeLesson.slug !== slug) {
+        return;
+      }
+      if (brief !== null && brief.slug !== slug) {
+        console.warn(
+          `setLessonBrief: brief slug "${brief.slug}" does not match lesson "${slug}" — brief ignored`,
+        );
+        return;
+      }
+      activeLesson.brief = brief === null ? null : copyBrief(brief);
     },
     getActiveLessonSlug(): string | null {
       return activeLesson === null ? null : activeLesson.slug;

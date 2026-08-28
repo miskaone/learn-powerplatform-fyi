@@ -62,28 +62,51 @@ export interface LessonBriefConceptPublic {
   summary: string;
 }
 
+export interface LessonBriefDistractorPublic {
+  choice: string;
+  whyTempting: string;
+  whyWrong: string;
+}
+
+export interface LessonBriefVisualStepPublic {
+  label: string;
+  state: string;
+  detail: string;
+}
+
+export interface LessonBriefVisualPublic {
+  type: string;
+  title: string;
+  steps: LessonBriefVisualStepPublic[];
+}
+
+export interface LessonBriefDrillsPublic {
+  recall: string;
+  connections: string;
+  application: string;
+  transfer: string;
+}
+
 export interface LessonBriefReferencePublic {
   label: string;
   url: string;
 }
 
 /**
- * The authored teaching material for the active lesson — exactly what a
- * learner reading the lesson page gets, and nothing that page withholds.
+ * The authored teaching material for the active lesson.
  *
- * INCLUDED because the page shows it: title, epigraph, governing rule, exam
- * clue, mnemonic, the scenario PROMPT, the concept hierarchy with summaries,
- * production nuance, the section anchors with their titles, references.
+ * The agent gets exactly what a learner reading the page gets. No more, no less.
  *
- * EXCLUDED, structurally (these fields do not exist on this type):
- * - the scenario's expected answer — the page withholds it until the learner
- *   commits, and it is not even carried by the app's lesson catalog (it ships
- *   as a separate post-commit fetch), so the brief provider has no access to
- *   it at all;
- * - question rationales, correctOptionId, and option→misconception mapping —
- *   answer-key material, absent from every tool payload;
- * - the distractor teardown (whyTempting / whyWrong) — that stays gated
- *   behind an actual misconception fire via get_misconception_brief.
+ * INCLUDED because the lesson page renders it to every reader: title, epigraph, governing rule, exam
+ * clue, mnemonic, the scenario prompt, the concept hierarchy, the distractor teardown (choice /
+ * whyTempting / whyWrong — section 05 of the page, ungated), the visual walkthrough steps (section 04),
+ * production nuance, the four targeted drills and the reflection prompts (section 07), the section
+ * anchors with titles, references.
+ * scenarioExpectedAnswer: null until the learner commits their own answer and the page reveals it;
+ * non-null thereafter, mirroring exactly what is then on the learner's screen. It is never prerendered
+ * and never reaches this type except through the app layer's post-commit reveal.
+ * EXCLUDED, structurally (these fields do not exist on this type): question rationales, correctOptionId,
+ * and option->misconception mapping — answer-key material the page never shows, absent from every tool payload.
  */
 export interface LessonBriefPublic {
   id: string;
@@ -98,6 +121,11 @@ export interface LessonBriefPublic {
   scenarioPrompt: string;
   concepts: LessonBriefConceptPublic[];
   productionNuance: string[];
+  scenarioExpectedAnswer: string | null;
+  distractors: LessonBriefDistractorPublic[];
+  visual: LessonBriefVisualPublic;
+  drills: LessonBriefDrillsPublic;
+  reflection: string[];
   sections: LessonSectionAnchorPublic[];
   references: LessonBriefReferencePublic[];
 }

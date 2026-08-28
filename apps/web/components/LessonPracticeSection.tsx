@@ -24,7 +24,7 @@ export function LessonPracticeSection(props: {
     if (stack == null) {
       return;
     }
-    stack.setActiveLesson(slug, brief);
+    stack.setActiveLesson(slug);
     // The stack is a page-lifetime singleton, so leaving this route must
     // release the lesson scope — otherwise get_current_context and the
     // question scope stay pinned to this lesson on unrelated pages
@@ -35,6 +35,16 @@ export function LessonPracticeSection(props: {
         stack.setActiveLesson(null);
       }
     };
+  }, [slug, stack]);
+
+  // The brief changes identity when the learner commits the scenario and the
+  // page reveals the expected answer; updating it must not release and
+  // re-acquire the lesson scope.
+  useEffect(() => {
+    if (stack == null) {
+      return;
+    }
+    stack.setLessonBrief(slug, brief);
   }, [slug, stack, brief]);
 
   const progress =

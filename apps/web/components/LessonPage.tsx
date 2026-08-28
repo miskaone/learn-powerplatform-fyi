@@ -31,7 +31,13 @@ function importanceClass(importance: string): string {
   return "lp-importance-foundational";
 }
 
-function ScenarioCommit({ slug }: { slug: string }) {
+function ScenarioCommit({
+  slug,
+  onReveal,
+}: {
+  slug: string;
+  onReveal: (expectedAnswer: string | null) => void;
+}) {
   const [committed, setCommitted] = useState(false);
   const [text, setText] = useState("");
   // The expected answer never ships in the prerendered page (cross-review
@@ -55,11 +61,13 @@ function ScenarioCommit({ slug }: { slug: string }) {
           throw new Error("reveal payload malformed");
         }
         setExpectedAnswer(payload.expectedAnswer);
+        onReveal(payload.expectedAnswer);
       })
       .catch(() => {
         setRevealError(true);
+        onReveal(null);
       });
-  }, [slug]);
+  }, [slug, onReveal]);
 
   useEffect(() => {
     const stored = readScenarioCommit(slug);
@@ -104,6 +112,7 @@ function ScenarioCommit({ slug }: { slug: string }) {
             clearScenarioCommit(slug);
             setCommitted(false);
             setExpectedAnswer(null);
+            onReveal(null);
           }}
         >
           Reset commitment
@@ -214,11 +223,15 @@ function VisualWalkthrough({
 }
 
 export function LessonPage({ lesson }: { lesson: LessonPageData }) {
-  // Stable identity per lesson: the brief is a dependency of the practice
-  // section's setActiveLesson effect, and a fresh object each render would
-  // re-run that effect (release the lesson scope, re-acquire it, notify) on
-  // every render.
-  const brief = useMemo(() => toLessonBrief(lesson), [lesson]);
+  // The coach may see the expected answer exactly when the learner can —
+  // after their own commitment — and never before; it is never prerendered.
+  const [scenarioExpectedAnswer, setScenarioExpectedAnswer] = useState<
+    string | null
+  >(null);
+  const brief = useMemo(
+    () => toLessonBrief(lesson, scenarioExpectedAnswer),
+    [lesson, scenarioExpectedAnswer],
+  );
   const showMnemonic =
     Boolean(lesson.mnemonic) && lesson.mnemonic !== lesson.examClue;
 
@@ -263,7 +276,10 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
         <div className="lp-scenario">
           <p>{lesson.scenario.prompt}</p>
         </div>
-        <ScenarioCommit slug={lesson.slug} />
+        <ScenarioCommit
+          slug={lesson.slug}
+          onReveal={setScenarioExpectedAnswer}
+        />
       </section>
 
       <section className="lp-section" id={`${lesson.slug}-compress`}>

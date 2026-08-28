@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { MockModelContext } from "@learn/mastery-gate/webmcp";
+import { toLessonBrief } from "./lessonBrief";
 import { lessonSectionAnchorEntries } from "./lessonIndex";
+import { getLessonPage, lessonPages } from "./lessonPages";
 import { createMasteryStack, lessonProgress } from "./masteryStack";
 
 const POLL_MS = 500;
@@ -120,6 +122,180 @@ describe("active lesson scoping", () => {
     try {
       expect(stack.registry).toBeNull();
       expect(stack.getStuckRevocations()).toEqual([]);
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+});
+
+describe("lesson brief provider", () => {
+  const agentLessHost = { document: {} } as never;
+
+  function catalogLesson(slug: string) {
+    const lesson = getLessonPage(slug);
+    if (lesson === undefined) {
+      throw new Error(`catalog missing ${slug}`);
+    }
+    return lesson;
+  }
+
+  test("setActiveLesson carries the brief through the stack provider to the facade", () => {
+    const lesson = lessonPages[0];
+    if (lesson === undefined) {
+      throw new Error("catalog is empty");
+    }
+    const expected = toLessonBrief(lesson);
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      stack.setActiveLesson(lesson.slug, expected);
+      const brief = stack.facade.getLessonBrief();
+      expect(brief).not.toBeNull();
+      expect(brief?.id).toBe(expected.id);
+      expect(brief?.slug).toBe(expected.slug);
+      expect(brief?.governingRule).toBe(expected.governingRule);
+      expect(brief?.distractors).toEqual(expected.distractors);
+      expect(brief?.visual.steps).toEqual(expected.visual.steps);
+      expect(brief?.drills).toEqual(expected.drills);
+      expect(brief?.reflection).toEqual(expected.reflection);
+      expect(brief?.sections).toEqual(expected.sections);
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
+  test("no brief → the facade reports none", () => {
+    const lesson = lessonPages[0];
+    if (lesson === undefined) {
+      throw new Error("catalog is empty");
+    }
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      stack.setActiveLesson(lesson.slug);
+      expect(stack.facade.getLessonBrief()).toBeNull();
+      stack.setLessonBrief(lesson.slug, toLessonBrief(lesson));
+      expect(stack.facade.getLessonBrief()).not.toBeNull();
+      expect(stack.facade.getLessonBrief()?.slug).toBe(lesson.slug);
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
+  test("setLessonBrief replaces the brief in place without churning the question scope", () => {
+    const lesson = lessonPages[0];
+    if (lesson === undefined) {
+      throw new Error("catalog is empty");
+    }
+    const revealedText = "REVEALED-SCENARIO-ANSWER";
+    let notifies = 0;
+    const stack = createMasteryStack(
+      () => {
+        notifies += 1;
+      },
+      undefined,
+      agentLessHost,
+    );
+    try {
+      stack.setActiveLesson(lesson.slug, toLessonBrief(lesson));
+      const notifiesAfterScope = notifies;
+      const questionId = stack.facade.getCurrentQuestion()?.id;
+      const scope = stack.engine.getQuestionScope();
+      stack.setLessonBrief(lesson.slug, toLessonBrief(lesson, revealedText));
+      expect(stack.facade.getLessonBrief()?.scenarioExpectedAnswer).toBe(
+        revealedText,
+      );
+      expect(notifies).toBe(notifiesAfterScope);
+      expect(stack.engine.getQuestionScope()).toEqual(scope);
+      expect(stack.facade.getCurrentQuestion()?.id).toBe(questionId);
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
+  test("setLessonBrief ignores a brief for a different lesson", () => {
+    const lessonA = catalogLesson("entra-graph-connector-order");
+    const lessonB = catalogLesson("webhook-function-etl-boundary");
+    const briefA = toLessonBrief(lessonA);
+    const briefB = toLessonBrief(lessonB);
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      stack.setActiveLesson(lessonA.slug, briefA);
+      stack.setLessonBrief(lessonA.slug, briefB);
+      expect(stack.facade.getLessonBrief()?.slug).toBe(lessonA.slug);
+      expect(stack.facade.getLessonBrief()?.governingRule).toBe(
+        lessonA.governingRule,
+      );
+
+      stack.setLessonBrief(lessonB.slug, briefB);
+      expect(stack.facade.getLessonBrief()?.slug).toBe(lessonA.slug);
+      expect(stack.facade.getLessonBrief()?.governingRule).toBe(
+        lessonA.governingRule,
+      );
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
+  test("setActiveLesson refuses a brief whose slug does not match the lesson", () => {
+    const lessonA = catalogLesson("entra-graph-connector-order");
+    const lessonB = catalogLesson("webhook-function-etl-boundary");
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      stack.setActiveLesson(lessonA.slug, toLessonBrief(lessonB));
+      expect(stack.facade.getLessonBrief()).toBeNull();
+      expect(stack.engine.getQuestionScope()).toEqual([...lessonA.questionIds]);
+      expect(stack.facade.getCurrentQuestion()?.id).toBe(lessonA.questionIds[0]);
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
+  test("the stored brief is a defensive copy — mutating the caller's object cannot change tool output", () => {
+    const lesson = lessonPages[0];
+    if (lesson === undefined) {
+      throw new Error("catalog is empty");
+    }
+    const brief = toLessonBrief(lesson);
+    const authoredWhyWrong = brief.distractors[0]?.whyWrong;
+    const authoredDistractorCount = brief.distractors.length;
+    const authoredReflectionCount = brief.reflection.length;
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      stack.setActiveLesson(lesson.slug, brief);
+      brief.governingRule = "MUTATED";
+      brief.distractors.push({
+        choice: "MUTATED",
+        whyTempting: "MUTATED",
+        whyWrong: "MUTATED",
+      });
+      if (brief.distractors[0] !== undefined) {
+        brief.distractors[0].whyWrong = "MUTATED";
+      }
+      brief.reflection.push("MUTATED");
+
+      const stored = stack.facade.getLessonBrief();
+      expect(stored?.governingRule).toBe(lesson.governingRule);
+      expect(stored?.distractors.length).toBe(authoredDistractorCount);
+      expect(stored?.distractors[0]?.whyWrong).toBe(authoredWhyWrong);
+      expect(stored?.reflection.length).toBe(authoredReflectionCount);
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
+  test("same-slug setActiveLesson replaces the brief when one is supplied", () => {
+    const lesson = lessonPages[0];
+    if (lesson === undefined) {
+      throw new Error("catalog is empty");
+    }
+    const revealedText = "REVEALED-ON-SAME-SLUG";
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      stack.setActiveLesson(lesson.slug, toLessonBrief(lesson));
+      expect(stack.facade.getLessonBrief()?.scenarioExpectedAnswer).toBe(null);
+      stack.setActiveLesson(lesson.slug, toLessonBrief(lesson, revealedText));
+      expect(stack.facade.getLessonBrief()?.scenarioExpectedAnswer).toBe(
+        revealedText,
+      );
     } finally {
       stack.stopRuntimeDetection();
     }
