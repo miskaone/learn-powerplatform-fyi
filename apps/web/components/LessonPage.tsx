@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { LessonPageData } from "../lib/lessonPages";
 import "../app/pl-400/lesson.css";
+import { LessonPracticeSection } from "./LessonPracticeSection";
 
 const DRILL_ORDER = [
   ["recall", "RECALL"],
@@ -324,24 +325,13 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
         <div className="lp-section">
           <div className="lp-section-head">
             <span className="lp-label">05 / RETRIEVAL LAB</span>
-            <h2>Commit, then inspect the mechanism.</h2>
+            <h2>Practice this lesson against the live engine.</h2>
           </div>
-          <div
-            id="lesson-practice-mount"
-            data-lesson-practice-mount
-            data-lesson-slug={lesson.slug}
-            className="lp-practice-mount"
-          >
-            <span className="lp-label">PRACTICE — ENGINE MOUNT</span>
-            <p>
-              The mastery-gate practice engine mounts here in stage 2. Until
-              then, this lesson&apos;s questions run in the shared practice loop
-              on the track hub — same engine, same gate.
-            </p>
-            <Link href="/pl-400/#practice" className="lp-btn lp-btn-primary">
-              Open the practice loop
-            </Link>
-          </div>
+          <LessonPracticeSection
+            slug={lesson.slug}
+            title={lesson.title}
+            questionIds={lesson.questionIds}
+          />
         </div>
       </section>
 

@@ -8,12 +8,14 @@ import {
   resolveModelContext,
   DYNAMIC_TOOL_NAMES,
   STATIC_TOOL_NAMES,
+  type ActiveLessonPublic,
   type EngineFacade,
   type RegistrySnapshot,
   type ToolName,
 } from "@learn/mastery-gate/webmcp";
-import { scrollToSection } from "./anchor";
+import { navigateToAnchor } from "./anchor";
 import { lessonSections, manifest } from "./content";
+import { getLessonPage, lessonSectionAnchors } from "./lessonPages";
 import { NotifyingFacade } from "./notifyingFacade";
 
 /**
@@ -44,6 +46,8 @@ export interface MasteryStack {
   readonly storageDegraded: boolean;
   /** Stops the late-binding runtime detection loop, if one is running. */
   stopRuntimeDetection: () => void;
+  setActiveLesson(slug: string | null): void;
+  getActiveLessonSlug(): string | null;
 }
 
 /**
@@ -63,12 +67,22 @@ export function createMasteryStack(
 ): MasteryStack {
   const adapter = new LocalStorageAdapter();
   const engine = new MasteryEngine(manifest, adapter);
+  let activeLesson: (ActiveLessonPublic & { questionIds: readonly string[] }) | null =
+    null;
   const inner = new MasteryEngineFacade(engine, manifest, {
-    navigate: (anchor) => scrollToSection(anchor),
+    navigate: (anchor) => navigateToAnchor(anchor),
     evidenceCorpus: lessonSections.flatMap((section) => [
       section.title,
       ...section.body,
     ]),
+    getActiveLesson: () =>
+      activeLesson === null
+        ? null
+        : {
+            slug: activeLesson.slug,
+            title: activeLesson.title,
+            sectionAnchors: [...activeLesson.sectionAnchors],
+          },
   });
   const facade = new NotifyingFacade(inner, onEngineMutation);
   const ctx = resolveModelContext(host);
@@ -98,12 +112,62 @@ export function createMasteryStack(
       return adapter.isDegraded;
     },
     stopRuntimeDetection: () => {},
+    setActiveLesson(slug: string | null): void {
+      if (slug !== null) {
+        const page = getLessonPage(slug);
+        if (page === undefined) {
+          console.warn(`setActiveLesson: unknown lesson slug "${slug}"`);
+        } else {
+          if (activeLesson !== null && activeLesson.slug === slug) {
+            return;
+          }
+          activeLesson = {
+            slug,
+            title: page.title,
+            sectionAnchors: lessonSectionAnchors(slug),
+            questionIds: page.questionIds,
+          };
+          engine.setQuestionScope(page.questionIds);
+          onEngineMutation();
+          return;
+        }
+      }
+      if (activeLesson === null && engine.getQuestionScope() === null) {
+        return;
+      }
+      activeLesson = null;
+      engine.setQuestionScope(null);
+      onEngineMutation();
+    },
+    getActiveLessonSlug(): string | null {
+      return activeLesson === null ? null : activeLesson.slug;
+    },
   };
 
   if (ctx === null) {
     stack.stopRuntimeDetection = startRuntimeDetection(stack, facade, host, onRuntimeDetected);
   }
   return stack;
+}
+
+export function lessonProgress(
+  stack: MasteryStack,
+  questionIds: readonly string[],
+): { attempted: number; correct: number; total: number } {
+  const progress = stack.engine.getQuestionProgress();
+  const scoped = new Set(questionIds);
+  let attempted = 0;
+  let correct = 0;
+  for (const entry of progress) {
+    if (!scoped.has(entry.questionId)) {
+      continue;
+    }
+    attempted += 1;
+    if (entry.correct === true) {
+      correct += 1;
+    }
+  }
+  return { attempted, correct, total: questionIds.length };
 }
 
 function startRuntimeDetection(

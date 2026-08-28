@@ -590,3 +590,75 @@
     transition: none !important;
   }
 }
+
+.lp-practice-live {
+  text-align: left;
+  border-style: solid;
+  border-color: var(--lp-line);
+}
+
+.lp-practice-band .pl400-card {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--lp-line);
+}
+
+.lp-coach-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.lp-tools {
+  border: 1px solid var(--lp-navy-line);
+  background: var(--lp-navy);
+  color: var(--lp-hero-text);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+}
+
+.lp-tools summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--lp-hero-text);
+}
+
+.lp-tools .pl400-card {
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0 0;
+  color: inherit;
+}
+
+.lp-tools .tool-roster-desc,
+.lp-tools .tool-roster-count,
+.lp-tools .muted,
+.lp-tools .pl400-phase {
+  color: var(--lp-hero-muted);
+}
+
+/* The inset is navy in BOTH themes — token-derived chip/border colors from
+   pl400.css assume a --bg surface and go illegible here (white-on-white code
+   chips in light mode). Pin them to the navy palette. */
+.lp-tools .tool-roster-row {
+  border-color: var(--lp-navy-line);
+}
+
+.lp-tools .tool-roster-row code {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--lp-hero-text);
+}
+
+.lp-tools .pl400-kickoff-prompt {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--lp-hero-text);
+  border-color: var(--lp-navy-line);
+}
+
+@media (max-width: 720px) {
+  .lp-coach-row {
+    grid-template-columns: 1fr;
+  }
+}
+

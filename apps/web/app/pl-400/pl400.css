@@ -657,3 +657,92 @@ button.pl400-btn,
 .pl400-lesson-link-title{font-weight:650}
 .pl400-lesson-link-topic{font-size:.78rem;color:var(--muted)}
 
+.pl400-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.pl400-objective-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--pl400-border);
+  border-radius: 10px;
+}
+
+.pl400-objective-card h3 {
+  margin: 0;
+}
+
+.pl400-objective-card .muted {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.pl400-dim-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.pl400-dim-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  border: 1px solid var(--pl400-border);
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+}
+
+.pl400-dim-chip-met {
+  color: var(--pl400-success);
+  border-color: color-mix(in srgb, var(--pl400-success) 40%, var(--pl400-border));
+}
+
+.pl400-lesson-link-epigraph {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.pl400-lesson-link-progress {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.pl400-kickoff-prompt {
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  border: 1px solid var(--pl400-border);
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  margin: 0.75rem 0 0;
+  max-height: 16rem;
+  overflow: auto;
+  background: color-mix(in srgb, var(--text) 4%, var(--bg));
+  color: var(--text);
+}
+
+.pl400-kickoff-details summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+@media (max-width: 640px) {
+  .pl400-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+

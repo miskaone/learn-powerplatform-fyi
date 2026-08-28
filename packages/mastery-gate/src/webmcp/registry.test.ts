@@ -79,6 +79,7 @@ function createStubEngine(options?: {
       sectionTitle: 'Plugin isolation',
       concepts: ['IOrganizationService'],
       prerequisites: [],
+      lesson: null,
     }),
     getCurrentQuestion: () => question,
     submitAnswer: (questionId, optionId) => {

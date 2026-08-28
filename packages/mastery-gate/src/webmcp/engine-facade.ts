@@ -19,12 +19,19 @@ export interface LearnerStatePublic {
   attemptCount: number;
 }
 
+export interface ActiveLessonPublic {
+  slug: string;
+  title: string;
+  sectionAnchors: string[];
+}
+
 export interface CurrentContextPublic {
   objectiveId: string;
   sectionId: string;
   sectionTitle: string;
   concepts: string[];
   prerequisites: string[];
+  lesson: ActiveLessonPublic | null;
 }
 
 export interface SubmitAnswerVerdictPublic {

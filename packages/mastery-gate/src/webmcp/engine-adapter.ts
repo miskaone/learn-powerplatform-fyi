@@ -11,6 +11,7 @@ import type {
 import type { MasteryEngine } from '../engine';
 import { MAX_ATTEMPTS_PER_QUESTION, RUBRIC_DIMENSIONS } from '../engine';
 import type {
+  ActiveLessonPublic,
   AdvanceModuleResultPublic,
   AdvanceSegmentResultPublic,
   CommitPredictionResultPublic,
@@ -58,6 +59,11 @@ export interface MasteryEngineFacadeOptions {
   navigate?: (anchor: string) => boolean;
   /** Extra corpus lines the host app supplies (e.g. lesson body text). */
   evidenceCorpus?: readonly string[];
+  /**
+   * Route-derived active lesson. Absent or returning null → context.lesson
+   * is null. Never persisted; the host rebuilds this from the URL.
+   */
+  getActiveLesson?: () => ActiveLessonPublic | null;
 }
 
 /**
@@ -79,6 +85,9 @@ export class MasteryEngineFacade implements EngineFacade {
   private readonly manifest: ContentManifest;
   private readonly navigate: ((anchor: string) => boolean) | undefined;
   private readonly evidenceCorpus: readonly string[];
+  private readonly getActiveLesson:
+    | (() => ActiveLessonPublic | null)
+    | undefined;
 
   constructor(
     engine: MasteryEngine,
@@ -89,6 +98,7 @@ export class MasteryEngineFacade implements EngineFacade {
     this.manifest = manifest;
     this.navigate = options?.navigate;
     this.evidenceCorpus = options?.evidenceCorpus ?? [];
+    this.getActiveLesson = options?.getActiveLesson;
   }
 
   getLearnerState(): LearnerStatePublic {
@@ -105,12 +115,21 @@ export class MasteryEngineFacade implements EngineFacade {
   getCurrentContext(): CurrentContextPublic {
     const objective = this.currentObjective();
     const question = this.engine.getCurrentQuestion();
+    const l = this.getActiveLesson?.() ?? null;
     return {
       objectiveId: objective ? objective.id : '',
       sectionId: objective ? objective.id : '',
       sectionTitle: objective ? objective.title : '',
       concepts: question ? question.concepts : [],
       prerequisites: [],
+      lesson:
+        l === null
+          ? null
+          : {
+              slug: l.slug,
+              title: l.title,
+              sectionAnchors: [...l.sectionAnchors],
+            },
     };
   }
 

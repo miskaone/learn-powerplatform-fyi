@@ -135,6 +135,10 @@ interface LessonPage {
   slug: string;
   title: string;
   topic: { id: string; title: string };
+  /** Objective this lesson's questions are fenced under (manifest objective id). */
+  objectiveId: string;
+  /** Manifest question ids belonging to this lesson, in manifest order. */
+  questionIds: string[];
   heroEpigraph: string;
   governingRule: string;
   examClue: string;
@@ -728,12 +732,18 @@ function lessonMarkdown(lesson: SpecLesson): string {
 }
 
 /** Rich page payload for the /pl-400/[slug] template. Strings are copied verbatim (no `plain()`). */
-function lessonPageFor(lesson: SpecLesson): LessonPage {
+function lessonPageFor(
+  lesson: SpecLesson,
+  objectiveId: string,
+  questionIds: string[],
+): LessonPage {
   return {
     id: lesson.id,
     slug: lesson.slug,
     title: lesson.title,
     topic: { id: lesson.topic.id, title: lesson.topic.title },
+    objectiveId,
+    questionIds,
     heroEpigraph: lesson.heroEpigraph,
     governingRule: lesson.governingRule,
     examClue: lesson.examClue,
@@ -804,15 +814,17 @@ async function main(): Promise<void> {
     };
     const lesson = raw.lesson;
 
-    allPages.push(lessonPageFor(lesson));
     allSections.push(...lessonSectionsFor(lesson));
     await writeFile(join(lessonsDir, `${lesson.slug}.md`), lessonMarkdown(lesson), 'utf8');
 
+    const lessonQuestionIds: string[] = [];
     lesson.questions.forEach((question, index) => {
       const converted = convertQuestion(entry.key, lesson.slug, entry.objectiveId, question, index);
       allQuestions.push(converted);
+      lessonQuestionIds.push(converted.id);
       questionIdsByObjective.get(entry.objectiveId)?.push(converted.id);
     });
+    allPages.push(lessonPageFor(lesson, entry.objectiveId, lessonQuestionIds));
   }
 
   const manifest = {

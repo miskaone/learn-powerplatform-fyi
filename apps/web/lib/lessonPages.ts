@@ -8,6 +8,8 @@ export interface LessonPageData {
     id: string;
     title: string;
   };
+  objectiveId: string;
+  questionIds: string[];
   heroEpigraph: string;
   governingRule: string;
   examClue: string;
@@ -60,4 +62,24 @@ export const lessonPages: LessonPageData[] =
 
 export function getLessonPage(slug: string): LessonPageData | undefined {
   return lessonPages.find((page) => page.slug === slug);
+}
+
+export function lessonSectionAnchors(slug: string): string[] {
+  return [
+    `${slug}-rule`,
+    `${slug}-exam-clue`,
+    `${slug}-scenario`,
+    `${slug}-production`,
+  ];
+}
+
+const ANCHOR_OWNER_BY_ID = new Map<string, string>();
+for (const page of lessonPages) {
+  for (const anchor of lessonSectionAnchors(page.slug)) {
+    ANCHOR_OWNER_BY_ID.set(anchor, page.slug);
+  }
+}
+
+export function anchorOwnerSlug(anchor: string): string | null {
+  return ANCHOR_OWNER_BY_ID.get(anchor) ?? null;
 }

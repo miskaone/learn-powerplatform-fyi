@@ -30,6 +30,7 @@ function succeedingFacade(): EngineFacade {
       sectionTitle: "Section",
       concepts: [],
       prerequisites: [],
+      lesson: null,
     }),
     getCurrentQuestion: () => null,
     submitAnswer: (questionId) => ({
@@ -122,7 +123,7 @@ test("a facade method that throws NotImplementedError does NOT notify", () => {
   for (const [name, invoke] of MUTATING_METHODS) {
     let notifications = 0;
     const inner = succeedingFacade();
-    (inner as Record<string, unknown>)[name as string] = () => {
+    (inner as unknown as Record<string, unknown>)[name as string] = () => {
       throw new NotImplementedError(String(name));
     };
     const facade = new NotifyingFacade(inner, () => {

@@ -7,6 +7,16 @@
       "id": "api-integration-custom-connectors",
       "title": "API Integration & Custom Connectors"
     },
+    "objectiveId": "custom-connectors-azure-integration",
+    "questionIds": [
+      "ml13-q1",
+      "ml13-q2",
+      "ml13-q3",
+      "ml13-q4",
+      "ml13-q5",
+      "ml13-q6",
+      "ml13-q7"
+    ],
     "heroEpigraph": "Identity first; approval before access; call last.",
     "governingRule": "For a Canvas app that calls Microsoft Graph through a custom connector on behalf of the signed-in user, register the Entra app, request Graph permissions, grant required consent, configure the connector, then call it from the app.",
     "examClue": "Register → Permission → Consent → Connect → Call.",
@@ -155,6 +165,16 @@
       "id": "api-integration-custom-connectors",
       "title": "API Integration & Custom Connectors"
     },
+    "objectiveId": "custom-connectors-azure-integration",
+    "questionIds": [
+      "ml11-q1",
+      "ml11-q2",
+      "ml11-q3",
+      "ml11-q4",
+      "ml11-q5",
+      "ml11-q6",
+      "ml11-q7"
+    ],
     "heroEpigraph": "A signal starts work; compute changes data.",
     "governingRule": "A Dataverse webhook delivers a Dataverse server event to an external handler; an Azure Function supplies custom compute. For an external-to-Dataverse migration, choose a trigger that originates outside Dataverse and use the Function or another ETL compute layer for transformation.",
     "examClue": "Heavy transformation → Azure Function; event notification → webhook.",
@@ -320,6 +340,16 @@
       "id": "power-platform-security-governance",
       "title": "Power Platform Security & Governance"
     },
+    "objectiveId": "custom-connectors-azure-integration",
+    "questionIds": [
+      "ml09-q1",
+      "ml09-q2",
+      "ml09-q3",
+      "ml09-q4",
+      "ml09-q5",
+      "ml09-q6",
+      "ml09-q7"
+    ],
     "heroEpigraph": "A policy is not a vote; it is a boundary.",
     "governingRule": "Evaluate every data policy applicable to the resource's environment together: any Blocked classification prohibits the connector, and two unblocked connectors may coexist only when their Business/Non-Business classifications match in every applicable policy.",
     "examClue": "Any Blocked wins; otherwise compare the whole policy fingerprint—not one label from one policy.",
@@ -479,6 +509,15 @@
       "id": "api-integration-custom-connectors",
       "title": "API Integration & Custom Connectors"
     },
+    "objectiveId": "dataverse-extensibility-platform-limits",
+    "questionIds": [
+      "ml12-q1",
+      "ml12-q2",
+      "ml12-q3",
+      "ml12-q4",
+      "ml12-q5",
+      "ml12-q6"
+    ],
     "heroEpigraph": "Store the file for the work; route the work for the scale.",
     "governingRule": "Choose document storage from the user experience and capacity requirement, match business records with stable identifiers, and choose orchestration from the workload shape. For native model-driven document management at scale, that means SharePoint, an alternate-key lookup, and recoverable batch code.",
     "examClue": "Record context + many documents = SharePoint; initial volume = recoverable code; source ID = alternate key.",
@@ -628,6 +667,16 @@
       "id": "power-apps-component-selection",
       "title": "Power Apps Component Selection"
     },
+    "objectiveId": "dataverse-extensibility-platform-limits",
+    "questionIds": [
+      "ml14-q1",
+      "ml14-q2",
+      "ml14-q3",
+      "ml14-q4",
+      "ml14-q5",
+      "ml14-q6",
+      "ml14-q7"
+    ],
     "heroEpigraph": "Set the boundary once; filter the rows that belong inside it.",
     "governingRule": "A gallery needs a table, so use Filter for all matching rows. Compute a reusable date boundary separately when it makes the data-source predicate simpler, then verify delegation for the actual connector, operators, and column type.",
     "examClue": "Many gallery rows → Filter; future date → DateAdd; reusable boundary → Set.",

@@ -1,4 +1,4 @@
-import { test, expect } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
 import { MasteryEngine } from './engine';
 import { FIXTURE_MANIFEST, Q1_RATIONALE } from './fixtures';
 import { MemoryStorageAdapter } from './storage';
@@ -237,4 +237,79 @@ test('coaching notes are validated, clamped to 500 chars, and capped at the last
   // The cap also holds through persistence.
   const resumed = new MasteryEngine(FIXTURE_MANIFEST, adapter);
   expect(resumed.getCoachNotes()).toEqual(notes);
+});
+
+describe('question scope', () => {
+  test('setQuestionScope to a later question skips the manifest-first', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    expect(engine.getCurrentQuestion()?.id).toBe('q1');
+    engine.setQuestionScope(['q2']);
+    const current = engine.getCurrentQuestion();
+    expect(current === null).toBe(false);
+    if (current === null) {
+      return;
+    }
+    expect(current.id).toBe('q2');
+  });
+
+  test('scoped submit records on the shared ledger and survives scope clear', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    engine.setQuestionScope(['q2']);
+    engine.submitAnswer('q2-a');
+    engine.setQuestionScope(null);
+    expect(engine.getQuestionProgress()).toEqual([
+      { questionId: 'q2', attempts: 1, correct: false },
+    ]);
+  });
+
+  test('empty scope yields no current question', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    engine.setQuestionScope([]);
+    expect(engine.getCurrentQuestion()).toBe(null);
+  });
+
+  test('getQuestionProgress reports attempts and correct after a miss then a hit', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    engine.submitAnswer('q1-b');
+    engine.submitAnswer('q1-a');
+    const progress = engine.getQuestionProgress();
+    expect(progress).toEqual([
+      { questionId: 'q1', attempts: 2, correct: true },
+    ]);
+    const json = JSON.stringify(progress);
+    expect(json).not.toContain('correctOptionId');
+    expect(json).not.toContain('rationale');
+    expect(json).not.toContain('q1-a');
+    expect(json).not.toContain('q1-b');
+  });
+
+  test('reset keeps the scope and clears attempts', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    engine.setQuestionScope(['q3']);
+    engine.submitAnswer('q3-a');
+    engine.reset();
+    expect(engine.getQuestionScope()).toEqual(['q3']);
+    expect(engine.getQuestionProgress()).toEqual([]);
+    const current = engine.getCurrentQuestion();
+    expect(current === null).toBe(false);
+    if (current === null) {
+      return;
+    }
+    expect(current.id).toBe('q3');
+  });
 });

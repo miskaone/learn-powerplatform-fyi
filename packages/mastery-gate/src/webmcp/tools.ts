@@ -719,6 +719,14 @@ function publicContext(context: CurrentContextPublic): CurrentContextPublic {
     sectionTitle: context.sectionTitle,
     concepts: [...context.concepts],
     prerequisites: [...context.prerequisites],
+    lesson:
+      context.lesson === null
+        ? null
+        : {
+            slug: context.lesson.slug,
+            title: context.lesson.title,
+            sectionAnchors: [...context.lesson.sectionAnchors],
+          },
   };
 }
 

@@ -350,4 +350,36 @@ describe('MasteryEngineFacade', () => {
     expect(payload.questionId).toBe('q1');
     expect(facade.getLearnerState().attemptCount).toBe(2);
   });
+
+  test('getCurrentContext.lesson is null by default', () => {
+    const { facade } = makeFacade();
+    expect(facade.getCurrentContext().lesson).toBe(null);
+  });
+
+  test('getCurrentContext copies the active lesson field-by-field', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    const lesson = {
+      slug: 'x',
+      title: 'X',
+      sectionAnchors: ['x-rule'],
+    };
+    const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+      getActiveLesson: () => lesson,
+    });
+    const context = facade.getCurrentContext();
+    expect(context.lesson).toEqual({
+      slug: 'x',
+      title: 'X',
+      sectionAnchors: ['x-rule'],
+    });
+    context.lesson?.sectionAnchors.push('mutated');
+    expect(facade.getCurrentContext().lesson).toEqual({
+      slug: 'x',
+      title: 'X',
+      sectionAnchors: ['x-rule'],
+    });
+  });
 });
