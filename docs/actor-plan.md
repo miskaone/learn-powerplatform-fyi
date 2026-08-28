@@ -80,20 +80,56 @@ Disposition of that review, verified before adoption:
   states; quarantined debrief tools are the Day-6 graft decision (Aug 31), with
   backend + tests landing in the state-machines lane.
 
-## 7. Transparency pass — approved 2026-08-28, runs immediately after this pass ships
+## 7. Transparency + Memory pass — approved 2026-08-28 (expanded and locked 2026-08-28 night), runs immediately after this pass ships
 
-From the research briefs' gap analyses (docs/research/), owner-approved as the one
-contest-window addition; everything else in those gap lists is post-contest roadmap.
-Own branch, same Grok-build/Forge-review/ship pattern. Adds ISC-67…69.
+Consolidates the research-brief riders AND the agent-memory leverage thread,
+owner-approved in full. Own branch, Grok-build/Forge-review/ship. Adds ISC-67…72.
+Everything else from the gap lists stays post-contest roadmap (incl. the
+`get_due_reviews` tool — the zero-build spacing line below covers the contest).
 
-1. **Learner-facing misconception map** (ISC-67, ≈0.5–1d): a "Your model" panel on
-   the hub rendering the ledger's misconceptionFires with the evidencing questions
-   (evidence, not bare badges — Long & Aleven's calibration caveat). The learner
-   sees exactly what get_learner_state shows the agent: the glass-box completion.
-2. **Export / clear my data** (ISC-68, ≈0.25d): JSON download of mastery-gate:v1 +
-   one-tap erase with confirmation. Copy: "your data never leaves your browser."
-3. **Success-card myth-naming** (ISC-69, tiny): correct-answer rationale names the
-   distractor-myth it defeats (feedback-after-success, Hattie & Timperley).
+**A. Glass-box riders (ISC-67…69)**
+1. **Learner-facing misconception map** (ISC-67, ≈0.5–1d): "Your model" panel on
+   the hub rendering misconceptionFires WITH the evidencing questions (evidence,
+   not badges — Long & Aleven's calibration caveat). The learner sees exactly
+   what get_learner_state shows the agent.
+2. **Export / clear my data** (ISC-68, ≈0.25d): JSON download of mastery-gate:v1
+   + one-tap erase with confirmation. Copy: "your data never leaves your browser."
+   Pairs deliberately with the map: here is my model of you; here is the button
+   that destroys it.
+3. **Success-card myth-naming** (ISC-69, tiny): correct-answer rationale names
+   which distractor-myth it defeats.
+
+**B. Dual-profile riders (ISC-70…71)**
+4. **Agent report card, minimal** (ISC-70, ≈0.25d): ledger logs the agent's
+   confidence hints and rubric proposals against outcomes; one calibration line
+   in the "Your model" panel and in the debrief data ("coach said high-confidence
+   on questions missed N%"). Deterministic; never touches routing or the gate.
+5. **Profile-annotated descriptions, lite** (ISC-71, ≈0.5d): at REGISTRATION time
+   (never mid-session churn), 2–3 tool descriptions gain profile-composed
+   suffixes for returning learners (e.g. get_hint notes the learner's repeated
+   misconception names). Demo-tested before demo-claimed.
+
+**C. Memory contract (ISC-72, ≈0.5d total)**
+6. Schema: get_learner_state exposes coachingNotes; log_coaching_note gains
+   kind: observation|preference|context; **answer-cache guard** — deterministic
+   rejection of notes containing question/option id patterns (ml\d+-q\d+) or long
+   verbatim substrings of option text (notes replay next session and must never
+   become a key stash).
+7. Description surgery (drafts agreed 2026-08-28, see session log): get_learner_state
+   ("read this first, every session — including coaching notes from previous
+   sessions"); log_coaching_note (durable observations about HOW this learner
+   learns; never answer content); get_hint + get_misconception_brief (ground in
+   the learner's world); set_lesson_aim (connect aim to known goals).
+8. Kickoff-prompt memory clause + three technique lines (all prompt-layer):
+   - MEMORY: "You likely already know this learner — use it; ground examples in
+     their real work. Start by reading get_learner_state. Deposit durable
+     observations via log_coaching_note. Nothing you remember overrules the engine."
+   - SPACING: "At session end, compute when they should return for spaced review
+     (~1d, then 3d, then 7d after material resolves), tell them, offer to remember it."
+   - DIFFICULTY: "When the site refuses — withheld answer, locked hint tier,
+     closed gate — explain why that friction serves this learner."
+   - TRANSFER: "Once per lesson, pose one what-if from the learner's own work
+     applying the governing rule."
 
 ## Sequencing
 
