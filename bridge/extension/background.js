@@ -30,6 +30,10 @@ let reconnectTimer = null;
 // The client nonce we sent in `hello`, kept to verify the server's proof in
 // the challenge. Per-socket; reset on every open.
 let clientNonce = null;
+// Which executeTool invocation form the page caller last used ('spec' |
+// 'legacy' | 'direct'). Diagnostic only — reported in the popup status so the
+// bridge's runtime-conformance path is observable.
+let lastExecPath = null;
 
 function errMsg(err) {
   return err && err.message ? err.message : String(err);
@@ -165,6 +169,7 @@ async function handleRequest(msg) {
       send(makeResponse(token, msg.id, false, (reply && reply.error) || 'page request failed'));
       return;
     }
+    if (typeof reply.execPath === 'string') lastExecPath = reply.execPath;
     const checked = validatePageResult(msg.op, reply.result);
     if (!checked.ok) {
       send(makeResponse(token, msg.id, false, checked.error));
@@ -242,7 +247,13 @@ async function handlePopup(msg) {
     if (!token) wsState = 'needs-token';
     else if (ws && ws.readyState === WebSocket.CONNECTING) wsState = 'connecting';
     else if (ws && ws.readyState === WebSocket.OPEN) wsState = authed ? 'authed' : 'connected';
-    return { hasToken: Boolean(token), port: port || DEFAULT_PORT, wsState, armed: armed || null };
+    return {
+      hasToken: Boolean(token),
+      port: port || DEFAULT_PORT,
+      wsState,
+      armed: armed || null,
+      execPath: lastExecPath,
+    };
   }
   if (msg.cmd === 'set-token') {
     // A new token means a different bridge process. Clear any existing arm so

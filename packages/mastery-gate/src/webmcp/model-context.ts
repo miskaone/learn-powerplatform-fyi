@@ -9,10 +9,16 @@ export interface ToolResponse {
 
 export type JsonSchema = Record<string, unknown>;
 
+/** Spec-defined tool annotations (draft 2026-08-26); all hints, all optional. */
+export interface ToolAnnotations {
+  readOnlyHint?: boolean;
+}
+
 export interface ToolDescriptor {
   name: string;
   description: string;
   inputSchema: JsonSchema;
+  annotations?: ToolAnnotations;
   execute: (input: unknown) => Promise<ToolResponse>;
 }
 
@@ -33,6 +39,16 @@ export interface ModelContextLike {
     options?: ToolRegistrationOptions,
   ): void | Promise<void>;
   getTools(): ToolDescriptor[] | Promise<ToolDescriptor[]>;
+  /**
+   * Spec form (draft 2026-08-26): executeTool(RegisteredTool, inputJsonString)
+   * resolves a stringified result (Chrome 152 enforces this strictly). Some
+   * pre-spec hosts instead accept (nameString, argsObject) and resolve the
+   * ToolResponse object — callers must be prepared for both shapes.
+   */
+  executeTool?(
+    tool: ToolDescriptor | string,
+    input: unknown,
+  ): Promise<string | ToolResponse> | string | ToolResponse;
   addEventListener?(type: 'toolchange', listener: () => void): void;
   removeEventListener?(type: 'toolchange', listener: () => void): void;
 }

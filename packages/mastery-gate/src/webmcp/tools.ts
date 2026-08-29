@@ -114,7 +114,7 @@ export function createToolset(
 ): Record<ToolName, ToolDescriptor> {
   const suffixes = composeProfileSuffixes(engine);
   return {
-    get_learner_state: descriptor(
+    get_learner_state: readOnlyDescriptor(
       'get_learner_state',
       'Read this first, every session — the learner\'s rubric scores, misconception fire counts, phase, gate status, attempt count, their written lesson aims, one-line rule compressions, and run commitments, PLUS coachingNotes (durable observations from previous coaching sessions, including yours) and a coachCalibration summary of how earlier confidence hints and rubric proposals matched engine outcomes. Call again before choosing any coaching move. When a rule compression exists, critique it against the lesson\'s governing rule — what did they miss or overstate?',
       emptySchema(),
@@ -126,7 +126,7 @@ export function createToolset(
         return textResponse(publicLearnerState(engine.getLearnerState()));
       },
     ),
-    get_current_context: descriptor(
+    get_current_context: readOnlyDescriptor(
       'get_current_context',
       'Read the current objective and, when the learner is on a lesson page, that lesson\'s slug, title, and section anchors — each anchor carries the title of the section it names, so you can tell the learner where you are sending them. Call first in every session and after any navigation, to orient before coaching. For the lesson\'s actual teaching material, call get_lesson_brief.',
       emptySchema(),
@@ -138,7 +138,7 @@ export function createToolset(
         return textResponse(publicContext(engine.getCurrentContext()));
       },
     ),
-    get_lesson_brief: descriptor(
+    get_lesson_brief: readOnlyDescriptor(
       'get_lesson_brief',
       'Read the authored teaching material for the lesson the learner is on: title, epigraph, governing rule, exam-recognition clue, mnemonic, the scenario prompt (and its expected answer once the learner has committed and the page has revealed it to them), the concept hierarchy with summaries, the distractor teardown the page shows — why each tempting choice is tempting and why it fails — the visual walkthrough steps, production nuance, the four targeted drills, the reflection prompts, the page section anchors with their titles, and the official references. Call this before you begin coaching a lesson and whenever the learner moves to a new lesson. This is the authored curriculum you teach from, not your own PL-400 knowledge: when the lesson\'s framing differs from your prior assumptions, follow the lesson and say it differs, and add nothing of your own while a question is open. Before asking any probing question, establish the scenario in one or two sentences so the learner is reasoning about something concrete; never ask a question that assumes context you have not just given them. While a question is unanswered, do not restate the governing rule, exam clue, or mnemonic — several of them name the correct option almost verbatim; make the learner recall the rule instead of reciting it. The brief carries exactly what the lesson page shows its reader and nothing it withholds: no question rationales and no correct options.',
       emptySchema(),
@@ -200,7 +200,7 @@ export function createToolset(
         return textResponse({ stored: result.stored, reason: result.reason });
       },
     ),
-    get_current_question: descriptor(
+    get_current_question: readOnlyDescriptor(
       'get_current_question',
       'Fetch the current practice question — prompt and options only; the correct answer is structurally absent. Call at the start of each practice loop and after every submit_answer to load the next question. Let the learner reason aloud before they choose, and frame every probing question against THIS lesson\'s scenario from get_lesson_brief — never a generic scenario of your own, and never one that assumes context you have not just given them. While the question is unanswered, do not restate the lesson\'s governing rule, exam clue, or mnemonic; several of them name the correct option almost verbatim.',
       emptySchema(),
@@ -482,7 +482,7 @@ export function createToolset(
         return textResponse(status);
       },
     ),
-    get_exam_status: descriptor(
+    get_exam_status: readOnlyDescriptor(
       'get_exam_status',
       'Read remaining seconds and answered-of-total progress for the active exam. Call to pace the learner or when they ask how much time is left.',
       emptySchema(),
@@ -596,6 +596,26 @@ function descriptor(
   execute: (input: unknown) => Promise<ToolResponse>,
 ): ToolDescriptor {
   return { name, description, inputSchema, execute };
+}
+
+/**
+ * A descriptor carrying the spec-defined `annotations.readOnlyHint` (draft
+ * 2026-08-26) — for tools that read state and never mutate it. Harmless on
+ * hosts that ignore annotations.
+ */
+function readOnlyDescriptor(
+  name: ToolName,
+  description: string,
+  inputSchema: JsonSchema,
+  execute: (input: unknown) => Promise<ToolResponse>,
+): ToolDescriptor {
+  return {
+    name,
+    description,
+    inputSchema,
+    annotations: { readOnlyHint: true },
+    execute,
+  };
 }
 
 function stringSchema(): JsonSchema {

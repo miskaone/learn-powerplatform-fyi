@@ -30,6 +30,9 @@ function describe(status) {
   } else {
     parts.push('no tab armed');
   }
+  if (typeof status.execPath === 'string' && status.execPath.length > 0) {
+    parts.push(`executeTool path: ${status.execPath}`);
+  }
   return parts.join(' — ');
 }
 

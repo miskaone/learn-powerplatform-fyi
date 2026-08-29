@@ -113,9 +113,14 @@ https://learn.powerplatform.fyi/spike:
 - `getTools()`/`registerTool()` return Promises in real runtimes — our sync test
   mocks hid that until production crashed. The mocks now tell the truth and the
   crash shape is a named regression test.
-- **Aborting a registration mid-execution kills the in-flight call on Chrome 152**
-  — the release that fixes it ships five days *after* this deadline. We
-  reproduced it on the spike page, so revocation drains before it aborts, always.
+- **Chrome's release notes say aborting a registration mid-execution can kill
+  the in-flight call before Chrome 153** — and 153 ships five days *after* this
+  deadline, so revocation drains before it aborts, always. Our live probe never
+  reproduced the kill; what it surfaced instead was its own scar: **Chrome
+  enforces `executeTool(RegisteredTool, jsonString)` strictly** — a signature
+  our mocks were too lenient about. The caller now resolves the RegisteredTool
+  via `getTools()` and passes a JSON string, with a legacy fallback for
+  runtimes still on the pre-spec shape.
 - We verified against the W3C spec that **no static manifest discovery exists**
   — and deliberately shipped none. No coverage theater.
 

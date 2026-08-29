@@ -31,13 +31,28 @@ Chrome **152.0.0.0** — the stable release judges will be running (152 shipped
 | `addEventListener` (`toolchange`) | **PRESENT** — unlike ChatGPT | `EVENT toolchange fired` on every registration and revocation |
 | Mid-session (late) registration | works, fires `toolchange` | log 11:40:12 |
 | Deregistration via AbortSignal | works, fires `toolchange`, tool leaves `getTools()` | log 11:40:18 |
-| **In-flight abort** | **KILLS the in-flight execution** — `executeTool` rejected: "The provided value is not of type 'RegisteredTool'" | log 11:40:21–23, 8s tool aborted at t+2s |
+| **In-flight abort** | **NOT REPRODUCED — probe invalid.** `executeTool` rejected with "The provided value is not of type 'RegisteredTool'": a call-time signature type-error (the self-test passed a name string where the spec requires the RegisteredTool object), thrown before the tool ever executed. Says nothing about in-flight behavior. | log 11:40:21–23; see 2026-08-29 correction below |
+
+> **2026-08-29 correction.** This row previously read "KILLS the in-flight
+> execution", inferring an in-flight abort kill from the button-3 rejection.
+> That inference was wrong: the rejection was Chrome 152 enforcing the spec
+> signature `executeTool(RegisteredTool, inputJsonString)` — a type error at
+> call time, not an execution that started and was then killed. The spike's
+> button-3 self-test and the bridge caller now use the spec-correct form (with
+> a legacy fallback) and the self-test log distinguishes call-time rejection,
+> started-then-killed, and survived-abort outcomes. The in-flight-abort hazard
+> itself remains sourced from Chrome's release notes (the Chrome 153 fix note
+> for in-flight abort behavior); it has not been reproduced live here.
 
 ### Binding consequences (all already implemented)
 
-1. **The drain-first rule is empirically required, not precautionary.** Aborting a
-   registration during an active execution kills that call on Chrome 152 — reproduced
-   here, in the browser the judges will use. `ToolRegistry` drains before it aborts.
+1. **The drain-first rule stands on the release notes plus prudence — not on a live
+   reproduction.** Chrome's 153 fix note documents that aborting a registration
+   could kill an in-flight execution on earlier builds; our own probe never
+   reproduced the kill (see the correction above — the observed rejection was a
+   signature type-error). `ToolRegistry` drains before it aborts regardless: the
+   hazard is documented upstream, the cost of draining is nil, and the exposure
+   window (Chrome 152 is the judges' stable) is exactly the deadline window.
 2. **Both watcher modes are now real, and each target uses a different one:** Chrome
    takes the `toolchange` event path; ChatGPT (no `addEventListener`) takes the
    `getTools()` polling path. The feature-detecting `ToolSurfaceWatcher` was built for

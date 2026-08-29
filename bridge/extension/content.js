@@ -48,5 +48,8 @@ window.addEventListener('message', (event) => {
   const reply = { ok: Boolean(data.ok) };
   if ('result' in data) reply.result = data.result;
   if ('error' in data) reply.error = data.error;
+  // Diagnostic only: which executeTool form the MAIN-world caller used
+  // ('spec' | 'legacy' | 'direct'), surfaced in the popup status.
+  if (typeof data.execPath === 'string') reply.execPath = data.execPath;
   waiter(reply);
 });

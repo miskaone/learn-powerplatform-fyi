@@ -760,3 +760,26 @@ architectural, not asserted.
   (ChatGPT desktop app, Chrome+flag), three discover-only (Codex panel, Copilot, ChatGPT
   Chrome sidebar) — an ecosystem bridging gap, not a site defect, and the `bridge/` companion
   is the designed closer.
+- **2026-08-29** — executeTool spec-conformance correction (branch `fix/executetool-spec`). WHAT
+  WAS WRONG: our callers invoked `executeTool(nameString, argsObject)` — the pre-spec shape. The
+  2026-08-26 WebMCP draft defines `executeTool(RegisteredTool, inputJsonString) →
+  Promise<DOMString>`, and Chrome 152 enforces it strictly: the live button-3 spike run's
+  rejection ("The provided value is not of type 'RegisteredTool'") was a call-time signature
+  type-error, which we had mis-read as a reproduced in-flight abort kill. Corrected in
+  docs/spike-verdicts.md (in-flight row marked NOT REPRODUCED with a dated correction note —
+  drain-first now stands on the Chrome 153 release-note fix plus prudence) and in the devpost
+  scars bullet (release-note-sourced; the probe's real finding is the signature strictness).
+  FIX: `bridge/extension/injected.js` and the spike button-3 self-test now resolve the
+  RegisteredTool via `getTools()`, pass `JSON.stringify(args)`, and normalize string vs
+  `{content:[...]}` results to MCP content; the spike log now distinguishes call-time rejection
+  / started-then-killed / survived-abort. DUAL-PATH RATIONALE: spec form first; if it is
+  rejected at call time (TypeError or an unknown-tool lookup failure — both occur before the
+  tool executes, so one retry cannot double-execute), retry the legacy `(name, object)` form
+  once — ChatGPT's injected implementation is unverified against the new draft and must keep
+  working either way. The path taken ('spec' | 'legacy' | 'direct') is logged in-page and
+  surfaced through the extension popup status. `MockModelContext`/fallback polyfill gained
+  spec-strict `executeTool` (RegisteredTool + JSON string → stringified result; legacy form
+  kept, marked deprecated) so tests exercise the real signature, and the five read-only tools
+  now carry the spec's `annotations: { readOnlyHint: true }`, propagated through the registry
+  wrappers. Gates: 535 tests green (was 513), `tsc --noEmit` clean, `bun run build` static
+  export green.
