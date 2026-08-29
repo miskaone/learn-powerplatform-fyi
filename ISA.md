@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 50/77
+progress: 51/77
 mode: build
 started: 2026-08-26
 updated: 2026-08-30
@@ -114,7 +114,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [ ] ISC-7: CC BY 4.0 notice covers the lesson-content directory
 - [x] ISC-8: Cloudflare Pages project exists — `source.type=github`, repo bound, `production_branch=main`, build `bun run build` → `out`
 - [x] ISC-9: `learn` CNAME exists and `https://learn.powerplatform.fyi` returns HTTP 200 with valid TLS
-- [ ] ISC-10: Cold clone passes `bun install && bun run build` with only the README instructions
+- [x] ISC-10: Cold clone passes `bun install && bun run build` with only the README instructions
 
 ### Engine (`packages/mastery-gate`)
 
@@ -693,3 +693,8 @@ page gets. No more, no less.** Symmetry, not starvation.
   attempt at the tool-boundary guard did NOT bite (a real `MasteryEngineFacade` strips the
   contaminant before `publicLessonBrief` sees it), so that test now drives the toolset through a
   proxied facade that returns the contaminated brief verbatim.
+- **2026-08-28** — ISC-10 and ISC-45 verified by cold-clone probe: fresh `git clone` of the
+  public repo into a temp dir, README instructions only → `bun install` + `bun run build`
+  (static export, SSG routes) green, `bun test` 404 pass / 0 fail, MIT LICENSE at root, and
+  the package README's registerTool example carries all four required fields (name,
+  description, inputSchema, execute). The submission repo is judge-reproducible.
