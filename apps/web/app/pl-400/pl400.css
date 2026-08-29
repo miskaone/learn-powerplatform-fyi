@@ -232,7 +232,16 @@ button.pl400-btn,
 
 .pl400-option-selected {
   border-color: var(--pl400-accent);
-  box-shadow: 0 0 0 3px var(--pl400-accent-soft);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--pl400-accent) 24%, transparent),
+    color-mix(in srgb, var(--pl400-accent) 9%, transparent)
+  );
+  backdrop-filter: blur(6px) saturate(1.15);
+  -webkit-backdrop-filter: blur(6px) saturate(1.15);
+  box-shadow:
+    0 0 0 3px var(--pl400-accent-soft),
+    inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
 }
 
 .pl400-option:disabled {
