@@ -36,6 +36,25 @@ companion to the [powerplatform.fyi](https://powerplatform.fyi) field guide.
 - `content/` — instrumented PL-400 lesson content and question banks
   (misconception-keyed distractors, remediation anchors). Licensed CC BY 4.0.
 
+## Testing environments
+
+WebMCP support varies by agent host. Verified working:
+
+| Host | Status | Notes |
+|---|---|---|
+| **ChatGPT desktop app** (built-in browser) | ✅ verified | Full discovery + invocation. Open the page in the app's own browser, then talk to ChatGPT. |
+| **Chrome 152+** with `chrome://flags/#enable-webmcp-testing` | ✅ verified | `document.modelContext` present, `toolchange` events supported. |
+| **Edge + Copilot** with the same flag | 🟡 reported working | Chromium-based; nothing in this codebase is vendor-specific. |
+| Codex Chrome extension side panel | ❌ no bridge | Reads page text only. It injects a `modelContext` but does not bridge tool *invocation* to the conversation, so it reports zero callable tools on any WebMCP site. Not a limitation of this page. |
+
+If your agent says it can only read the page text, you are in a host without a
+WebMCP invocation bridge — the page registers its tools regardless. To verify
+independently, open devtools on the page and run:
+
+```js
+document.modelContext.getTools().then(t => console.log(t.map(x => x.name)));
+```
+
 ## Build contract
 
 - **bun only** — never npm/npx. `bun install`, `bun run build`, `bun test`.

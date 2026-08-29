@@ -200,7 +200,7 @@ export function Pl400App() {
             errorNotice={gate.syncError ?? undefined}
             modeLabel={
               gate.agentDetected
-                ? "agent runtime: modelContext detected (getTools polling)"
+                ? "agent runtime detected — if your agent reports no callable tools, its host may not bridge tool invocation (verified: ChatGPT desktop browser, Chrome 152+ with the WebMCP flag)"
                 : "no agent runtime detected"
             }
             notice={
