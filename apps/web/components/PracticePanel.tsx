@@ -421,8 +421,8 @@ export function PracticePanel(props: {
       <div className="pl400-demo">
         <span className="pl400-demo-label">Agent-less controls</span>
         <p className="muted">
-          These buttons drive the same engine facade the WebMCP tools call
-          — nothing here bypasses the gate.
+          No AI coach connected? These buttons use the exact same rules the
+          coach does — nothing here skips the mastery gate.
         </p>
         <div className="pl400-btn-row">
           {props.showDemoRubric ? (

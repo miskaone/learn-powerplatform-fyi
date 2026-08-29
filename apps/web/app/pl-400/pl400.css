@@ -1054,3 +1054,4 @@ body.fx-exam-lighting .lp > :not(.lp-map) {
 .lp-topbar-coach:hover { background: var(--pl400-accent-soft); }
 .lp-scenario-list { margin: .75rem 0 0; padding-left: 1.35rem; display: grid; gap: .4rem; }
 .lp-scenario-list li { list-style: disc; }
+.rubric-how { margin: .5rem 0 .25rem; font-size: .85rem; }

@@ -54,6 +54,12 @@ export function RubricPanel(props: { scores: RubricScores; gatePassed: boolean }
           );
         })}
       </div>
+      {!gateOpen && (
+        <p className="muted rubric-how">
+          These scores come from your coach&apos;s rubric interview — finish
+          the practice questions, then ask your coach to interview you.
+        </p>
+      )}
       <div className="rubric-gate">
         <span>Gate opens when every dimension ≥ 3</span>
         <span

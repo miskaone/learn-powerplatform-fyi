@@ -87,8 +87,9 @@ export function LessonPracticeSection(props: {
               const drill = stack.facade.prescribeDrill();
               return (
                 <p className="muted lp-drill-line">
-                  Weakest dimension: <strong>{drill.targetDimension}</strong>{" "}
-                  — prescribed drill: <strong>{drill.drillKind}</strong>.{" "}
+                  Your weakest area right now is{" "}
+                  <strong>{drill.targetDimension}</strong> — a good next drill:{" "}
+                  <strong>{drill.drillKind.replace(/_/g, " ")}</strong>.{" "}
                   {drill.rationale}
                 </p>
               );
