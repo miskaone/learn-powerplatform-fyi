@@ -247,6 +247,16 @@ test("agent-less parity: every field the brief carries is already rendered on th
   expect(source).toContain("onReveal");
 });
 
+test("kickoff opens with an unconditional tool call and anti-refusal clause", () => {
+  expect(KICKOFF_PROMPT).toContain("FIRST ACTION, before writing any reply: call get_learner_state");
+  expect(KICKOFF_PROMPT).toContain(
+    "Never claim the tools are unavailable without having attempted that call",
+  );
+  expect(KICKOFF_PROMPT).toContain(
+    "If an aim is already saved for this lesson, confirm it in one line",
+  );
+});
+
 test("ISC-77 briefing contract: the kickoff prompt binds grounding and scenario-first", () => {
   expect(KICKOFF_PROMPT).toContain("GROUND: call get_lesson_brief");
   expect(KICKOFF_PROMPT).toContain("not from your own PL-400 knowledge");

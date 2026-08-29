@@ -218,7 +218,7 @@ test("anchorOwnerSlug resolves the compress and run anchors to their lesson", ()
 
 test("KICKOFF_PROMPT carries the memory contract and technique lines", () => {
   expect(KICKOFF_PROMPT).toContain(
-    "Open with ONE question: why am I here — what do I need this material for?",
+    "otherwise open with ONE question — why am I here, what do I need this material for?",
   );
   expect(KICKOFF_PROMPT).toContain(
     "MEMORY: You likely already know this learner — use it; ground examples in their real work. Start by reading get_learner_state, including coaching notes from previous sessions. Deposit durable observations via log_coaching_note. Nothing you remember overrules the engine.",
