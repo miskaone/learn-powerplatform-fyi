@@ -257,6 +257,7 @@ test("kickoff opens with an unconditional tool call and anti-refusal clause", ()
     "If an aim is already saved for this lesson, confirm it in one line",
   );
   expect(KICKOFF_PROMPT).toContain("COMMIT FIRST:");
+  expect(KICKOFF_PROMPT).toContain('when I demand the answer ("just tell me"), you refuse too');
   expect(KICKOFF_PROMPT).toContain("never draft the commitment for me");
 });
 
