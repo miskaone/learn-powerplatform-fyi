@@ -429,6 +429,21 @@ button.pl400-btn,
   animation: anchor-flash 2s ease-out;
 }
 
+body.fx-exam-lighting {
+  background: color-mix(in srgb, var(--bg) 88%, #0a2032);
+}
+body.fx-exam-lighting .pl400,
+body.fx-exam-lighting .lp {
+  filter: saturate(0.6) brightness(0.94);
+  transition: filter 0.4s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  body.fx-exam-lighting .pl400,
+  body.fx-exam-lighting .lp {
+    transition: none;
+  }
+}
+
 /* Rubric */
 .rubric-list {
   display: flex;
@@ -988,4 +1003,37 @@ button.pl400-btn,
 .tool-inspector-tool > summary:focus-visible,
 .tool-roster-inspector-toggle:focus-visible {
   outline: 2px solid var(--pl400-accent);
+}
+
+/* Hub continue button */
+.pl400-continue {
+  display: inline-block;
+  margin: 0.25rem 0 1rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--pl400-accent);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  border-radius: 8px;
+}
+.pl400-continue:hover {
+  filter: brightness(1.05);
+}
+
+/* Earned mastery accent — class presence derives from engine gate state. */
+.rubric-mastery {
+  border-color: color-mix(in srgb, #d4a017 55%, var(--pl400-border));
+  box-shadow: 0 0 0.9rem color-mix(in srgb, #d4a017 20%, transparent);
+  transition: border-color 0.5s ease, box-shadow 0.5s ease;
+}
+.pl400-dim-chip-mastery {
+  background: color-mix(in srgb, #d4a017 16%, var(--bg));
+  border-color: color-mix(in srgb, #d4a017 55%, var(--pl400-border));
+  transition: background 0.5s ease, border-color 0.5s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rubric-mastery,
+  .pl400-dim-chip-mastery {
+    transition: none;
+  }
 }

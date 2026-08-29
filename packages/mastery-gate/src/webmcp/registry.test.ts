@@ -151,6 +151,12 @@ function createStubEngine(options?: {
       log.navigateToAnchor = anchor;
       return { ok: true, anchor };
     },
+    setFocus: (preset, anchor) => ({
+      ok: true,
+      preset,
+      anchor: anchor ?? null,
+      reason: null,
+    }),
     getMisconceptionBrief: (misconceptionId) => ({
       id: misconceptionId,
       name: 'HTTP from plugin',
@@ -343,6 +349,7 @@ test('registry: exam deregister mode mass-revokes coaching tools then restores a
   await registry.sync(snap({ ...RICH_FLAGS, phase: 'exam' }));
   const examOnly = sortedNames(['get_exam_status', 'submit_exam']);
   expect(sortedNames(ctx.getToolNames())).toEqual(examOnly);
+  expect(ctx.getToolNames()).not.toContain('set_focus');
   expect(sortedNames((await ctx.getTools()).map((tool) => tool.name))).toEqual(examOnly);
   await registry.sync(snap({ ...RICH_FLAGS, phase: 'exam', examSubmitted: true }));
   expect(ctx.getToolNames()).toContain('get_exam_debrief');
@@ -412,9 +419,16 @@ test('registry: identical snapshot sync is idempotent', async () => {
 });
 
 test('registry: desiredToolNames lesson default and debrief-ish snapshot', () => {
-  expect(sortedNames(desiredToolNames(snap({}), 'deregister'))).toEqual(
+  const lessonDefault = desiredToolNames(snap({}), 'deregister');
+  expect(sortedNames(lessonDefault)).toEqual(
     sortedNames(STATIC_TOOL_NAMES),
   );
+  expect(lessonDefault.has('set_focus')).toBe(true);
+  const examDeregister = desiredToolNames(
+    snap({ phase: 'exam' }),
+    'deregister',
+  );
+  expect(examDeregister.has('set_focus')).toBe(false);
   const debriefish = desiredToolNames(
     snap({ phase: 'debrief', moduleComplete: true, gatePassed: true }),
     'deregister',

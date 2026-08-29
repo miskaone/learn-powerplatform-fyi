@@ -93,6 +93,10 @@ export class NotifyingFacade implements EngineFacade {
     return this.inner.navigateToAnchor(anchor);
   }
 
+  setFocus(preset: Parameters<EngineFacade["setFocus"]>[0], anchor?: string) {
+    return this.inner.setFocus(preset, anchor);
+  }
+
   getMisconceptionBrief(misconceptionId: string) {
     return this.inner.getMisconceptionBrief(misconceptionId);
   }

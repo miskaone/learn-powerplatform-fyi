@@ -203,6 +203,15 @@ export interface NavigateResultPublic {
   anchor: string;
 }
 
+export type FocusPreset = 'focus-section' | 'clear-focus' | 'exam-lighting';
+
+export interface SetFocusResultPublic {
+  ok: boolean;
+  preset: FocusPreset;
+  anchor: string | null;
+  reason: string | null;
+}
+
 export interface MutateAssumptionResultPublic {
   accepted: boolean;
   scenarioId: string;
@@ -324,6 +333,17 @@ export interface EngineFacade {
     kind?: 'observation' | 'preference' | 'context',
   ): { stored: boolean; reason: string | null };
   navigateToAnchor(anchor: string): NavigateResultPublic;
+  /**
+   * Stage lighting for coaching. Effects are a FIXED set of page CSS
+   * presets applied by a UI-supplied callback — the input never carries
+   * style strings. `focus-section` requires an anchor validated against
+   * the active lesson's section anchors. ENGINE-LEVEL EXAM GUARD — while
+   * an exam is active every preset except `clear-focus` is refused
+   * (reason `'exam-active'`), because agent-less surfaces execute without
+   * a registry (deregistration of set_focus during exam-mode deregister
+   * sync is defense in depth, not the guard).
+   */
+  setFocus(preset: FocusPreset, anchor?: string): SetFocusResultPublic;
   getMisconceptionBrief(misconceptionId: string): Misconception | null;
   mutateAssumption(
     scenarioId: string,

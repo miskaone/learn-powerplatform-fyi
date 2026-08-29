@@ -93,6 +93,12 @@ function succeedingFacade(): EngineFacade {
     }),
     logCoachingNote: () => ({ stored: true, reason: null }),
     navigateToAnchor: (anchor) => ({ ok: true, anchor }),
+    setFocus: (preset, anchor) => ({
+      ok: true,
+      preset,
+      anchor: anchor ?? null,
+      reason: null,
+    }),
     getMisconceptionBrief: () => null,
     mutateAssumption: (scenarioId) => ({
       accepted: true,
@@ -196,6 +202,7 @@ test("read-only facade methods never notify", () => {
   facade.requestNextAction();
   facade.prescribeDrill();
   facade.navigateToAnchor("sec");
+  facade.setFocus("clear-focus");
   facade.getMisconceptionBrief("mc");
   facade.getExamStatus();
   facade.getExamDebrief();

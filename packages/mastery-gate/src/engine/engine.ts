@@ -267,6 +267,28 @@ export class MasteryEngine {
     return progress;
   }
 
+  /**
+   * Most recent attempt on the global ledger (max timestamp; later array
+   * index wins ties), or null on a fresh ledger. Powers the hub's
+   * "continue where you left off" affordance. Carries no option ids or
+   * answer-key material.
+   */
+  getLatestAttempt(): { questionId: string; timestamp: number } | null {
+    let latest: { questionId: string; timestamp: number } | null = null;
+    for (const attempt of this.ledger.attempts) {
+      if (
+        latest === null ||
+        attempt.timestamp >= latest.timestamp
+      ) {
+        latest = {
+          questionId: attempt.questionId,
+          timestamp: attempt.timestamp,
+        };
+      }
+    }
+    return latest;
+  }
+
   submitAnswer(optionId: string): SubmitAnswerResult {
     const wasExamActive = isExamActive(this.ledger.exam);
     this.maybeAutoSubmitExpiredExam();

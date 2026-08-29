@@ -1,12 +1,17 @@
 import { test, expect } from 'bun:test';
 import { MasteryEngine, MemoryStorageAdapter } from '../engine';
-import { FIXTURE_MANIFEST } from '../engine/fixtures';
+import {
+  FIXTURE_MANIFEST,
+  FIXTURE_MANIFEST_WITH_EXAM,
+} from '../engine/fixtures';
 import type { DebriefSegment, QuestionPublic } from '../schema';
 import { MasteryEngineFacade } from './engine-adapter';
 import type {
+  ActiveLessonPublic,
   ComposeDebriefResultPublic,
   EngineFacade,
   ExamStatusPublic,
+  FocusPreset,
   LearnerStatePublic,
   LessonTextResultPublic,
   RubricSubmission,
@@ -182,6 +187,12 @@ function createStubEngine(options?: {
       log.navigateToAnchor = anchor;
       return { ok: true, anchor };
     },
+    setFocus: (preset, anchor) => ({
+      ok: true,
+      preset,
+      anchor: anchor ?? null,
+      reason: null,
+    }),
     getMisconceptionBrief: (misconceptionId) => ({
       id: misconceptionId,
       name: options?.misconceptionNames?.[misconceptionId] ?? 'HTTP from plugin',
@@ -287,11 +298,11 @@ function evidenceQuote(dimension: string): string {
   return `Quoted lesson evidence for ${dimension}.`;
 }
 
-test('createToolset returns exactly 24 tools with closed object schemas', () => {
+test('createToolset returns exactly 25 tools with closed object schemas', () => {
   const { engine } = createStubEngine();
   const tools = createToolset(engine);
   const names = Object.keys(tools);
-  expect(names.length).toBe(24);
+  expect(names.length).toBe(25);
   for (const name of ALL_TOOL_NAMES) {
     expect(names).toContain(name);
     const tool = tools[name];
@@ -1009,4 +1020,277 @@ test('description surgery: memory-contract copy on learner-state, notes, aim, hi
   expect(tools.get_misconception_brief.description).toContain(
     "Ground the contrast in the learner's world",
   );
+});
+
+const FOCUS_LESSON: ActiveLessonPublic = {
+  slug: 'x',
+  title: 'X',
+  objectiveId: 'obj-1',
+  sectionAnchors: [{ anchor: 'x-rule', title: 'Governing rule' }],
+};
+
+function examRubric(): RubricSubmission {
+  return {
+    recall: {
+      score: 3,
+      evidenceQuote: FIXTURE_MANIFEST_WITH_EXAM.objectives[0].summary,
+    },
+    connections: {
+      score: 3,
+      evidenceQuote: FIXTURE_MANIFEST_WITH_EXAM.objectives[1].summary,
+    },
+    application: {
+      score: 3,
+      evidenceQuote: FIXTURE_MANIFEST_WITH_EXAM.objectives[0].summary,
+    },
+    transfer: {
+      score: 3,
+      evidenceQuote: FIXTURE_MANIFEST_WITH_EXAM.objectives[1].summary,
+    },
+  };
+}
+
+test('set_focus schema is a closed object with required preset enum', () => {
+  const { engine } = createStubEngine();
+  const tools = createToolset(engine);
+  const schema = tools.set_focus.inputSchema;
+  expect(schema['type']).toBe('object');
+  expect(schema['additionalProperties']).toBe(false);
+  expect(schema['required']).toEqual(['preset']);
+  const properties = asRecord(schema['properties']);
+  const preset = asRecord(properties['preset']);
+  expect(preset['type']).toBe('string');
+  expect(preset['enum']).toEqual([
+    'focus-section',
+    'clear-focus',
+    'exam-lighting',
+  ]);
+});
+
+test('set_focus invalid preset returns invalid_input and does not throw', async () => {
+  const { engine } = createStubEngine();
+  const tools = createToolset(engine);
+  const response = await tools.set_focus.execute({ preset: 'disco' });
+  const payload = asRecord(payloadOf(response));
+  expect(payload['error']).toBe('invalid_input');
+  expect(payload['detail']).toBe(
+    'preset must be "focus-section", "clear-focus", or "exam-lighting"',
+  );
+});
+
+test('set_focus missing preset returns invalid_input', async () => {
+  const { engine } = createStubEngine();
+  const tools = createToolset(engine);
+  const response = await tools.set_focus.execute({});
+  const payload = asRecord(payloadOf(response));
+  expect(payload['error']).toBe('invalid_input');
+  expect(payload['detail']).toBe(
+    'preset must be "focus-section", "clear-focus", or "exam-lighting"',
+  );
+});
+
+test('set_focus focus-section without anchor reports anchor-required', async () => {
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST,
+    new MemoryStorageAdapter(),
+  );
+  const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+    getActiveLesson: () => FOCUS_LESSON,
+    applyFocus: () => true,
+  });
+  const tools = createToolset(facade);
+  const response = await tools.set_focus.execute({ preset: 'focus-section' });
+  expect(payloadOf(response)).toEqual({
+    ok: false,
+    preset: 'focus-section',
+    anchor: null,
+    reason: 'anchor-required',
+  });
+});
+
+test('set_focus focus-section with unknown anchor reports unknown-anchor', async () => {
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST,
+    new MemoryStorageAdapter(),
+  );
+  const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+    getActiveLesson: () => FOCUS_LESSON,
+    applyFocus: () => true,
+  });
+  const tools = createToolset(facade);
+  const response = await tools.set_focus.execute({
+    preset: 'focus-section',
+    anchor: 'not-a-section',
+  });
+  expect(payloadOf(response)).toEqual({
+    ok: false,
+    preset: 'focus-section',
+    anchor: 'not-a-section',
+    reason: 'unknown-anchor',
+  });
+});
+
+test('set_focus focus-section with no active lesson reports unknown-anchor', async () => {
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST,
+    new MemoryStorageAdapter(),
+  );
+  const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+    applyFocus: () => true,
+  });
+  const tools = createToolset(facade);
+  const response = await tools.set_focus.execute({
+    preset: 'focus-section',
+    anchor: 'x-rule',
+  });
+  expect(payloadOf(response)).toEqual({
+    ok: false,
+    preset: 'focus-section',
+    anchor: 'x-rule',
+    reason: 'unknown-anchor',
+  });
+});
+
+test('set_focus focus-section with a valid anchor applies the preset', async () => {
+  const calls: { preset: FocusPreset; anchor: string | null }[] = [];
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST,
+    new MemoryStorageAdapter(),
+  );
+  const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+    getActiveLesson: () => FOCUS_LESSON,
+    applyFocus: (preset, anchor) => {
+      calls.push({ preset, anchor });
+      return true;
+    },
+  });
+  const tools = createToolset(facade);
+  const response = await tools.set_focus.execute({
+    preset: 'focus-section',
+    anchor: 'x-rule',
+  });
+  expect(calls).toEqual([{ preset: 'focus-section', anchor: 'x-rule' }]);
+  expect(payloadOf(response)).toEqual({
+    ok: true,
+    preset: 'focus-section',
+    anchor: 'x-rule',
+    reason: null,
+  });
+});
+
+test('set_focus exam guard refuses every preset except clear-focus', async () => {
+  const calls: { preset: FocusPreset; anchor: string | null }[] = [];
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST_WITH_EXAM,
+    new MemoryStorageAdapter(),
+    { now: () => 1_000_000 },
+  );
+  const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST_WITH_EXAM, {
+    getActiveLesson: () => FOCUS_LESSON,
+    applyFocus: (preset, anchor) => {
+      calls.push({ preset, anchor });
+      return true;
+    },
+  });
+  facade.submitAnswer('q1', 'q1-a');
+  expect(facade.scoreRubric(examRubric()).gatePassed).toBe(true);
+  facade.startExam();
+  expect(engine.isExamActive()).toBe(true);
+  const tools = createToolset(facade);
+
+  const focus = await tools.set_focus.execute({
+    preset: 'focus-section',
+    anchor: 'x-rule',
+  });
+  expect(payloadOf(focus)).toEqual({
+    ok: false,
+    preset: 'focus-section',
+    anchor: null,
+    reason: 'exam-active',
+  });
+
+  const lighting = await tools.set_focus.execute({
+    preset: 'exam-lighting',
+  });
+  expect(payloadOf(lighting)).toEqual({
+    ok: false,
+    preset: 'exam-lighting',
+    anchor: null,
+    reason: 'exam-active',
+  });
+
+  expect(calls).toEqual([]);
+
+  const clear = await tools.set_focus.execute({ preset: 'clear-focus' });
+  expect(calls).toEqual([{ preset: 'clear-focus', anchor: null }]);
+  expect(payloadOf(clear)).toEqual({
+    ok: true,
+    preset: 'clear-focus',
+    anchor: null,
+    reason: null,
+  });
+});
+
+test('set_focus without applyFocus reports not-applied', async () => {
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST,
+    new MemoryStorageAdapter(),
+  );
+  const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+    getActiveLesson: () => FOCUS_LESSON,
+  });
+  const tools = createToolset(facade);
+  const response = await tools.set_focus.execute({
+    preset: 'focus-section',
+    anchor: 'x-rule',
+  });
+  expect(payloadOf(response)).toEqual({
+    ok: false,
+    preset: 'focus-section',
+    anchor: 'x-rule',
+    reason: 'not-applied',
+  });
+});
+
+test('set_focus clear-focus and exam-lighting ignore a supplied anchor', async () => {
+  const calls: { preset: FocusPreset; anchor: string | null }[] = [];
+  const engine = new MasteryEngine(
+    FIXTURE_MANIFEST,
+    new MemoryStorageAdapter(),
+  );
+  const facade = new MasteryEngineFacade(engine, FIXTURE_MANIFEST, {
+    getActiveLesson: () => FOCUS_LESSON,
+    applyFocus: (preset, anchor) => {
+      calls.push({ preset, anchor });
+      return true;
+    },
+  });
+  const tools = createToolset(facade);
+
+  const clear = await tools.set_focus.execute({
+    preset: 'clear-focus',
+    anchor: 'x-rule',
+  });
+  expect(payloadOf(clear)).toEqual({
+    ok: true,
+    preset: 'clear-focus',
+    anchor: null,
+    reason: null,
+  });
+
+  const lighting = await tools.set_focus.execute({
+    preset: 'exam-lighting',
+    anchor: 'x-rule',
+  });
+  expect(payloadOf(lighting)).toEqual({
+    ok: true,
+    preset: 'exam-lighting',
+    anchor: null,
+    reason: null,
+  });
+
+  expect(calls).toEqual([
+    { preset: 'clear-focus', anchor: null },
+    { preset: 'exam-lighting', anchor: null },
+  ]);
 });

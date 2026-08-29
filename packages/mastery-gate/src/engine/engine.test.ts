@@ -320,6 +320,39 @@ describe('question scope', () => {
   });
 });
 
+describe('getLatestAttempt', () => {
+  test('returns null on a fresh engine', () => {
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+    );
+    expect(engine.getLatestAttempt()).toBe(null);
+  });
+
+  test('returns the later question after two answers and is not a live ledger reference', () => {
+    let now = 1000;
+    const engine = new MasteryEngine(
+      FIXTURE_MANIFEST,
+      new MemoryStorageAdapter(),
+      { now: () => now },
+    );
+    engine.submitAnswer('q1-a');
+    now = 2000;
+    engine.submitAnswer('q2-b');
+    const latest = engine.getLatestAttempt();
+    expect(latest).toEqual({ questionId: 'q2', timestamp: 2000 });
+    if (latest === null) {
+      return;
+    }
+    latest.questionId = 'tampered';
+    latest.timestamp = 0;
+    expect(engine.getLatestAttempt()).toEqual({
+      questionId: 'q2',
+      timestamp: 2000,
+    });
+  });
+});
+
 describe('submitAnswer rationale and remediation anchor (cross-review findings 2/12)', () => {
   test('first miss with attempts remaining: rationale withheld, remediation anchor present and same-lesson', () => {
     const engine = new MasteryEngine(FIXTURE_MANIFEST, new MemoryStorageAdapter());

@@ -609,6 +609,12 @@
   }
 }
 
+.lp .fx-dim {
+  opacity: 0.3;
+  filter: saturate(0.55);
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lp * {
     transition: none !important;
@@ -700,4 +706,170 @@
 
 .lp-drill-line {
   margin: 0;
+}
+
+/* Sticky section map — chrome around the document, never surgery on it. */
+.lp-map-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.lp-map-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.lp-map-list button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font: 600 0.78rem var(--lp-label-font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.4rem;
+  text-align: left;
+  border-left: 2px solid transparent;
+  flex: 1 1 auto;
+}
+
+.lp-map-list button:hover {
+  color: var(--text);
+}
+
+.lp-map-list button.active {
+  color: var(--lp-accent);
+  border-left-color: var(--lp-accent);
+}
+
+.lp-map-list .lp-map-spot {
+  flex: 0 0 auto;
+  border: 1px solid var(--lp-line);
+  border-radius: 999px;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  text-align: center;
+  line-height: 1;
+  font-size: 0.8rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.lp-map-focus {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--lp-line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.lp-map-focus button {
+  font: 600 0.7rem var(--lp-label-font);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--lp-line);
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.lp-map-focus button:hover {
+  color: var(--text);
+  border-color: var(--lp-accent);
+}
+
+.lp-map-rail {
+  display: none;
+}
+
+@media (min-width: 1560px) {
+  .lp-map-rail {
+    display: block;
+    position: fixed;
+    top: 6rem;
+    right: 1.5rem;
+    width: 12rem;
+    z-index: 20;
+  }
+
+  .lp-map-disclosure {
+    display: none;
+  }
+}
+
+.lp-map-disclosure {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bg);
+  border-bottom: 1px solid var(--lp-line);
+  width: min(70rem, calc(100% - 2.5rem));
+  margin-inline: auto;
+  padding: 0.4rem 0;
+}
+
+.lp-map-disclosure summary {
+  cursor: pointer;
+  font: 700 0.72rem var(--lp-label-font);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.25rem 0;
+}
+
+/* Prev/next lesson footer */
+.lp-lesson-nav {
+  width: min(70rem, calc(100% - 2.5rem));
+  margin: 2.5rem auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.lp-lesson-nav-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--lp-line);
+  padding: 1rem 1.15rem;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.lp-lesson-nav-card:hover {
+  border-color: var(--lp-accent);
+}
+
+.lp-lesson-nav-card .lp-label {
+  color: var(--lp-accent);
+}
+
+.lp-lesson-nav-card em {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.lp-lesson-nav-next {
+  text-align: right;
+  align-items: flex-end;
+}
+
+@media (max-width: 720px) {
+  .lp-lesson-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-lesson-nav-next {
+    text-align: left;
+    align-items: flex-start;
+  }
 }

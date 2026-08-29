@@ -56,6 +56,25 @@ export function lessonSectionAnchors(slug: string): string[] {
   return lessonSectionAnchorEntries(slug).map((entry) => entry.anchor);
 }
 
+export interface SectionMapEntry {
+  anchor: string;
+  /** Full section title (verbatim from lessonSectionAnchorEntries). */
+  title: string;
+  /** Compact rail label: the part before " — " when present, else the full title. */
+  shortLabel: string;
+}
+
+export function sectionMapEntries(slug: string): SectionMapEntry[] {
+  return lessonSectionAnchorEntries(slug).map((entry) => {
+    const cut = entry.title.indexOf(" — ");
+    return {
+      anchor: entry.anchor,
+      title: entry.title,
+      shortLabel: cut === -1 ? entry.title : entry.title.slice(0, cut),
+    };
+  });
+}
+
 const ANCHOR_OWNER_BY_ID = new Map<string, string>();
 const LESSON_BY_QUESTION_ID = new Map<string, LessonIndexEntry>();
 for (const entry of lessonIndex) {

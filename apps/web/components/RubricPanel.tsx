@@ -12,8 +12,16 @@ const DIMENSIONS: { key: RubricDimension; label: string }[] = [
 export function RubricPanel(props: { scores: RubricScores }) {
   const gateOpen = DIMENSIONS.every((dimension) => props.scores[dimension.key] >= 3);
 
+  // Mastery accent is derived from engine-truth scores each render — it persists exactly while the gate holds and reverts on regress; no imperative flip tracking.
   return (
-    <section className="pl400-card rubric-panel" aria-labelledby="rubric-heading">
+    <section
+      className={
+        gateOpen
+          ? "pl400-card rubric-panel rubric-mastery"
+          : "pl400-card rubric-panel"
+      }
+      aria-labelledby="rubric-heading"
+    >
       <h2 id="rubric-heading">Rubric</h2>
       <div className="rubric-list">
         {DIMENSIONS.map((dimension) => {

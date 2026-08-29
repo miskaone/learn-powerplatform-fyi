@@ -11,6 +11,7 @@ export const STATIC_TOOL_NAMES = [
   'prescribe_drill',
   'score_rubric',
   'set_lesson_aim',
+  'set_focus',
 ] as const;
 
 export const DYNAMIC_TOOL_NAMES = [

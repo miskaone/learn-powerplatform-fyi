@@ -7,6 +7,7 @@ import "../app/pl-400/pl400.css";
 import { manifest } from "../lib/content";
 // Slim index only — the full teaching catalog (lessonPages) is server-side
 // and must not enter client bundles (cross-review finding 8).
+import { deriveContinueTarget } from "../lib/continueTarget";
 import { lessonIndex } from "../lib/lessonIndex";
 import { lessonProgress, type MasteryStack } from "../lib/masteryStack";
 import { DrillSection } from "./DrillSection";
@@ -40,6 +41,12 @@ export function Pl400App() {
   }, [stack]);
 
   const trackQuestionIds = manifest.questions.map((q) => q.id);
+  const continueTarget =
+    stack == null
+      ? null
+      : deriveContinueTarget(stack.engine.getLatestAttempt(), (ids) =>
+          lessonProgress(stack, ids).attempted,
+        );
 
   return (
     <div className="pl400">
@@ -87,9 +94,11 @@ export function Pl400App() {
                           <span
                             key={dimension.key}
                             className={
-                              met
-                                ? "pl400-dim-chip pl400-dim-chip-met"
-                                : "pl400-dim-chip"
+                              met && gate.learner.gatePassed
+                                ? "pl400-dim-chip pl400-dim-chip-met pl400-dim-chip-mastery"
+                                : met
+                                  ? "pl400-dim-chip pl400-dim-chip-met"
+                                  : "pl400-dim-chip"
                             }
                           >
                             {dimension.label} {score}/4
@@ -113,6 +122,14 @@ export function Pl400App() {
               Each lesson is a designed deep-dive: scenario first, mechanism
               second, distractor teardown, drills.
             </p>
+            {continueTarget ? (
+              <Link
+                href={`/pl-400/${continueTarget.slug}/`}
+                className="pl400-continue"
+              >
+                Continue: {continueTarget.number} · {continueTarget.title} →
+              </Link>
+            ) : null}
             <div className="pl400-lesson-links">
               {lessonIndex.map((p, i) => {
                 const progress =

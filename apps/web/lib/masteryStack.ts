@@ -16,6 +16,7 @@ import {
   type ToolName,
 } from "@learn/mastery-gate/webmcp";
 import { navigateToAnchor } from "./anchor";
+import { applyFocusPreset } from "./focus";
 import { lessonSections, manifest } from "./content";
 import { getLessonIndexEntry, lessonSectionAnchorEntries } from "./lessonIndex";
 import { NotifyingFacade } from "./notifyingFacade";
@@ -164,6 +165,7 @@ export function createMasteryStack(
     | null = null;
   const inner = new MasteryEngineFacade(engine, manifest, {
     navigate: (anchor) => navigateToAnchor(anchor),
+    applyFocus: (preset, anchor) => applyFocusPreset(preset, anchor),
     evidenceCorpus: lessonSections.flatMap((section) => [
       section.title,
       ...section.body,

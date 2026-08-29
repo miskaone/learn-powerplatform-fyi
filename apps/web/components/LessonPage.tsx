@@ -10,8 +10,10 @@ import {
   persistScenarioCommit,
   readScenarioCommit,
 } from "../lib/scenarioStorage";
+import { lessonIndex } from "../lib/lessonIndex";
 import { LessonAim, RuleCompression, RunCommitment } from "./LessonReflection";
 import { LessonPracticeSection } from "./LessonPracticeSection";
+import { SectionMap } from "./SectionMap";
 
 const DRILL_ORDER = [
   ["recall", "RECALL"],
@@ -234,6 +236,9 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
   );
   const showMnemonic =
     Boolean(lesson.mnemonic) && lesson.mnemonic !== lesson.examClue;
+  const idx = lessonIndex.findIndex((entry) => entry.slug === lesson.slug);
+  const prev = idx > 0 ? lessonIndex[idx - 1] : undefined;
+  const next = idx >= 0 ? lessonIndex[idx + 1] : undefined;
 
   return (
     <div className="lp">
@@ -244,6 +249,8 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
           Track hub
         </Link>
       </div>
+
+      <SectionMap slug={lesson.slug} />
 
       <header className="lp-hero">
         <p className="lp-kicker lp-label">
@@ -431,6 +438,37 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
           </div>
         ) : null}
       </section>
+
+      <nav className="lp-lesson-nav" aria-label="Lesson sequence">
+        {prev ? (
+          <Link
+            href={`/pl-400/${prev.slug}/`}
+            className="lp-lesson-nav-card lp-lesson-nav-prev"
+          >
+            <span className="lp-label">
+              ← Previous · {String(idx).padStart(2, "0")}
+            </span>
+            <strong>{prev.title}</strong>
+            <em>“{prev.heroEpigraph}”</em>
+          </Link>
+        ) : (
+          <span className="lp-lesson-nav-spacer" aria-hidden="true" />
+        )}
+        {next ? (
+          <Link
+            href={`/pl-400/${next.slug}/`}
+            className="lp-lesson-nav-card lp-lesson-nav-next"
+          >
+            <span className="lp-label">
+              Next · {String(idx + 2).padStart(2, "0")} →
+            </span>
+            <strong>{next.title}</strong>
+            <em>“{next.heroEpigraph}”</em>
+          </Link>
+        ) : (
+          <span className="lp-lesson-nav-spacer" aria-hidden="true" />
+        )}
+      </nav>
 
       <footer className="lp-footer">
         <span>

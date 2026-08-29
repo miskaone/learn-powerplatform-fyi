@@ -17,6 +17,7 @@ import type {
   EngineFacade,
   ExamDebriefPublic,
   ExamStatusPublic,
+  FocusPreset,
   HintResultPublic,
   LearnerStatePublic,
   LessonBriefPublic,
@@ -168,6 +169,29 @@ export function createToolset(
         }
         return textResponse(
           publicNavigate(engine.navigateToAnchor(parsed.value.anchor)),
+        );
+      },
+    ),
+    set_focus: descriptor(
+      'set_focus',
+      'Stage lighting for coaching. Call with preset "focus-section" and that section\'s anchor (from get_current_context.lesson.sectionAnchors[].anchor) to spotlight the section you are coaching the learner through — the page dims its sibling sections and highlights the target; call "clear-focus" when moving on. "exam-lighting" switches the whole page to a muted exam theme; the site applies and clears it automatically at exam start and exit, so you should not need it yourself. While an exam is active every preset except "clear-focus" is refused. Effects are a fixed set of page presets — this tool accepts no styling input.',
+      closedObject(
+        {
+          preset: {
+            type: 'string',
+            enum: ['focus-section', 'clear-focus', 'exam-lighting'],
+          },
+          anchor: stringSchema(),
+        },
+        ['preset'],
+      ),
+      async (input) => {
+        const parsed = parseFocus(input);
+        if (!parsed.ok) {
+          return parsed.response;
+        }
+        return textResponse(
+          engine.setFocus(parsed.value.preset, parsed.value.anchor),
         );
       },
     ),
@@ -733,6 +757,33 @@ function parseKind(
     );
   }
   return ok(kind);
+}
+
+function parseFocus(
+  input: unknown,
+): ParseResult<{ preset: FocusPreset; anchor: string | undefined }> {
+  const obj = readObject(input);
+  if (obj === null) {
+    return fail('expected an object');
+  }
+  const preset = obj['preset'];
+  if (
+    preset !== 'focus-section' &&
+    preset !== 'clear-focus' &&
+    preset !== 'exam-lighting'
+  ) {
+    return fail(
+      'preset must be "focus-section", "clear-focus", or "exam-lighting"',
+    );
+  }
+  const anchor = obj['anchor'];
+  if (anchor !== undefined && typeof anchor !== 'string') {
+    return fail('missing or invalid anchor');
+  }
+  return ok({
+    preset,
+    anchor: typeof anchor === 'string' ? anchor : undefined,
+  });
 }
 
 function parseEmpty(input: unknown): ParseResult<Record<string, never>> {

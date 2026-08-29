@@ -22,6 +22,7 @@ import type {
   EngineFacade,
   ExamDebriefPublic,
   ExamStatusPublic,
+  FocusPreset,
   HintResultPublic,
   LearnerStatePublic,
   LessonBriefPublic,
@@ -32,6 +33,7 @@ import type {
   RevealOutcomeResultPublic,
   RubricSubmission,
   RubricVerdictPublic,
+  SetFocusResultPublic,
   SubmitAnswerVerdictPublic,
 } from './engine-facade';
 
@@ -52,6 +54,11 @@ export interface MasteryEngineFacadeOptions {
    * `ok: false`.
    */
   navigate?: (anchor: string) => boolean;
+  /**
+   * UI-supplied focus hook (the engine package has no DOM). Returns
+   * whether the preset was applied. Absent → setFocus reports `ok: false`.
+   */
+  applyFocus?: (preset: FocusPreset, anchor: string | null) => boolean;
   /** Extra corpus lines the host app supplies (e.g. lesson body text). */
   evidenceCorpus?: readonly string[];
   /**
@@ -81,6 +88,9 @@ export class MasteryEngineFacade implements EngineFacade {
   private readonly engine: MasteryEngine;
   private readonly manifest: ContentManifest;
   private readonly navigate: ((anchor: string) => boolean) | undefined;
+  private readonly applyFocus:
+    | ((preset: FocusPreset, anchor: string | null) => boolean)
+    | undefined;
   private readonly evidenceCorpus: readonly string[];
   private readonly getActiveLesson:
     | (() => ActiveLessonPublic | null)
@@ -97,6 +107,7 @@ export class MasteryEngineFacade implements EngineFacade {
     this.engine = engine;
     this.manifest = manifest;
     this.navigate = options?.navigate;
+    this.applyFocus = options?.applyFocus;
     this.evidenceCorpus = options?.evidenceCorpus ?? [];
     this.getActiveLesson = options?.getActiveLesson;
     this.getLessonBriefSource = options?.getLessonBrief;
@@ -380,6 +391,45 @@ export class MasteryEngineFacade implements EngineFacade {
   navigateToAnchor(anchor: string): NavigateResultPublic {
     const ok = this.navigate ? this.navigate(anchor) : false;
     return { ok, anchor };
+  }
+
+  setFocus(preset: FocusPreset, anchor?: string): SetFocusResultPublic {
+    // Exam guard: agent-less surfaces execute without a registry
+    // (deregistration of set_focus during exam-mode is defense in
+    // depth, not the guard). Every preset except clear-focus is refused.
+    if (this.engine.isExamActive() && preset !== 'clear-focus') {
+      return { ok: false, preset, anchor: null, reason: 'exam-active' };
+    }
+
+    if (preset === 'focus-section') {
+      if (anchor === undefined || anchor.trim() === '') {
+        return { ok: false, preset, anchor: null, reason: 'anchor-required' };
+      }
+      const lesson = this.getActiveLesson?.() ?? null;
+      const known =
+        lesson !== null &&
+        lesson.sectionAnchors.some((section) => section.anchor === anchor);
+      if (!known) {
+        return { ok: false, preset, anchor, reason: 'unknown-anchor' };
+      }
+      const applied = this.applyFocus
+        ? this.applyFocus('focus-section', anchor)
+        : false;
+      return {
+        ok: applied,
+        preset,
+        anchor,
+        reason: applied ? null : 'not-applied',
+      };
+    }
+
+    const applied = this.applyFocus ? this.applyFocus(preset, null) : false;
+    return {
+      ok: applied,
+      preset,
+      anchor: null,
+      reason: applied ? null : 'not-applied',
+    };
   }
 
   getMisconceptionBrief(misconceptionId: string): Misconception | null {
