@@ -94,3 +94,46 @@ the kind of thing a judge checks.
   ChatGPT desktop-app browser (conversational agent, full loop) and Chrome 152+
   with the flag (API-level, verified via devtools executeTool). The earlier
   "seems to work with Copilot" was roster-text reading. Do not claim Copilot.
+
+## DECISIVE: real-runtime registration verified, Chrome 152 (2026-08-29)
+
+The evidence gap that mattered: every prior "verified" was against an injected
+MOCK `document.modelContext`. That proves our code against our model of the API,
+not against a real browser implementation. Closed now.
+
+Owner ran, in DevTools on the live product page in Chrome 152.0.7977.65 with
+`#enable-webmcp-testing` enabled:
+
+```js
+document.modelContext.getTools().then(t => console.log(t.length, t.map(x => x.name)))
+```
+
+Result — the **browser's own** WebMCP API reporting our registrations:
+
+```
+12 ['get_current_context', 'get_current_question', 'get_hint',
+    'get_learner_state', 'get_lesson_brief', 'log_coaching_note',
+    'navigate_to_anchor', 'prescribe_drill', 'request_next_action',
+    'score_rubric', 'set_lesson_aim', 'submit_answer']
+```
+
+Conclusions:
+1. **Registration against the real Chrome implementation is correct** — all 12
+   tools, exact names, in the second contest-named environment, on the live
+   product (not the spike page). The mock was faithful.
+2. Chrome returns tools **alphabetically**, not in registration order. Our
+   `canonicalToolOrder()` normalizes whatever `getTools()` returns, so the
+   on-page roster stays stable regardless of host ordering — already handled.
+3. Therefore every remaining failure observed tonight is **host invocation
+   bridging**, not this site. Survey after five surfaces:
+
+| Host | Discovers | Invokes |
+|---|---|---|
+| ChatGPT desktop app (in-app browser) | ✅ | ✅ full coaching loop (2026-08-27) |
+| Chrome 152 + flag (direct API / DevTools / in-page Inspector) | ✅ | ✅ |
+| Codex Chrome extension side panel | ✅ (page text) | ❌ |
+| Copilot in Edge | ✅ (page text) | ❌ |
+| ChatGPT/Codex Chrome sidebar | ✅ (names the 12) | ❌ `tool_unavailable: not bridged into this runtime` |
+
+The bridge companion (`bridge/`) exists precisely to close that column for any
+MCP-speaking client. The gap is the ecosystem's; the fix is in this repo.
