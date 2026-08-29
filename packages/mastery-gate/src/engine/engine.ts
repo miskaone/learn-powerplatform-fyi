@@ -420,19 +420,20 @@ export class MasteryEngine {
    * agent only when MCQ coverage is sufficient to judge but the gate has
    * not passed.
    */
-  isRubricInterviewReady(): boolean {
-    if (gatePasses(this.ledger.scores)) {
-      return false;
-    }
-    if (this.isExamActive()) {
-      return false;
-    }
-
+  /**
+   * Track-wide attempted-question count per rubric dimension, against the
+   * interview-readiness threshold. Surfaced through request_next_action so a
+   * "continue" verdict can say WHY the rubric interview has not unlocked.
+   */
+  getRubricInterviewCoverage(): {
+    dimension: RubricDimension;
+    attempted: number;
+    required: number;
+  }[] {
     const attemptedIds = new Set<string>();
     for (const attempt of this.ledger.attempts) {
       attemptedIds.add(attempt.questionId);
     }
-
     const counts: Record<RubricDimension, number> = {
       recall: 0,
       connections: 0,
@@ -444,8 +445,22 @@ export class MasteryEngine {
         counts[question.dimension] += 1;
       }
     }
-    for (const dimension of RUBRIC_DIMENSIONS) {
-      if (counts[dimension] < RUBRIC_INTERVIEW_MIN_COVERAGE) {
+    return RUBRIC_DIMENSIONS.map((dimension) => ({
+      dimension,
+      attempted: counts[dimension],
+      required: RUBRIC_INTERVIEW_MIN_COVERAGE,
+    }));
+  }
+
+  isRubricInterviewReady(): boolean {
+    if (gatePasses(this.ledger.scores)) {
+      return false;
+    }
+    if (this.isExamActive()) {
+      return false;
+    }
+    for (const entry of this.getRubricInterviewCoverage()) {
+      if (entry.attempted < entry.required) {
         return false;
       }
     }

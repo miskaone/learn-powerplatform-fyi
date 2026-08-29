@@ -284,6 +284,14 @@ export class MasteryEngineFacade implements EngineFacade {
     };
   }
 
+  getRubricInterviewCoverage(): {
+    dimension: RubricDimension;
+    attempted: number;
+    required: number;
+  }[] {
+    return this.engine.getRubricInterviewCoverage();
+  }
+
   requestNextAction(
     confidence?: 'low' | 'high',
   ): NextAction | 'continue' | 'rubric_interview' {

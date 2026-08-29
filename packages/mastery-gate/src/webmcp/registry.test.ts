@@ -106,6 +106,10 @@ function createStubEngine(options?: {
       hint: `Look at the sandbox for ${questionId}`,
       refusal: null,
     }),
+    getRubricInterviewCoverage: () =>
+      (['recall', 'connections', 'application', 'transfer'] as const).map(
+        (dimension) => ({ dimension, attempted: 2, required: 2 }),
+      ),
     requestNextAction: () => 'hint',
     prescribeDrill: () => ({
       drillKind: 'failure_case',

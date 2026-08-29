@@ -330,6 +330,14 @@ export function createToolset(
             guidance: RUBRIC_INTERVIEW_GUIDANCE,
           });
         }
+        if (verdict === 'continue') {
+          return textResponse({
+            verdict,
+            interviewCoverage: engine.getRubricInterviewCoverage(),
+            interviewCoverageNote:
+              'rubric_interview unlocks once every dimension has attempted >= required (track-wide); tell the learner which dimensions still need practice.',
+          });
+        }
         return textResponse({ verdict });
       },
     ),

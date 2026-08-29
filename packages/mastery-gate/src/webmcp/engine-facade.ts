@@ -301,6 +301,11 @@ export interface EngineFacade {
    * dimension but gate not passed — the engine invites the agent to run the
    * open-question interview and score the rubric.
    */
+  getRubricInterviewCoverage(): {
+    dimension: RubricDimension;
+    attempted: number;
+    required: number;
+  }[];
   requestNextAction(
     confidence?: 'low' | 'high',
   ): NextAction | 'continue' | 'rubric_interview';

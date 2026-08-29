@@ -61,6 +61,10 @@ function succeedingFacade(): EngineFacade {
       defeatedMisconception: null,
     }),
     getHint: () => ({ granted: false, tier: null, hint: null, refusal: "x" }),
+    getRubricInterviewCoverage: () =>
+      (['recall', 'connections', 'application', 'transfer'] as const).map(
+        (dimension) => ({ dimension, attempted: 2, required: 2 }),
+      ),
     requestNextAction: () => "continue",
     prescribeDrill: () => ({
       drillKind: "spaced_review",

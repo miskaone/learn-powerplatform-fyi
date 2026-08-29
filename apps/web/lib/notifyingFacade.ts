@@ -40,6 +40,12 @@ export class NotifyingFacade implements EngineFacade {
     return result;
   }
 
+  getRubricInterviewCoverage(): ReturnType<
+    EngineFacade["getRubricInterviewCoverage"]
+  > {
+    return this.inner.getRubricInterviewCoverage();
+  }
+
   requestNextAction(confidence?: "low" | "high") {
     return this.inner.requestNextAction(confidence);
   }

@@ -128,6 +128,10 @@ function createStubEngine(options?: {
       hint: `Look at the sandbox for ${questionId}`,
       refusal: null,
     }),
+    getRubricInterviewCoverage: () =>
+      (['recall', 'connections', 'application', 'transfer'] as const).map(
+        (dimension) => ({ dimension, attempted: 2, required: 2 }),
+      ),
     requestNextAction: (confidence) => {
       log.nextActionConfidence = confidence ?? 'unset';
       if (options?.nextAction !== undefined) {
@@ -1293,4 +1297,21 @@ test('set_focus clear-focus and exam-lighting ignore a supplied anchor', async (
   });
 
   expect(calls).toEqual([{ preset: 'clear-focus', anchor: null }]);
+});
+
+test('request_next_action continue verdict carries the interview-coverage ledger', async () => {
+  const { engine } = createStubEngine({ nextAction: 'continue' });
+  const tools = createToolset(engine);
+  const payload = asRecord(payloadOf(await tools.request_next_action.execute({})));
+  expect(payload['verdict']).toBe('continue');
+  expect(payload['interviewCoverage']).toEqual(
+    ['recall', 'connections', 'application', 'transfer'].map((dimension) => ({
+      dimension,
+      attempted: 2,
+      required: 2,
+    })),
+  );
+  expect(String(payload['interviewCoverageNote'])).toContain(
+    'rubric_interview unlocks',
+  );
 });
