@@ -86,4 +86,11 @@ audience through its native tooling.
 until the evidence line below is filled in. Unverified vendor claims are exactly
 the kind of thing a judge checks.
 
-- Evidence: `[PENDING — what Copilot listed/called, screenshot]`
+- Evidence (2026-08-28, RESOLVED — claim NOT supported): Copilot in Edge reads the
+  page and quotes the roster/tool descriptions, but states plainly it has no
+  invocation bridge: "that bridge is not exposed as a callable tool in this
+  Copilot session." Same class as the Codex side panel: page-text access only.
+  **Verified invocation hosts remain exactly the two the contest names:**
+  ChatGPT desktop-app browser (conversational agent, full loop) and Chrome 152+
+  with the flag (API-level, verified via devtools executeTool). The earlier
+  "seems to work with Copilot" was roster-text reading. Do not claim Copilot.
