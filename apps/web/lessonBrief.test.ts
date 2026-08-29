@@ -255,6 +255,8 @@ test("kickoff opens with an unconditional tool call and anti-refusal clause", ()
   expect(KICKOFF_PROMPT).toContain(
     "If an aim is already saved for this lesson, confirm it in one line",
   );
+  expect(KICKOFF_PROMPT).toContain("COMMIT FIRST:");
+  expect(KICKOFF_PROMPT).toContain("never draft the commitment for me");
 });
 
 test("ISC-77 briefing contract: the kickoff prompt binds grounding and scenario-first", () => {
