@@ -126,3 +126,69 @@ test('EventlessMockModelContext register/getTools/abort match Mock without event
   controller.abort();
   expect(ctx.hasTool('other')).toBe(false);
 });
+
+async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
+  try {
+    await promise;
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  throw new Error('expected rejection, got resolution');
+}
+
+test('executeTool spec form: RegisteredTool object + JSON string resolves a stringified result', async () => {
+  const ctx = new MockModelContext();
+  const tool: ToolDescriptor = {
+    name: 'echo',
+    description: 'echo tool',
+    inputSchema: { type: 'object' },
+    execute: async (input: unknown) => textResponse({ got: input }),
+  };
+  ctx.registerTool(tool);
+  const [registered] = await ctx.getTools();
+  const raw = await ctx.executeTool(registered!, '{"q":1}');
+  expect(typeof raw).toBe('string');
+  expect(JSON.parse(raw)).toEqual({
+    content: [{ type: 'text', text: JSON.stringify({ got: { q: 1 } }) }],
+  });
+});
+
+test('executeTool spec form rejects a non-registered object with the RegisteredTool TypeError', async () => {
+  const ctx = new MockModelContext();
+  ctx.registerTool(makeTool('real'));
+  const impostor = makeTool('impostor');
+  expect(await rejectionMessage(ctx.executeTool(impostor, '{}'))).toBe(
+    "The provided value is not of type 'RegisteredTool'",
+  );
+});
+
+test('executeTool spec form rejects a non-string input', async () => {
+  const ctx = new MockModelContext();
+  const tool = makeTool('t');
+  ctx.registerTool(tool);
+  expect(
+    await rejectionMessage(
+      // Force the legacy overload: object first arg, non-string input.
+      (ctx as EventlessMockModelContext).executeTool(
+        tool,
+        { not: 'a string' } as unknown as string,
+      ),
+    ),
+  ).toBe('executeTool input must be a JSON-encoded string');
+});
+
+test('executeTool spec form rejects invalid JSON input', async () => {
+  const ctx = new MockModelContext();
+  const tool = makeTool('t');
+  ctx.registerTool(tool);
+  expect(await rejectionMessage(ctx.executeTool(tool, '{nope'))).toContain('JSON');
+});
+
+test('executeTool legacy (name, object) form still works (deprecated path)', async () => {
+  const ctx = new MockModelContext();
+  const response = textResponse({ ok: true });
+  ctx.registerTool(makeTool('legacy', response));
+  const result = await ctx.executeTool('legacy', { a: 1 });
+  expect(result).toBe(response);
+  expect(await rejectionMessage(ctx.executeTool('missing', {}))).toBe('unknown tool: missing');
+});

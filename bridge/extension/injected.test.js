@@ -174,3 +174,162 @@ describe('relay message handling', () => {
     expect(note.data.source).toBe('webmcp-bridge:from-page');
   });
 });
+
+describe('spec-conformant executeTool invocation (2026-08-26 draft)', () => {
+  // A Chrome-152-strict runtime: executeTool accepts ONLY a RegisteredTool
+  // object (identity from getTools) plus a JSON string, and resolves a
+  // stringified result — anything else rejects with the live-observed
+  // TypeError.
+  function chromeStrictRuntime() {
+    const calls = [];
+    const tool = {
+      name: 'get_learner_state',
+      description: 'read state',
+      inputSchema: { type: 'object', properties: {} },
+    };
+    const runtime = {
+      marker: 'chrome-152-strict',
+      async getTools() {
+        return [tool];
+      },
+      async executeTool(registered, inputJson) {
+        calls.push({ registered, inputJson });
+        if (registered !== tool) {
+          throw new TypeError("The provided value is not of type 'RegisteredTool'");
+        }
+        if (typeof inputJson !== 'string') {
+          throw new TypeError("The provided value is not of type 'DOMString'");
+        }
+        return JSON.stringify({ content: [{ type: 'text', text: 'state:' + inputJson }] });
+      },
+    };
+    return { runtime, calls };
+  }
+
+  test('callTool against a strict runtime uses the spec form and normalizes the string result', async () => {
+    const { runtime, calls } = chromeStrictRuntime();
+    const h = makeHarness({ existingModelContext: runtime });
+    h.dispatch({ source: 'webmcp-bridge:to-page', id: 's1', op: 'callTool', name: 'get_learner_state', args: { a: 1 } });
+    const reply = await h.nextPosted((p) => p.data.id === 's1');
+    expect(reply.data.ok).toBe(true);
+    expect(calls.length).toBe(1);
+    expect(calls[0].registered.name).toBe('get_learner_state');
+    expect(calls[0].inputJson).toBe('{"a":1}');
+    expect(reply.data.result.content).toEqual([{ type: 'text', text: 'state:{"a":1}' }]);
+    expect(reply.data.execPath).toBe('spec');
+  });
+
+  test('non-JSON string results are wrapped as MCP text content', async () => {
+    const tool = { name: 't', description: '', inputSchema: {} };
+    const runtime = {
+      async getTools() {
+        return [tool];
+      },
+      async executeTool() {
+        return 'plain words, not JSON';
+      },
+    };
+    const h = makeHarness({ existingModelContext: runtime });
+    h.dispatch({ source: 'webmcp-bridge:to-page', id: 's2', op: 'callTool', name: 't', args: {} });
+    const reply = await h.nextPosted((p) => p.data.id === 's2');
+    expect(reply.data.ok).toBe(true);
+    expect(reply.data.result).toEqual({ content: [{ type: 'text', text: 'plain words, not JSON' }] });
+  });
+
+  test('legacy-only runtime: spec form rejected once, legacy (name, object) retried and reported', async () => {
+    const calls = [];
+    const runtime = {
+      async getTools() {
+        return [{ name: 'legacy_tool', description: '', inputSchema: {} }];
+      },
+      async executeTool(first, second) {
+        calls.push({ first, second });
+        if (typeof first !== 'string') {
+          // A pre-spec host looking the object up by name and failing.
+          throw new Error('unknown tool: [object Object]');
+        }
+        return { content: [{ type: 'text', text: 'legacy:' + JSON.stringify(second) }] };
+      },
+    };
+    const h = makeHarness({ existingModelContext: runtime });
+    h.dispatch({ source: 'webmcp-bridge:to-page', id: 's3', op: 'callTool', name: 'legacy_tool', args: { b: 2 } });
+    const reply = await h.nextPosted((p) => p.data.id === 's3');
+    expect(reply.data.ok).toBe(true);
+    expect(calls.length).toBe(2);
+    expect(typeof calls[0].first).toBe('object');
+    expect(calls[1].first).toBe('legacy_tool');
+    expect(calls[1].second).toEqual({ b: 2 });
+    expect(reply.data.result.content).toEqual([{ type: 'text', text: 'legacy:{"b":2}' }]);
+    expect(reply.data.execPath).toBe('legacy');
+  });
+
+  test('a genuine tool failure is NOT retried on the legacy path', async () => {
+    let callCount = 0;
+    const runtime = {
+      async getTools() {
+        return [{ name: 'boom', description: '', inputSchema: {} }];
+      },
+      async executeTool() {
+        callCount += 1;
+        throw new Error('kaput');
+      },
+    };
+    const h = makeHarness({ existingModelContext: runtime });
+    h.dispatch({ source: 'webmcp-bridge:to-page', id: 's4', op: 'callTool', name: 'boom', args: {} });
+    const reply = await h.nextPosted((p) => p.data.id === 's4');
+    expect(reply.data.ok).toBe(false);
+    expect(reply.data.error).toContain('kaput');
+    expect(callCount).toBe(1);
+  });
+
+  test('normalized callTool results pass the extension relay validator', async () => {
+    const { validatePageResult } = await import('./lib/protocol.js');
+    const { runtime } = chromeStrictRuntime();
+    const h = makeHarness({ existingModelContext: runtime });
+    h.dispatch({ source: 'webmcp-bridge:to-page', id: 's5', op: 'callTool', name: 'get_learner_state', args: {} });
+    const reply = await h.nextPosted((p) => p.data.id === 's5');
+    const checked = validatePageResult('callTool', reply.data.result);
+    expect(checked.ok).toBe(true);
+    expect(checked.result.content.length).toBe(1);
+  });
+});
+
+describe('fallback polyfill spec-form executeTool', () => {
+  test('accepts (RegisteredTool, jsonString) and resolves a DOMString', async () => {
+    const h = makeHarness();
+    const mc = h.documentStub.modelContext;
+    await mc.registerTool({
+      name: 'echo',
+      description: 'd',
+      inputSchema: { type: 'object' },
+      execute: async (input) => ({ content: [{ type: 'text', text: JSON.stringify(input) }] }),
+    });
+    const [registered] = await mc.getTools();
+    const raw = await mc.executeTool(registered, '{"x":1}');
+    expect(typeof raw).toBe('string');
+    expect(JSON.parse(raw)).toEqual({ content: [{ type: 'text', text: '{"x":1}' }] });
+  });
+
+  test('rejects a non-registered object with the RegisteredTool TypeError', async () => {
+    const h = makeHarness();
+    const mc = h.documentStub.modelContext;
+    await expect(mc.executeTool({ name: 'nope' }, '{}')).rejects.toThrow(
+      "The provided value is not of type 'RegisteredTool'",
+    );
+  });
+
+  test('rejects a spec call whose input is not a string', async () => {
+    const h = makeHarness();
+    const mc = h.documentStub.modelContext;
+    await mc.registerTool({
+      name: 't',
+      description: '',
+      inputSchema: {},
+      execute: async () => ({ content: [] }),
+    });
+    const [registered] = await mc.getTools();
+    await expect(mc.executeTool(registered, { not: 'a string' })).rejects.toThrow(
+      'executeTool input must be a JSON string',
+    );
+  });
+});

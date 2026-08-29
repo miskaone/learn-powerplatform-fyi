@@ -65,6 +65,50 @@ export class EventlessMockModelContext implements ModelContextLike {
     return tool.execute(input);
   }
 
+  /**
+   * Spec form (webmachinelearning.github.io/webmcp, draft 2026-08-26):
+   * executeTool(RegisteredTool, inputJsonString) resolves a stringified
+   * result — Chrome 152 enforces this strictly, rejecting any non-
+   * RegisteredTool first argument with a TypeError. The mock mirrors that
+   * strictness so tests exercise the real signature.
+   */
+  executeTool(tool: ToolDescriptor, inputJson: string): Promise<string>;
+  /**
+   * @deprecated Legacy pre-spec form (nameString, argsObject) — kept only
+   * for back-compat with callers written before the 2026-08-26 draft. New
+   * code must pass the RegisteredTool object and a JSON string.
+   */
+  executeTool(name: string, input: unknown): Promise<ToolResponse>;
+  async executeTool(
+    toolOrName: ToolDescriptor | string,
+    input: unknown,
+  ): Promise<string | ToolResponse> {
+    if (typeof toolOrName === 'string') {
+      // Deprecated legacy path — see overload note above.
+      const tool = this.tools.get(toolOrName);
+      if (tool === undefined) {
+        throw new Error(`unknown tool: ${toolOrName}`);
+      }
+      return tool.execute(input);
+    }
+    const registered =
+      toolOrName !== null &&
+      typeof toolOrName === 'object' &&
+      typeof toolOrName.name === 'string'
+        ? this.tools.get(toolOrName.name)
+        : undefined;
+    if (registered === undefined) {
+      // Chrome 152's exact rejection message, observed live 2026-08-29.
+      throw new TypeError("The provided value is not of type 'RegisteredTool'");
+    }
+    if (typeof input !== 'string') {
+      throw new TypeError('executeTool input must be a JSON-encoded string');
+    }
+    const parsed: unknown = input.length === 0 ? {} : JSON.parse(input);
+    const result = await registered.execute(parsed);
+    return JSON.stringify(result);
+  }
+
   protected onToolsChanged(): void {}
 }
 

@@ -87,13 +87,14 @@
   // Tool 2: slow tool for in-flight abort test
   let slowCtl = new AbortController();
   let slowResolve = null;
+  let slowStarted = false; // discriminator: did execution actually begin?
   (async ()=>{
     try {
       await mc.registerTool({
         name:'spike_slow',
         description:'Slow test tool: takes 8 seconds, then returns DONE. Used to test in-flight abort behavior.',
         inputSchema:{ type:'object', properties:{} },
-        async execute(){ log('spike_slow EXECUTE started (8s)…');
+        async execute(){ slowStarted = true; log('spike_slow EXECUTE started (8s)…');
           await new Promise(r=>{ slowResolve=r; setTimeout(r, 8000); });
           log('spike_slow EXECUTE completed normally');
           return { content:[{type:'text', text:'DONE after 8s, nonce:'+NONCE}] }; }
@@ -101,6 +102,37 @@
       log('spike_slow registered'); refreshTools();
     } catch(e){ log('spike_slow registration FAILED: '+e.message); }
   })();
+
+  // Spec-correct executeTool (draft 2026-08-26): pass the RegisteredTool
+  // object from getTools() plus a JSON-encoded argument string; expect a
+  // string result. Chrome 152 rejects any other first argument with
+  // "The provided value is not of type 'RegisteredTool'". Defensive dual
+  // path: if the spec form is rejected at call time, retry the legacy
+  // (name, argsObject) form once — some injected runtimes (ChatGPT) may
+  // still expect the pre-spec shape.
+  function isSignatureRejection(e){
+    return (e instanceof TypeError) || /RegisteredTool|unknown tool|not found/i.test(String(e && e.message || e));
+  }
+  async function invokeTool(name, args){
+    let registered = null;
+    try { const ts = await mc.getTools(); registered = (ts||[]).find(t=>t&&t.name===name)||null; }
+    catch(e){ log('getTools() failed while resolving RegisteredTool: '+e.message); }
+    if (registered) {
+      try {
+        const raw = await mc.executeTool(registered, JSON.stringify(args||{}));
+        log('executeTool path: SPEC (RegisteredTool + JSON string)');
+        return raw;
+      } catch(e){
+        if (!isSignatureRejection(e)) throw e;
+        log('spec-form executeTool rejected at CALL TIME ('+e.message+') — retrying legacy (name, object) form');
+      }
+    } else {
+      log('could not resolve RegisteredTool for '+name+' via getTools() — trying legacy form');
+    }
+    const raw = await mc.executeTool(name, args||{});
+    log('executeTool path: LEGACY (name string + args object)');
+    return raw;
+  }
 
   // Button 1: LATE registration (mid-session — snapshot question)
   document.getElementById('btnLate').onclick = async ()=>{
@@ -123,15 +155,26 @@
     setTimeout(refreshTools, 250);
   };
 
-  // Button 3: self-test in-flight abort (Chrome-152 landmine probe)
+  // Button 3: self-test in-flight abort probe. Three distinct outcomes —
+  // do NOT conflate them (the 2026-08-29 run's rejection was a call-time
+  // signature type-error, not an in-flight kill):
+  //   a) rejected before execute() ever ran  → call-time rejection (signature/lookup)
+  //   b) execute() started, then rejected after abort → in-flight killed by revocation
+  //   c) resolved despite the abort → in-flight survives revocation
   document.getElementById('btnSelf').onclick = async ()=>{
-    log('SELF-TEST: executing spike_slow via executeTool, aborting its registration at t+2s…');
+    slowStarted = false;
+    log('SELF-TEST: executing spike_slow (spec form: RegisteredTool + JSON string), aborting its registration at t+2s…');
     setTimeout(()=>{ slowCtl.abort(); log('slowCtl.abort() called at t+2s (mid-flight)'); setTimeout(refreshTools,250); }, 2000);
     try {
-      const res = await mc.executeTool('spike_slow', {});
-      log('SELF-TEST RESULT: execute RESOLVED despite abort → in-flight survives. '+JSON.stringify(res).slice(0,120));
+      const res = await invokeTool('spike_slow', {});
+      const shown = (typeof res==='string' ? res : JSON.stringify(res)).slice(0,120);
+      log('SELF-TEST RESULT: execute RESOLVED despite abort → in-flight execution SURVIVES revocation. '+shown);
     } catch(e){
-      log('SELF-TEST RESULT: execute REJECTED after abort → in-flight is KILLED (Chrome<153 behavior). '+e.message);
+      if (!slowStarted) {
+        log('SELF-TEST RESULT: rejected BEFORE execution began → CALL-TIME rejection (executeTool signature/type or tool lookup), NOT evidence of an in-flight abort kill. '+e.message);
+      } else {
+        log('SELF-TEST RESULT: execution STARTED, then rejected after abort → in-flight execution is KILLED by revocation. '+e.message);
+      }
     }
   };
 

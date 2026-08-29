@@ -338,6 +338,9 @@ export class ToolRegistry {
       name: descriptor.name,
       description: descriptor.description,
       inputSchema: descriptor.inputSchema,
+      ...(descriptor.annotations !== undefined
+        ? { annotations: descriptor.annotations }
+        : {}),
       execute: async (input: unknown): Promise<ToolResponse> => {
         // Compensating engine-side refusal for the drain wedge
         // (cross-review finding 16): while this tool's revocation is
@@ -373,6 +376,9 @@ export class ToolRegistry {
       name: descriptor.name,
       description: descriptor.description,
       inputSchema: descriptor.inputSchema,
+      ...(descriptor.annotations !== undefined
+        ? { annotations: descriptor.annotations }
+        : {}),
       execute: async (input: unknown): Promise<ToolResponse> => {
         if (this.refusalActive) {
           return textResponse({
