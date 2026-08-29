@@ -57,6 +57,7 @@ export function ToolRoster(props: {
   /** Non-blocking error line (e.g. a failed registry sync). */
   errorNotice?: string;
   modeLabel?: string;
+  inspectorToggle?: { open: boolean; onToggle: () => void };
 }) {
   const locked = new Set(props.lockedTools ?? []);
   const stuck = new Set(props.stuckTools ?? []);
@@ -108,6 +109,20 @@ export function ToolRoster(props: {
           );
         })}
       </ul>
+      {props.inspectorToggle ? (
+        <div className="tool-roster-footer">
+          <button
+            type="button"
+            className="tool-roster-inspector-toggle"
+            aria-pressed={props.inspectorToggle.open}
+            onClick={props.inspectorToggle.onToggle}
+          >
+            {props.inspectorToggle.open
+              ? "Hide Tool Inspector"
+              : "Show Tool Inspector"}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

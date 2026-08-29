@@ -38,6 +38,7 @@ function succeedingFacade(): EngineFacade {
       lessonAims: {},
       ruleCompressions: {},
       runCommitments: {},
+      coachingNotes: [...STATE.coachingNotes],
     }),
     getCurrentContext: () => ({
       objectiveId: "obj",

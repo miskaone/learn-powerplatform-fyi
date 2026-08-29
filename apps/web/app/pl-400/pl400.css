@@ -852,3 +852,140 @@ button.pl400-btn,
   padding-top: 0.85rem;
   border-top: 1px solid var(--pl400-border);
 }
+
+/* Tool Inspector */
+.tool-inspector {
+  margin-top: 1rem;
+}
+
+.tool-inspector-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tool-inspector-framing {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.tool-inspector-tool {
+  border: 1px solid var(--pl400-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.tool-inspector-tool > summary {
+  cursor: pointer;
+}
+
+.tool-inspector-desc {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.tool-inspector form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
+.tool-inspector form label {
+  display: block;
+}
+
+.tool-inspector form input,
+.tool-inspector form select,
+.tool-inspector form textarea {
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--pl400-border);
+  border-radius: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  font: inherit;
+}
+
+.tool-inspector-group {
+  border: 1px solid var(--pl400-border);
+  border-radius: 0.4rem;
+  margin: 0.4rem 0;
+  padding: 0.4rem 0.6rem;
+}
+
+.tool-inspector-req {
+  color: var(--pl400-danger);
+}
+
+.tool-inspector-invoke {
+  background: var(--pl400-accent);
+  color: #fff;
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.tool-inspector-invoke:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Always-mounted live region: announces results, hints, and validation
+   errors to screen readers; empty (zero-height) until a result arrives. */
+.tool-inspector-status {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.tool-inspector-status:not(:empty) {
+  margin: 0.45rem 0 0;
+}
+
+.tool-inspector-hint {
+  background: var(--pl400-accent-soft);
+  border-left: 3px solid var(--pl400-accent);
+  padding: 0.35rem 0.55rem;
+  font-size: 0.85rem;
+  border-radius: 0.25rem;
+}
+
+.tool-inspector-result {
+  background: color-mix(in srgb, var(--text) 6%, var(--bg));
+  border: 1px solid var(--pl400-border);
+  border-radius: 0.4rem;
+  padding: 0.6rem;
+  font-size: 0.78rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.tool-inspector-expand,
+.tool-roster-inspector-toggle {
+  background: transparent;
+  border: 1px solid var(--pl400-border);
+  color: var(--muted);
+  border-radius: 0.4rem;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.tool-roster-footer {
+  margin-top: 0.6rem;
+}
+
+.tool-inspector-invoke:focus-visible,
+.tool-inspector-expand:focus-visible,
+.tool-inspector-result:focus-visible,
+.tool-inspector-details > summary:focus-visible,
+.tool-inspector-tool > summary:focus-visible,
+.tool-roster-inspector-toggle:focus-visible {
+  outline: 2px solid var(--pl400-accent);
+}

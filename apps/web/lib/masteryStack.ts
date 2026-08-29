@@ -12,6 +12,7 @@ import {
   type EngineFacade,
   type LessonBriefPublic,
   type RegistrySnapshot,
+  type ToolDescriptor,
   type ToolName,
 } from "@learn/mastery-gate/webmcp";
 import { navigateToAnchor } from "./anchor";
@@ -49,6 +50,25 @@ export interface MasteryStack {
   getActiveLessonSlug(): string | null;
   /** Live read of tools whose revocation drain has exceeded the warn threshold. */
   getStuckRevocations(): string[];
+  /**
+   * The one live toolset instance — the registry registers wrapped views of
+   * these exact descriptors (shared engine state, shared redaction mappers).
+   * ENGINE-GUARD INVARIANT: raw descriptors carry no registry-layer guards
+   * (drain refusal, refusal-mode exam guard). Every consequential tool MUST
+   * therefore refuse inside the engine/adapter itself (gate-not-passed,
+   * exam-in-progress, structural redaction) — never rely on registry-layer
+   * guards alone, because agent-less surfaces execute without a registry.
+   */
+  getToolset(): Record<ToolName, ToolDescriptor>;
+  /**
+   * Descriptors an in-app surface should INVOKE. With an agent runtime
+   * bound these are the registry-wrapped descriptors — the identical guard
+   * layer (mid-drain `tool-revoked` refusal, refusal-mode exam guard) an
+   * agent passes through. Agent-less, no registry exists and the raw
+   * descriptors are returned; safety then rests entirely on the
+   * engine-guard invariant documented on getToolset().
+   */
+  getInvocableToolset(): Record<ToolName, ToolDescriptor>;
 }
 
 /**
@@ -218,22 +238,23 @@ export function createMasteryStack(
   });
   const facade = new NotifyingFacade(inner, onEngineMutation);
   const ctx = resolveModelContext(host);
-  const registry = ctx
-    ? new ToolRegistry(ctx, facade, {
-        disabledTools: QUARANTINED_TOOLS,
-        onStuckRevocation: () => onEngineMutation(),
-      })
-    : null;
-  const watcher = ctx ? new ToolSurfaceWatcher(ctx) : null;
-  const toolset = createToolset(facade);
+  let sharedToolset = createToolset(facade);
   const toolMeta: Record<string, { description: string; dynamic: boolean }> = {};
-  for (const name of Object.keys(toolset)) {
-    const descriptor = toolset[name as ToolName];
+  for (const name of Object.keys(sharedToolset)) {
+    const descriptor = sharedToolset[name as ToolName];
     toolMeta[name] = {
       description: descriptor.description,
       dynamic: (DYNAMIC_TOOL_NAMES as readonly string[]).includes(name),
     };
   }
+  const registry = ctx
+    ? new ToolRegistry(ctx, facade, {
+        disabledTools: QUARANTINED_TOOLS,
+        onStuckRevocation: () => onEngineMutation(),
+        toolsetOverride: sharedToolset,
+      })
+    : null;
+  const watcher = ctx ? new ToolSurfaceWatcher(ctx) : null;
   const stack: MasteryStack = {
     engine,
     facade,
@@ -299,6 +320,21 @@ export function createMasteryStack(
     getStuckRevocations(): string[] {
       return this.registry?.getStuckRevocations() ?? [];
     },
+    getToolset(): Record<ToolName, ToolDescriptor> {
+      return sharedToolset;
+    },
+    getInvocableToolset(): Record<ToolName, ToolDescriptor> {
+      const registry = this.registry;
+      if (registry === null) {
+        return sharedToolset;
+      }
+      const wrapped = {} as Record<ToolName, ToolDescriptor>;
+      for (const name of Object.keys(sharedToolset) as ToolName[]) {
+        wrapped[name] =
+          registry.getWrappedDescriptor(name) ?? sharedToolset[name];
+      }
+      return wrapped;
+    },
   };
 
   if (ctx === null) {
@@ -308,6 +344,12 @@ export function createMasteryStack(
       host,
       onRuntimeDetected,
       onEngineMutation,
+      {
+        getSharedToolset: () => sharedToolset,
+        setSharedToolset: (next) => {
+          sharedToolset = next;
+        },
+      },
     );
   }
   return stack;
@@ -339,6 +381,10 @@ function startRuntimeDetection(
   host: Parameters<typeof resolveModelContext>[0],
   onRuntimeDetected: (() => void) | undefined,
   onEngineMutation: () => void,
+  shared: {
+    getSharedToolset: () => Record<ToolName, ToolDescriptor>;
+    setSharedToolset: (toolset: Record<ToolName, ToolDescriptor>) => void;
+  },
 ): () => void {
   let attempts = 0;
   let stopped = false;
@@ -352,9 +398,12 @@ function startRuntimeDetection(
     if (late === null) {
       return false;
     }
+    shared.setSharedToolset(createToolset(facade));
+    const lateToolset = shared.getSharedToolset();
     stack.registry = new ToolRegistry(late, facade, {
       disabledTools: QUARANTINED_TOOLS,
       onStuckRevocation: () => onEngineMutation(),
+      toolsetOverride: lateToolset,
     });
     stack.watcher = new ToolSurfaceWatcher(late);
     // Late binding IS registration time: the registry above just composed
@@ -362,7 +411,6 @@ function startRuntimeDetection(
     // profile as it stands NOW. Rebuild the roster meta from the same state
     // so the on-page descriptions match what actually registered — the meta
     // captured at stack creation could predate profile changes.
-    const lateToolset = createToolset(facade);
     for (const name of Object.keys(lateToolset)) {
       const descriptor = lateToolset[name as ToolName];
       stack.toolMeta[name] = {

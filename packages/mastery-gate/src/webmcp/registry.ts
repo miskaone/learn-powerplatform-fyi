@@ -213,6 +213,19 @@ export class ToolRegistry {
   }
 
   /**
+   * The registry-wrapped descriptor for a tool — the exact execute an agent
+   * runtime invokes: in-flight tracking, the mid-drain `tool-revoked`
+   * refusal, and (in refusal mode) the exam-in-progress guard all apply.
+   * Any in-app surface that invokes tools directly (the Tool Inspector)
+   * MUST go through these wrappers, never the raw toolset, so no invocation
+   * path can skip the registry guard layer (cross-review finding 1,
+   * 2026-08-28).
+   */
+  getWrappedDescriptor(name: ToolName): ToolDescriptor | undefined {
+    return this.descriptors.get(name);
+  }
+
+  /**
    * Tools whose revocation drain has exceeded drainWarnMs and is still
    * waiting on an in-flight execution. Empties again if the execution
    * eventually settles (the drain then completes and the abort proceeds).

@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 55/81
+progress: 59/85
 mode: build
 started: 2026-08-26
 updated: 2026-08-30
@@ -216,14 +216,26 @@ page gets. No more, no less.** Symmetry, not starvation.
 - [x] ISC-77: The briefing contract is carried by both the kickoff prompt and the named tool descriptions — teach from the authored lesson rather than general knowledge, with the agent's own additions barred outright while a question is open and marked as its own afterwards; establish the scenario in one or two sentences before any probing question, never assuming context the learner was not just given; and NO RECITING — never restate the governing rule, exam clue, or mnemonic while a question is unanswered, since several of them name the correct option almost verbatim. Folded into `get_lesson_brief`, `get_current_question`, and `get_hint`; `get_lesson_brief` states what it contains and never narrates its gates or names the tool behind them; `get_current_context` emits sectionTitle-bearing anchors so the agent can name where it is sending the learner (unit tests + prompt assertions, including a negative assertion that the brief description does not name `get_misconception_brief`)
 - [x] ISC-78: The brief provider the app actually runs is covered and invariant-guarded: `setLessonBrief(slug, brief)` replaces the brief in place with no question-scope churn (the lesson page sets scope and brief in separate effects, so a scenario reveal cannot release and re-acquire the scope); a brief whose slug does not match the active lesson is refused rather than stored (lesson B's prose can never be served over lesson A's questions); a same-slug `setActiveLesson` replaces a supplied brief instead of discarding it; and stored briefs are defensive copies, so a caller mutating its object afterwards cannot change tool output (unit tests through `stack.facade.getLessonBrief()`, the real path, never a hand-rolled provider)
 
+### Tool Inspector (approved 2026-08-28)
+
+Judge reproducibility without an agent: any browser opens the exact tool surface, invokes
+it, and sees the same refusals and redactions an agent would — the fallback demo if the
+ChatGPT runtime misbehaves on camera, and the standing proof that agent-less parity is
+architectural, not asserted.
+
+- [x] ISC-79: The inspector invokes only registry-registered tools: its surface is exactly `gate.rosterNames` — the identical derivation the Tool Roster renders (registry `getRegisteredNames()` with a runtime, `wouldRegisterToolNames()` without; quarantine excluded, canonical order) with zero desired-list logic of its own — and invocation goes through the registry-WRAPPED descriptors whenever a runtime is bound, so the mid-drain `tool-revoked` refusal and the refusal-mode exam guard are byte-identical to the agent path; agent-less it falls back to the raw shared toolset under the engine-guard invariant documented on `MasteryStack.getToolset()` (gating-fidelity parity across all 8 phase snapshots + guard-parity regression suite)
+- [x] ISC-80: Every real tool schema renders an invocable form — string / number(min–max) / enum / one-level group fields with a JSON-textarea fallback; required-field enforcement, enum/range/JSON validation, nested rubric build; a validation failure carries the offending field's path, is announced through the tool's live region, and marks the control with aria-invalid + aria-describedby (schema-form coverage over ALL_TOOL_NAMES + buildToolInput battery)
+- [x] ISC-81: Results render exclusively as React text children inside `<pre><code>` with the hint line separate; the 2400-char display cap never splits a surrogate pair and "Show full response" moves keyboard focus to the expanded output instead of dropping it to `<body>`; the component contains no `dangerouslySetInnerHTML`/`innerHTML`, and the live hostile-payload probe (`<img onerror>` + `<script>` through `log_coaching_note`, echoed via `get_learner_state`) rendered as escaped text with zero elements created (source-sink test + live injection probe)
+- [x] ISC-82: Available in any browser with zero agent runtime behind `?inspector=1` (read post-hydration; prerendered HTML carries only the roster toggle, so learners without the flag see an unchanged page); the framing copy is configuration-truthful — registered-descriptor wording only when a runtime is bound, engine-rule wording agent-less (agent-less fallback test + live static-export smoke)
+
 ### Bridge (art of the possible, approved 2026-08-28)
 
 > Companion tool under `bridge/`, imports nothing from `apps/` or `packages/`, not part of the site build. The four criteria below are the server/manifest half, all machine-probed here; the browser half (extension loaded in Chrome, live paired tab end-to-end) stays open for the owner's runbook run — see `docs/bridge-demo-runbook.md`.
 
-- [x] ISC-79: Bridge MCP server lists a paired tab's tools via `tools/list`, re-queried live over the WS on every call (never cached) — unit-tested against a fake extension client (`bridge/server/ws.test.ts` listTools round trip; `backend`/`mcp` core tests)
-- [x] ISC-80: `tools/call` round-trips through `executeTool` with the page result passed back verbatim as data (never eval'd) — unit-tested against a fake extension client (`bridge/server/ws.test.ts` callTool round trip)
-- [x] ISC-81: The localhost WS rejects unauthenticated clients — a wrong/absent proof is closed 4001, a web-page `Origin` upgrade is refused 404, and the mutual challenge-response keeps the pairing token off the wire in both directions (`bridge/server/ws.test.ts`)
-- [x] ISC-82: Single-origin allowlist enforced in the extension manifest — `host_permissions` is exactly `["https://learn.powerplatform.fyi/*"]`, mirrored by an exact-origin `ALLOWED_ORIGIN` const, no wildcards (file probe)
+- [x] ISC-83: Bridge MCP server lists a paired tab's tools via `tools/list`, re-queried live over the WS on every call (never cached) — unit-tested against a fake extension client (`bridge/server/ws.test.ts` listTools round trip; `backend`/`mcp` core tests)
+- [x] ISC-84: `tools/call` round-trips through `executeTool` with the page result passed back verbatim as data (never eval'd) — unit-tested against a fake extension client (`bridge/server/ws.test.ts` callTool round trip)
+- [x] ISC-85: The localhost WS rejects unauthenticated clients — a wrong/absent proof is closed 4001, a web-page `Origin` upgrade is refused 404, and the mutual challenge-response keeps the pairing token off the wire in both directions (`bridge/server/ws.test.ts`)
+- [x] ISC-86: Single-origin allowlist enforced in the extension manifest — `host_permissions` is exactly `["https://learn.powerplatform.fyi/*"]`, mirrored by an exact-origin `ALLOWED_ORIGIN` const, no wildcards (file probe)
 
 ## Test Strategy
 
@@ -259,6 +271,10 @@ page gets. No more, no less.** Symmetry, not starvation.
 | 76 | unit+exclusion+audit | per-lesson exclusion battery over the real manifest (forbidden key names + every withheld string: pre-commit expectedAnswer, rationales, correctOptionId, option ids, misconception contrast/seeds); per-lesson two-way symmetry audit walking every string leaf of the lesson catalog (nothing authored missing from the brief; nothing in the brief that does not trace to the lesson), with a documented structural-only exclusion list that fails if a row goes stale; exam-guard test at facade AND tool asserting the widened payload is refused; registry phase-transition test; all three projections mutation-tested (adding a spread at the app, stack, or tool boundary turns a test red — verified by running the mutation) | zero leaks, zero asymmetries, green | bun test |
 | 77 | unit+file | kickoff prompt GROUND / SCENARIO FIRST / NO RECITING clauses; contract strings in get_lesson_brief / get_current_question / get_hint descriptions; negative assertion that get_lesson_brief no longer names get_misconception_brief; titled anchors in get_current_context | present | bun test + Read |
 | 78 | unit | stack-provider battery through `stack.facade.getLessonBrief()` — the real path, never a hand-rolled provider: brief carried end to end, setLessonBrief replaces in place with no scope churn or notification, slug-mismatch refused at both setters, same-slug replacement lands, defensive copy survives caller mutation (mutation-tested: returning the caller's object turns it red) | green | bun test |
+| 79 | unit | roster-derivation parity (wouldRegisterToolNames vs canonical desired-minus-quarantined; live registry across all 8 snapshots) + guard-parity suite (mid-drain wrapped refusal == agent refusal; refusal-mode parity; wrapper-preference wiring; agent-less identity fallback) | green | bun test |
+| 80 | unit | schemaToFields over ALL_TOOL_NAMES + exact shapes for submit_answer / request_next_action / log_coaching_note / score_rubric / compose_debrief / zero-arg tools; buildToolInput battery incl. failure paths carrying field path | green | bun test |
+| 81 | unit+manual | no-HTML-sink source assertion; capText cap + surrogate-pair test; live hostile-payload probe through the served static export | green, zero elements created | bun test + browser |
+| 82 | unit+manual | agent-less getInvocableToolset identity test; prerendered HTML grep (toggle present, panel markup absent); ?inspector=1 smoke on the static export with no runtime | green | bun test + Bash + browser |
 
 ## Features
 
@@ -276,6 +292,7 @@ page gets. No more, no less.** Symmetry, not starvation.
 | ACTOR pass | Aim/compress/run ledger records + inputs, teach-back prompt layer, rubric-interview routing, response hints, description audit, stuck badge | ISC-62…66, 70…71 | Engine core; WebMCP tool surface; state machines | no |
 | Transparency + Memory pass | Your-model panel, export/erase, myth naming, agent report card, profile-annotated descriptions, memory contract + answer-cache guard | ISC-67…69, 73…75 | ACTOR pass; WebMCP tool surface; UI | no |
 | Coach grounding | `get_lesson_brief` + app-layer brief provider, titled section anchors, briefing contract in prompt + descriptions, per-lesson exclusion battery, per-lesson two-way symmetry audit, stack-provider invariants | ISC-76…78 | WebMCP tool surface; Content port | no |
+| Tool Inspector | `?inspector=1` panel: roster-derived invocable forms for every live tool, registry-wrapped invocation, text-only rendering, live-region a11y | ISC-79…82 | WebMCP tool surface; UI | no |
 
 ## Decisions
 
@@ -707,4 +724,32 @@ page gets. No more, no less.** Symmetry, not starvation.
   (static export, SSG routes) green, `bun test` 404 pass / 0 fail, MIT LICENSE at root, and
   the package README's registerTool example carries all four required fields (name,
   description, inputSchema, execute). The submission repo is judge-reproducible.
-- **2026-08-29** — Bridge (art of the possible) approved and shipped on `build/bridge`, then hardened. Owner reaffirmed the build after deadline-risk pushback; scoped as a companion under `bridge/` that imports nothing from `apps/`/`packages/` and is not part of the Cloudflare Pages build, with a 24h cap — video beats 1-4 never depend on it. Cross-family adversarial review (Forge + `gpt-5.6-sol`) returned 1 CRITICAL, 4 HIGH, 7 MEDIUM. Disposition: **all CRITICAL/HIGH and every MEDIUM fixed** in commit `Apply cross-review fixes (bridge)`. The CRITICAL (extension trusting whoever holds the port, handing over the token and executing requests un-acked) is closed by a **mutual challenge-response handshake**: the extension sends only a nonce, the server must return HMAC(token, "server|nonce") to prove possession before the extension replies HMAC(token, "client|serverNonce) — the pairing token never crosses the wire, and `request` frames are gated on `hello_ack`. HIGH fixes: WS upgrade refuses non-`chrome-extension://` Origins and caps concurrent unauthenticated sockets; `set-token` clears `armed` so a new bridge cannot inherit a pairing; the extension caps outbound result size (no silent hang / no transport-kill unpair); MV3 keepalive via `chrome.alarms` + a server application-level `ping`. MEDIUM fixes: exact-origin `isAllowedUrl` (kills the `startsWith` subdomain/suffix bypass), list_changed coalescing + buffer-until-initialized + non-blocking stdin dispatch, MCP tool-name grammar enforcement/dedupe/control-char stripping/untrusted-description wrapping, `ws === authWs` identity guard, and `arm` re-reading the tab plus a popup sender check. New bridge tests: 109 pass (was 89); whole-repo `bun test` 513 pass / 0 fail; site `bun run build` green and untouched (`git diff main...HEAD` outside `bridge/`, `docs/`, `README.md`, `ISA.md` is empty). Server/manifest ISCs `ISC-79..82` ticked by machine probe; the browser half stays open for the owner's runbook run (`docs/bridge-demo-runbook.md`).
+- **2026-08-28** — Tool Inspector shipped (ISC-79…82, branch `build/inspector`; Grok 4.6 built the
+  slices, cross-review fixes applied by hand). RATIONALE — judge reproducibility: the demo's
+  central claim ("the site governs what the AI may do") is only verifiable if a judge can poke the
+  governed surface without owning an agent; the inspector puts the exact live descriptors — same
+  schemas, same guard layer, same redaction — behind `?inspector=1` in any browser, and doubles as
+  the FALLBACK DEMO if the ChatGPT runtime refuses to bind on camera (the on-stage script degrades
+  from "watch the agent" to "watch the same tools refuse me by hand" without changing surfaces).
+  Cross-review disposition: **(finding 1, latent guard bypass — FIXED)** the inspector invoked raw
+  toolset descriptors, skipping the registry's track/guard wrappers; only engine-level backstops
+  made the shipped deregister config safe. Now `ToolRegistry.getWrappedDescriptor()` +
+  `MasteryStack.getInvocableToolset()` route inspector invocations through the registered wrappers
+  whenever a runtime is bound (mid-drain `tool-revoked` and refusal-mode `exam-in-progress`
+  refusals byte-identical to the agent path — regression suite proves equality of both payloads),
+  and the agent-less fallback pins the documented engine-guard invariant on `getToolset()`.
+  **(6, focus loss — FIXED)** "Show full response" now moves focus to the expanded `<pre>`
+  (tabIndex −1 + focus-visible outline). **(7, silent results — FIXED)** always-mounted per-tool
+  `role="status"` live region announces hints, response summaries, and validation errors verbatim;
+  the offending control gets aria-invalid + aria-describedby (buildToolInput failures carry the
+  field path). **(9, framing overclaim — FIXED)** copy is configuration-truthful per ISC-82;
+  capText is surrogate-safe; tests reference RESULT_DISPLAY_CAP. Skips, with reasons: the
+  one-render-tick roster window after an engine mutation (finding 2) is accepted — it is bounded
+  by the same wrapped-descriptor refusals that now guard invocation; the unreachable `Number()`
+  edge cases on the clamped score field (9-nit) need no code. Findings 3/4/5/8 verified clean by
+  the reviewer (live XSS probe, redaction, prerender, a11y positives) — no action owed. Gates at
+  ship: 413 tests green (incl. 3 new guard-parity regressions), `bun run build` static export
+  clean, validate:content OK, per-route redaction grep zero answer-key hits in prerendered HTML,
+  flag-off HTML carries only the roster toggle; live smoke on the served export confirmed panel,
+  parity framing, validation announcement, and focus behavior.
+- **2026-08-29** — Bridge (art of the possible) approved and shipped on `build/bridge`, then hardened. Owner reaffirmed the build after deadline-risk pushback; scoped as a companion under `bridge/` that imports nothing from `apps/`/`packages/` and is not part of the Cloudflare Pages build, with a 24h cap — video beats 1-4 never depend on it. Cross-family adversarial review (Forge + `gpt-5.6-sol`) returned 1 CRITICAL, 4 HIGH, 7 MEDIUM. Disposition: **all CRITICAL/HIGH and every MEDIUM fixed** in commit `Apply cross-review fixes (bridge)`. The CRITICAL (extension trusting whoever holds the port, handing over the token and executing requests un-acked) is closed by a **mutual challenge-response handshake**: the extension sends only a nonce, the server must return HMAC(token, "server|nonce") to prove possession before the extension replies HMAC(token, "client|serverNonce") — the pairing token never crosses the wire, and `request` frames are gated on `hello_ack`. HIGH fixes: WS upgrade refuses non-`chrome-extension://` Origins and caps concurrent unauthenticated sockets; `set-token` clears `armed` so a new bridge cannot inherit a pairing; the extension caps outbound result size (no silent hang / no transport-kill unpair); MV3 keepalive via `chrome.alarms` + a server application-level `ping`. MEDIUM fixes: exact-origin `isAllowedUrl` (kills the `startsWith` subdomain/suffix bypass), list_changed coalescing + buffer-until-initialized + non-blocking stdin dispatch, MCP tool-name grammar enforcement/dedupe/control-char stripping/untrusted-description wrapping, `ws === authWs` identity guard, and `arm` re-reading the tab plus a popup sender check. Residual, documented: an unparseable (e.g. oversize) frame on an already-authenticated socket cannot be correlated to a pending request id, so that one request still relies on the request timeout — unreachable via our extension, which caps outbound size. New bridge tests: 109 pass (was 89); whole-repo `bun test` 513 pass / 0 fail; site `bun run build` green and untouched. Server/manifest ISCs renumbered to `ISC-83..86` after main consumed 79–82 for the Tool Inspector; ticked by machine probe, the browser half stays open for the owner's runbook run (`docs/bridge-demo-runbook.md`).
