@@ -743,3 +743,10 @@ architectural, not asserted.
   clean, validate:content OK, per-route redaction grep zero answer-key hits in prerendered HTML,
   flag-off HTML carries only the roster toggle; live smoke on the served export confirmed panel,
   parity framing, validation announcement, and focus behavior.
+- **2026-08-29** — Real-runtime registration verified in Chrome 152 (evidence in
+  docs/spike-verdicts.md): the browser's own `document.modelContext.getTools()` returned all
+  12 tools on the live product page. This closes the verification gap in which every prior
+  check ran against an injected mock. Host survey now stands at five surfaces: two invoke
+  (ChatGPT desktop app, Chrome+flag), three discover-only (Codex panel, Copilot, ChatGPT
+  Chrome sidebar) — an ecosystem bridging gap, not a site defect, and the `bridge/` companion
+  is the designed closer.
