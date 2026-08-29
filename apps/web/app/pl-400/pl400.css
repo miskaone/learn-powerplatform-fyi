@@ -433,13 +433,16 @@ body.fx-exam-lighting {
   background: color-mix(in srgb, var(--bg) 88%, #0a2032);
 }
 body.fx-exam-lighting .pl400,
-body.fx-exam-lighting .lp {
+body.fx-exam-lighting .lp > :not(.lp-map) {
+  /* Applied to .lp CHILDREN (rail excluded): a filter on .lp itself would
+     become a containing block for the fixed-position .lp-map-rail (CSS
+     filter spec) and silently un-fix it. Cross-review finding 4. */
   filter: saturate(0.6) brightness(0.94);
   transition: filter 0.4s ease;
 }
 @media (prefers-reduced-motion: reduce) {
   body.fx-exam-lighting .pl400,
-  body.fx-exam-lighting .lp {
+  body.fx-exam-lighting .lp > :not(.lp-map) {
     transition: none;
   }
 }
@@ -1037,3 +1040,4 @@ body.fx-exam-lighting .lp {
     transition: none;
   }
 }
+.lp-map-status { font-size: .78rem; color: var(--pl400-danger); margin: 0 0 .4rem; }

@@ -36,6 +36,7 @@ export function getLessonIndexEntry(
 export function lessonSectionAnchorEntries(
   slug: string,
 ): { anchor: string; title: string }[] {
+  // Document order — SectionMap's scroll-spy takes the LAST entry above the viewport line, so this order must match LessonPage's render order.
   return [
     { anchor: `${slug}-rule`, title: "Governing rule" },
     { anchor: `${slug}-exam-clue`, title: "Exam-recognition clue" },
@@ -43,11 +44,11 @@ export function lessonSectionAnchorEntries(
       anchor: `${slug}-scenario`,
       title: "01 / Scenario — make the decision before seeing the mechanism",
     },
-    { anchor: `${slug}-production`, title: "Production nuance" },
     {
       anchor: `${slug}-compress`,
       title: "02 / Compress the rule — state the load-bearing rule in one line",
     },
+    { anchor: `${slug}-production`, title: "Production nuance" },
     { anchor: `${slug}-run`, title: "08 / Run — decide what this changes" },
   ];
 }

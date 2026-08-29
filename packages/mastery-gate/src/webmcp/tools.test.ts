@@ -1216,7 +1216,7 @@ test('set_focus exam guard refuses every preset except clear-focus', async () =>
     ok: false,
     preset: 'exam-lighting',
     anchor: null,
-    reason: 'exam-active',
+    reason: 'site-managed',
   });
 
   expect(calls).toEqual([]);
@@ -1278,19 +1278,19 @@ test('set_focus clear-focus and exam-lighting ignore a supplied anchor', async (
     reason: null,
   });
 
+  // exam-lighting is site-managed (2026-08-29 cross-review fix): the facade
+  // refuses it unconditionally so the theme can never be applied outside an
+  // exam or stripped inside one; the supplied anchor is still ignored.
   const lighting = await tools.set_focus.execute({
     preset: 'exam-lighting',
     anchor: 'x-rule',
   });
   expect(payloadOf(lighting)).toEqual({
-    ok: true,
+    ok: false,
     preset: 'exam-lighting',
     anchor: null,
-    reason: null,
+    reason: 'site-managed',
   });
 
-  expect(calls).toEqual([
-    { preset: 'clear-focus', anchor: null },
-    { preset: 'exam-lighting', anchor: null },
-  ]);
+  expect(calls).toEqual([{ preset: 'clear-focus', anchor: null }]);
 });

@@ -91,7 +91,7 @@ describe("facade setFocus wiring (agent-less)", () => {
 
       expect(stack.facade.setFocus("exam-lighting")).toMatchObject({
         ok: false,
-        reason: "exam-active",
+        reason: "site-managed",
       });
       expect(stack.facade.setFocus("clear-focus").reason).not.toBe(
         "exam-active",

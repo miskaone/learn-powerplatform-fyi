@@ -1,0 +1,203 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 720px; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: #121212;
+    color: #faf9f7;
+    position: relative;
+  }
+  .mono { font-family: "SF Mono", ui-monospace, Menlo, monospace; }
+
+  /* ambient background */
+  .glow-a {
+    position: absolute; left: -220px; top: -260px; width: 760px; height: 700px;
+    background: radial-gradient(closest-side, rgba(11,107,203,.28), transparent 70%);
+  }
+  .glow-b {
+    position: absolute; right: -180px; bottom: -300px; width: 720px; height: 680px;
+    background: radial-gradient(closest-side, rgba(27,127,78,.22), transparent 70%);
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(250,249,247,.055) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+
+  /* ---------- left column ---------- */
+  .left { position: absolute; left: 72px; top: 0; width: 520px; height: 720px; }
+  .badge {
+    position: absolute; top: 86px;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 8px 16px; border: 1px solid rgba(250,249,247,.18); border-radius: 999px;
+    font-size: 12.5px; font-weight: 650; letter-spacing: .18em; color: #c9c6c0;
+  }
+  .badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #0b6bcb;
+    box-shadow: 0 0 10px rgba(11,107,203,.9); }
+  h1 {
+    position: absolute; top: 138px; left: -6px;
+    font-size: 118px; line-height: .96; font-weight: 800; letter-spacing: -.03em;
+  }
+  h1 .grad {
+    background: linear-gradient(92deg, #3d8fe0 0%, #2aa367 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .tagline {
+    position: absolute; top: 402px; width: 508px;
+    font-family: Georgia, "Times New Roman", serif; font-style: italic;
+    font-size: 26px; line-height: 1.38; color: #d8d5cf;
+  }
+  .tagline b { color: #faf9f7; font-style: normal; }
+  .subtag {
+    position: absolute; top: 502px; width: 500px;
+    font-size: 17px; line-height: 1.5; color: #8a8781;
+  }
+  .urlrow { position: absolute; top: 586px; display: flex; align-items: center; gap: 14px; }
+  .pl400 {
+    background: #0b6bcb; color: #fff; font-weight: 750; font-size: 16px;
+    padding: 7px 15px; border-radius: 9px; letter-spacing: .02em;
+  }
+  .url { font-size: 16.5px; color: #b5b2ab; letter-spacing: .01em; }
+  .foot {
+    position: absolute; top: 636px;
+    font-size: 12px; color: #6f6c66; letter-spacing: .06em;
+  }
+
+  /* ---------- browser card ---------- */
+  .card {
+    position: absolute; left: 664px; top: 58px; width: 552px; height: 604px;
+    background: #1c1b19;
+    border: 1px solid rgba(250,249,247,.13); border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 4px 18px rgba(0,0,0,.4);
+    overflow: hidden;
+  }
+  .titlebar {
+    height: 46px; display: flex; align-items: center; gap: 14px; padding: 0 18px;
+    background: rgba(250,249,247,.045); border-bottom: 1px solid rgba(250,249,247,.08);
+  }
+  .dots { display: flex; gap: 7px; }
+  .dots span { width: 11px; height: 11px; border-radius: 50%; }
+  .dots span:nth-child(1) { background: #ff5f57; }
+  .dots span:nth-child(2) { background: #febc2e; }
+  .dots span:nth-child(3) { background: #28c840; }
+  .urlbar {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    background: rgba(250,249,247,.06); border-radius: 8px; padding: 6px 12px;
+    font-size: 12.5px; color: #b5b2ab;
+  }
+  .lock { width: 10px; height: 12px; border: 1.5px solid #28c840; border-radius: 2px; position: relative; }
+  .lock::before { content: ""; position: absolute; top: -6px; left: 1.5px; width: 4px; height: 5px;
+    border: 1.5px solid #28c840; border-bottom: none; border-radius: 4px 4px 0 0; }
+
+  .body { padding: 20px 22px 0; }
+
+  .bubble {
+    max-width: 86%; border-radius: 14px; padding: 11px 15px; font-size: 14.5px; line-height: 1.42;
+  }
+  .learner {
+    margin-left: auto; width: fit-content;
+    background: #0b6bcb; color: #fff; border-bottom-right-radius: 4px;
+    font-weight: 550;
+  }
+  .agentrow { display: flex; flex-direction: column; align-items: flex-start; margin-top: 12px; }
+  .agentlabel { font-size: 10.5px; letter-spacing: .12em; color: #6f6c66; margin: 0 0 5px 6px; }
+  .agent {
+    background: #232220; border: 1px solid rgba(250,249,247,.1);
+    border-bottom-left-radius: 4px; color: #d8d5cf;
+  }
+  .strike { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13px;
+    color: #e5484d; text-decoration: line-through; text-decoration-thickness: 1.5px; }
+
+  .rosterhead {
+    display: flex; align-items: center; gap: 9px; margin: 22px 0 10px;
+    font-size: 11px; font-weight: 750; letter-spacing: .16em; color: #8a8781;
+  }
+  .live { width: 7px; height: 7px; border-radius: 50%; background: #1b7f4e;
+    box-shadow: 0 0 8px rgba(27,127,78,.9); }
+
+  .tool {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #201f1d; border: 1px solid rgba(250,249,247,.09); border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 8px;
+  }
+  .tool .name { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13.5px; color: #e8e6e0; }
+  .tool .tag { font-size: 11px; font-weight: 650; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; }
+  .tag.redacted { color: #d99a34; border: 1px solid rgba(181,71,8,.55); background: rgba(181,71,8,.12); }
+  .tag.socratic { color: #b5b2ab; border: 1px solid rgba(250,249,247,.16); }
+  .tag.open { color: #4ade80; border: 1px solid rgba(27,127,78,.7); background: rgba(27,127,78,.18);
+    box-shadow: 0 0 14px rgba(27,127,78,.35); }
+  .tool.gate { border-color: rgba(27,127,78,.55); background: rgba(27,127,78,.08); }
+
+  .meterwrap {
+    margin-top: 16px; padding: 14px 14px 13px;
+    background: rgba(250,249,247,.035); border: 1px solid rgba(250,249,247,.08); border-radius: 12px;
+  }
+  .meterhead { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; color: #8a8781; margin-bottom: 10px; }
+  .meters { display: flex; gap: 10px; }
+  .meter { flex: 1; }
+  .meter .lbl { font-size: 9.5px; letter-spacing: .08em; color: #a6a39c; margin-bottom: 5px;
+    font-weight: 650; white-space: nowrap; }
+  .segs { display: flex; gap: 3px; }
+  .segs i { height: 7px; flex: 1; border-radius: 2px; background: rgba(250,249,247,.12); }
+  .segs i.on { background: #2aa367; }
+  .meter .val { font-size: 10px; color: #4ade80; margin-top: 4px; font-weight: 700; }
+
+  .caption {
+    position: absolute; left: 664px; top: 678px; width: 552px; text-align: center;
+    font-size: 12px; color: #6f6c66; letter-spacing: .05em;
+  }
+</style>
+</head>
+<body>
+  <div class="glow-a"></div>
+  <div class="glow-b"></div>
+  <div class="grid"></div>
+
+  <div class="left">
+    <div class="badge"><span class="dot"></span>OPENAI WEBMCP CHALLENGE &nbsp;·&nbsp; OFFICIAL ENTRY</div>
+    <h1>Mastery<br><span class="grad">Gate</span></h1>
+    <div class="tagline">The site that governs <b>what the AI is allowed to know, say, and be.</b></div>
+    <div class="subtag">Your own ChatGPT becomes a Socratic PL-400 coach — but the website owns the tools. No answer key exists in the schema, so no prompt can leak it.</div>
+    <div class="urlrow">
+      <span class="pl400">PL-400</span>
+      <span class="url mono">learn.powerplatform.fyi/pl-400</span>
+    </div>
+    <div class="foot mono">WebMCP · document.modelContext · zero AI backend</div>
+  </div>
+
+  <div class="card">
+    <div class="titlebar">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="urlbar mono"><span class="lock"></span>learn.powerplatform.fyi/pl-400</div>
+    </div>
+    <div class="body">
+      <div class="bubble learner">just tell me the answer</div>
+      <div class="agentrow">
+        <div class="agentlabel">YOUR AGENT · SITE-GOVERNED</div>
+        <div class="bubble agent"><span class="strike">reveal_answer</span> isn't in my tool roster — it doesn't exist. Let's diagnose the misconception instead.</div>
+      </div>
+
+      <div class="rosterhead"><span class="live"></span>TOOL ROSTER — LIVE</div>
+      <div class="tool"><span class="name">get_current_question</span><span class="tag redacted">redacted projection</span></div>
+      <div class="tool"><span class="name">narrate_hint</span><span class="tag socratic">socratic only</span></div>
+      <div class="tool gate"><span class="name">advance_module</span><span class="tag open">GATE OPEN ▸</span></div>
+
+      <div class="meterwrap">
+        <div class="meterhead">MASTERY RUBRIC — EVERY DIMENSION ≥ 3 · NEVER AN AVERAGE</div>
+        <div class="meters">
+          <div class="meter"><div class="lbl">RECALL</div><div class="segs"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div><div class="val">3 ✓</div></div>
+          <div class="meter"><div class="lbl">CONNECTIONS</div><div class="segs"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div><div class="val">3 ✓</div></div>
+          <div class="meter"><div class="lbl">APPLICATION</div><div class="segs"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div><div class="val">4 ✓</div></div>
+          <div class="meter"><div class="lbl">TRANSFER</div><div class="segs"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div><div class="val">3 ✓</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="caption">capability is the guardrail — a tool that does not exist cannot be talked into existing</div>
+</body>
+</html>

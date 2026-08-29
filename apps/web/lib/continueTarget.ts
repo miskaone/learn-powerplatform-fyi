@@ -35,7 +35,20 @@ export function deriveContinueTarget(
   }
   const mapped = lessonForQuestion(latestAttempt.questionId);
   if (mapped !== null) {
-    return toContinueTarget(mapped);
+    // Cross-review finding 6: a fully-attempted lesson must not pin the
+    // button forever. Scan from the latest lesson forward (wrapping) for
+    // the first lesson with unattempted questions; all-complete -> null.
+    const start = lessonIndex.findIndex((entry) => entry.slug === mapped.slug);
+    for (let k = 0; k < lessonIndex.length; k++) {
+      const entry = lessonIndex[(start + k) % lessonIndex.length];
+      if (
+        entry !== undefined &&
+        attemptedFor(entry.questionIds) < entry.questionIds.length
+      ) {
+        return toContinueTarget(entry);
+      }
+    }
+    return null;
   }
   for (const entry of lessonIndex) {
     if (attemptedFor(entry.questionIds) === 0) {

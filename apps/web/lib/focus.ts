@@ -21,16 +21,27 @@ export function computeDimPlan(
   return blockIds.map((id) => ({ id, dim: id !== ownerId }));
 }
 
+const CHROME_CLASSES = ["lp-topbar", "lp-map", "lp-lesson-nav"] as const;
 function dimmableUnits(root: Element): Element[] {
   return Array.from(root.children).filter(
-    (child) => !child.classList.contains("lp-topbar"),
+    (child) => !CHROME_CLASSES.some((cls) => child.classList.contains(cls)),
   );
 }
 
 function clearDimClasses(): void {
   for (const el of document.querySelectorAll("." + FOCUS_DIM_CLASS)) {
     el.classList.remove(FOCUS_DIM_CLASS);
+    el.removeAttribute("inert");
   }
+}
+
+/** Exam lighting is site-managed: only useMasteryGate's examActive effect may call this. */
+export function setExamLighting(on: boolean): boolean {
+  if (typeof document === "undefined") {
+    return false;
+  }
+  document.body.classList.toggle(EXAM_LIGHTING_CLASS, on);
+  return true;
 }
 
 export function applyFocusPreset(
@@ -41,16 +52,19 @@ export function applyFocusPreset(
     return false;
   }
 
+  // clear-focus clears section dims only; exam lighting is owned by the
+  // site's examActive effect.
   if (preset === "clear-focus") {
     clearDimClasses();
-    document.body.classList.remove(EXAM_LIGHTING_CLASS);
     return true;
   }
 
   if (preset === "exam-lighting") {
+    // Unreachable through the guarded facade (setFocus refuses the
+    // preset as site-managed); kept so the function stays total over
+    // FocusPreset.
     clearDimClasses();
-    document.body.classList.add(EXAM_LIGHTING_CLASS);
-    return true;
+    return setExamLighting(true);
   }
 
   if (anchor === null || anchor === "") {
@@ -72,10 +86,14 @@ export function applyFocusPreset(
   );
   for (const unit of units) {
     unit.classList.remove(FOCUS_DIM_CLASS);
+    unit.removeAttribute("inert");
   }
   for (const step of plan) {
     if (step.dim) {
+      // Cross-review finding 8: dimmed content leaves the tab order and the
+      // accessibility tree (inert) — a spotlight is semantic, not just visual.
       units[Number(step.id)]?.classList.add(FOCUS_DIM_CLASS);
+      units[Number(step.id)]?.setAttribute("inert", "");
     }
   }
   scrollToSection(anchor);

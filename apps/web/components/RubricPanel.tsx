@@ -9,10 +9,11 @@ const DIMENSIONS: { key: RubricDimension; label: string }[] = [
   { key: "transfer", label: "Transfer" },
 ];
 
-export function RubricPanel(props: { scores: RubricScores }) {
-  const gateOpen = DIMENSIONS.every((dimension) => props.scores[dimension.key] >= 3);
-
-  // Mastery accent is derived from engine-truth scores each render — it persists exactly while the gate holds and reverts on regress; no imperative flip tracking.
+export function RubricPanel(props: { scores: RubricScores; gatePassed: boolean }) {
+  // Cross-review finding 7: the gate RULE lives in the engine (gatePasses /
+  // GATE_THRESHOLD) — never re-derive it here with a literal. Callers pass
+  // engine-truth gatePassed; the accent persists exactly while the gate holds.
+  const gateOpen = props.gatePassed;
   return (
     <section
       className={

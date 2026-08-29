@@ -233,7 +233,7 @@ export function Pl400App() {
               onToggle: inspector.toggle,
             }}
           />
-          <RubricPanel scores={gate.learner.scores} />
+          <RubricPanel scores={gate.learner.scores} gatePassed={gate.learner.gatePassed} />
           {gate.storageDegraded ? (
             <p className="muted">
               localStorage unavailable — progress is in-memory only.

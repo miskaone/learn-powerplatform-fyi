@@ -204,8 +204,8 @@ test("lessonSectionAnchors returns the six lesson-page anchors", () => {
     `${slug}-rule`,
     `${slug}-exam-clue`,
     `${slug}-scenario`,
-    `${slug}-production`,
     `${slug}-compress`,
+    `${slug}-production`,
     `${slug}-run`,
   ]);
 });

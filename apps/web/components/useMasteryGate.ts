@@ -10,7 +10,7 @@ import {
 } from "react";
 import type { NextAction, QuestionPublic, RubricScores } from "@learn/mastery-gate/schema";
 import { DEFAULT_SCORES } from "../lib/content";
-import { applyFocusPreset } from "../lib/focus";
+import { applyFocusPreset, setExamLighting } from "../lib/focus";
 import {
   getSharedMasteryStack,
   registrySnapshot,
@@ -213,12 +213,18 @@ export function useMasteryGate(): MasteryGateView {
     };
   }, [refreshFromEngine]);
 
-  // Exam lighting is site-managed — applied at exam start, cleared at exit
-  // (and a reload mid-exam re-applies it); clear-focus on the false edge also
-  // clears any lingering section spotlight. The initial-mount call with
-  // examActive=false is an idempotent no-op.
+  // Exam lighting is site-managed and owned exclusively by this effect:
+  // applied at exam start, cleared at exit and on unmount (so it never
+  // leaks to non-track routes); a reload mid-exam re-applies it. Any
+  // lingering section spotlight is cleared on both edges. clear-focus
+  // itself no longer touches the exam class, so a mid-exam "Clear focus"
+  // (the one preset the engine guard allows) cannot strip the theme.
   useEffect(() => {
-    applyFocusPreset(examActive ? "exam-lighting" : "clear-focus", null);
+    applyFocusPreset("clear-focus", null);
+    setExamLighting(examActive);
+    return () => {
+      setExamLighting(false);
+    };
   }, [examActive]);
 
   const beginPractice = useCallback(() => {

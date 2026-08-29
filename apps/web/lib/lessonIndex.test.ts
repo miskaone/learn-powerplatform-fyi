@@ -13,6 +13,18 @@ test("sectionMapEntries is a display model over the six authored anchors", () =>
     expect(entries.map((entry) => entry.anchor)).toEqual(
       lessonSectionAnchors(lesson.slug),
     );
+    expect(
+      sectionMapEntries(lesson.slug).map((e) =>
+        e.anchor.slice(lesson.slug.length),
+      ),
+    ).toEqual([
+      "-rule",
+      "-exam-clue",
+      "-scenario",
+      "-compress",
+      "-production",
+      "-run",
+    ]);
     for (const entry of entries) {
       expect(entry.shortLabel.length).toBeGreaterThan(0);
       expect(entry.shortLabel).not.toContain(" — ");

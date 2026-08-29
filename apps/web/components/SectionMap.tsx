@@ -112,22 +112,34 @@ export function SectionMap({ slug }: { slug: string }) {
     scrollToSection(anchor);
   }, []);
 
-  // Page parity for the set_focus tool, engine guard included (mid-exam everything but clear-focus is refused by the engine, so no extra UI guard needed).
+  // Page parity for the set_focus tool, engine guard included. Cross-review
+  // finding 10: refusals must not be silent — the result feeds a status line.
+  const [focusStatus, setFocusStatus] = useState<string>("");
+  const report = useCallback(
+    (result: { ok: boolean; reason: string | null }) => {
+      setFocusStatus(result.ok ? "" : `Focus request refused: ${result.reason ?? "not applied"}`);
+    },
+    [],
+  );
+
   const onSpotlight = useCallback((anchor: string) => {
-    getSharedMasteryStack().facade.setFocus("focus-section", anchor);
-  }, []);
+    report(getSharedMasteryStack().facade.setFocus("focus-section", anchor));
+  }, [report]);
 
   const onClear = useCallback(() => {
-    getSharedMasteryStack().facade.setFocus("clear-focus");
-  }, []);
+    report(getSharedMasteryStack().facade.setFocus("clear-focus"));
+  }, [report]);
 
   const onExamLighting = useCallback(() => {
-    getSharedMasteryStack().facade.setFocus("exam-lighting");
-  }, []);
+    report(getSharedMasteryStack().facade.setFocus("exam-lighting"));
+  }, [report]);
 
   return (
     <>
       <nav className="lp-map lp-map-rail" aria-label="Lesson sections">
+        {focusStatus !== "" && (
+          <p role="status" className="lp-map-status">{focusStatus}</p>
+        )}
         <SectionMapList
           entries={entries}
           activeAnchor={activeAnchor}

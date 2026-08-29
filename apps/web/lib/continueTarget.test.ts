@@ -68,3 +68,30 @@ test("unmapped question with every lesson started suggests nothing", () => {
     deriveContinueTarget({ questionId: "no-such-question" }, () => 5),
   ).toBeNull();
 });
+
+test("finding 6 regression: a fully-attempted lesson advances to the next incomplete", () => {
+  const first = lessonIndex[0]!;
+  const second = lessonIndex[1]!;
+  const target = deriveContinueTarget(
+    { questionId: first.questionIds[0]! },
+    (ids) => (ids === first.questionIds ? first.questionIds.length : 0),
+  );
+  expect(target?.slug).toBe(second.slug);
+});
+
+test("finding 6 regression: all lessons fully attempted -> null", () => {
+  const target = deriveContinueTarget(
+    { questionId: lessonIndex[0]!.questionIds[0]! },
+    (ids) => ids.length,
+  );
+  expect(target).toBeNull();
+});
+
+test("finding 6 regression: mid-lesson stays on that lesson", () => {
+  const first = lessonIndex[0]!;
+  const target = deriveContinueTarget(
+    { questionId: first.questionIds[0]! },
+    (ids) => (ids === first.questionIds ? 1 : 0),
+  );
+  expect(target?.slug).toBe(first.slug);
+});

@@ -81,7 +81,7 @@ export function LessonPracticeSection(props: {
           Rubric dimensions are track-wide — every lesson&apos;s practice
           feeds the same four scores.
         </p>
-        <RubricPanel scores={gate.learner.scores} />
+        <RubricPanel scores={gate.learner.scores} gatePassed={gate.learner.gatePassed} />
         {stack != null
           ? (() => {
               const drill = stack.facade.prescribeDrill();

@@ -19,7 +19,10 @@ export function scrollToSection(sectionId: string): boolean {
     return false;
   }
 
-  element.scrollIntoView({ behavior: "smooth", block: "start" });
+  const reduced =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  element.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
 
   const prior = highlightTimers.get(element);
   if (prior !== undefined) {

@@ -394,6 +394,13 @@ export class MasteryEngineFacade implements EngineFacade {
   }
 
   setFocus(preset: FocusPreset, anchor?: string): SetFocusResultPublic {
+    // Exam lighting is site-managed: the page applies/clears it on the
+    // examActive edge. Agent (and page-parity) requests are always refused
+    // so the theme can never be applied outside an exam or stripped inside one.
+    if (preset === 'exam-lighting') {
+      return { ok: false, preset, anchor: null, reason: 'site-managed' };
+    }
+
     // Exam guard: agent-less surfaces execute without a registry
     // (deregistration of set_focus during exam-mode is defense in
     // depth, not the guard). Every preset except clear-focus is refused.

@@ -5,7 +5,7 @@ project: learn-powerplatform-fyi
 effort: E3
 effort_source: auto
 phase: execute
-progress: 59/85
+progress: 62/91
 mode: build
 started: 2026-08-26
 updated: 2026-08-30
@@ -227,6 +227,14 @@ architectural, not asserted.
 - [x] ISC-80: Every real tool schema renders an invocable form — string / number(min–max) / enum / one-level group fields with a JSON-textarea fallback; required-field enforcement, enum/range/JSON validation, nested rubric build; a validation failure carries the offending field's path, is announced through the tool's live region, and marks the control with aria-invalid + aria-describedby (schema-form coverage over ALL_TOOL_NAMES + buildToolInput battery)
 - [x] ISC-81: Results render exclusively as React text children inside `<pre><code>` with the hint line separate; the 2400-char display cap never splits a surrogate pair and "Show full response" moves keyboard focus to the expanded output instead of dropping it to `<body>`; the component contains no `dangerouslySetInnerHTML`/`innerHTML`, and the live hostile-payload probe (`<img onerror>` + `<script>` through `log_coaching_note`, echoed via `get_learner_state`) rendered as escaped text with zero elements created (source-sink test + live injection probe)
 - [x] ISC-82: Available in any browser with zero agent runtime behind `?inspector=1` (read post-hydration; prerendered HTML carries only the roster toggle, so learners without the flag see an unchanged page); the framing copy is configuration-truthful — registered-descriptor wording only when a runtime is bound, engine-rule wording agent-less (agent-less fallback test + live static-export smoke)
+
+### Polish rider (approved 2026-08-28/29; shipped 2026-08-29 after lane stall)
+
+- [x] ISC-87: In-lesson section map lists anchors in DOCUMENT order matching LessonPage render order (order regression test green)
+- [ ] ISC-88: Prev/next lesson footer follows lessonIndex order on every lesson page (live pass pending)
+- [x] ISC-89: Hub continue button derives the first incomplete lesson and advances past fully-attempted ones; all-complete hides it (regression tests green)
+- [x] ISC-90: set_focus accepts only the closed preset enum with anchor validation; exam-lighting refused as site-managed everywhere; every preset except clear-focus refused mid-exam; dimmed sections are inert (tests green)
+- [ ] ISC-91: Gate-pass mastery theming reflects engine gatePassed truth and reverts on regress (engine-prop wiring shipped; visual live pass pending)
 
 ### Bridge (art of the possible, approved 2026-08-28)
 
@@ -783,3 +791,13 @@ architectural, not asserted.
   now carry the spec's `annotations: { readOnlyHint: true }`, propagated through the registry
   wrappers. Gates: 535 tests green (was 513), `tsc --noEmit` clean, `bun run build` static
   export green.
+- **2026-08-29** — Polish rider shipped after a lane failure: the workflow's ship stage stalled
+  six times (agent no-progress timeout) with build + review complete and partial fixes
+  uncommitted; recovery was manual per the established pattern — partial work audited, four
+  stale tests updated to the corrected contracts, and the review's remaining findings (11
+  total) implemented directly: exam-lighting filter scoped to non-rail children (finding 4,
+  fixed-position containing-block), continue-target advancing past finished lessons (6),
+  RubricPanel using engine gatePassed instead of a re-derived literal (7), inert on dimmed
+  sections (8), reduced-motion-aware scrolling (9), visible focus-refusal status (10).
+  Exam-lighting is now fully site-managed (refused to agent and page alike; applied only on
+  the examActive edge with unmount cleanup). 559 tests green.

@@ -174,7 +174,7 @@ export function createToolset(
     ),
     set_focus: descriptor(
       'set_focus',
-      'Stage lighting for coaching. Call with preset "focus-section" and that section\'s anchor (from get_current_context.lesson.sectionAnchors[].anchor) to spotlight the section you are coaching the learner through — the page dims its sibling sections and highlights the target; call "clear-focus" when moving on. "exam-lighting" switches the whole page to a muted exam theme; the site applies and clears it automatically at exam start and exit, so you should not need it yourself. While an exam is active every preset except "clear-focus" is refused. Effects are a fixed set of page presets — this tool accepts no styling input.',
+      'Stage lighting for coaching. Call with preset "focus-section" and that section\'s anchor (from get_current_context.lesson.sectionAnchors[].anchor) to spotlight the section you are coaching the learner through — the page dims its sibling sections and highlights the target; call "clear-focus" when moving on. "exam-lighting" is site-managed: the site applies and clears the muted exam theme itself at exam start and exit, and requests for it are refused. While an exam is active every preset except "clear-focus" is refused. Effects are a fixed set of page presets — this tool accepts no styling input.',
       closedObject(
         {
           preset: {
@@ -778,7 +778,7 @@ function parseFocus(
   }
   const anchor = obj['anchor'];
   if (anchor !== undefined && typeof anchor !== 'string') {
-    return fail('missing or invalid anchor');
+    return fail('anchor must be a string');
   }
   return ok({
     preset,
