@@ -1043,3 +1043,5 @@ body.fx-exam-lighting .lp > :not(.lp-map) {
 .lp-map-status { font-size: .78rem; color: var(--pl400-danger); margin: 0 0 .4rem; }
 .lp-topbar-coach { font: inherit; font-size: .78rem; color: var(--pl400-accent); background: transparent; border: 1px solid color-mix(in srgb, var(--pl400-accent) 45%, var(--pl400-border)); border-radius: 999px; padding: .15rem .6rem; cursor: pointer; }
 .lp-topbar-coach:hover { background: var(--pl400-accent-soft); }
+.lp-scenario-list { margin: .75rem 0 0; padding-left: 1.35rem; display: grid; gap: .4rem; }
+.lp-scenario-list li { list-style: disc; }

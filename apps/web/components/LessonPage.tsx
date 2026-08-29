@@ -284,6 +284,13 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
         </div>
         <div className="lp-scenario">
           <p>{lesson.scenario.prompt}</p>
+          {lesson.scenario.orderItems !== undefined && (
+            <ul className="lp-scenario-list">
+              {lesson.scenario.orderItems.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          )}
         </div>
         <ScenarioCommit
           slug={lesson.slug}

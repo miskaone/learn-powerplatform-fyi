@@ -119,6 +119,8 @@ export interface LessonBriefPublic {
   examClue: string;
   mnemonic: string | null;
   scenarioPrompt: string;
+  /** Ordering-exercise components, in the page's scrambled display order; empty for plain-prose scenarios. */
+  scenarioOrderItems: string[];
   concepts: LessonBriefConceptPublic[];
   productionNuance: string[];
   scenarioExpectedAnswer: string | null;

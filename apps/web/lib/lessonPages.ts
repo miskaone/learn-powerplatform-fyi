@@ -22,6 +22,12 @@ export interface LessonPageData {
    */
   scenario: {
     prompt: string;
+    /**
+     * Optional ordering exercise: components listed in a deliberately
+     * scrambled authored order (never the answer order) and rendered as
+     * bullets under the prompt. Absent for plain-prose scenarios.
+     */
+    orderItems?: string[];
   };
   concepts: {
     id: string;

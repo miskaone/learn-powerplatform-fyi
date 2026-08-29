@@ -31,6 +31,7 @@ const BRIEF: LessonBriefPublic = {
   mnemonic: 'Sandbox, Service, Write.',
   scenarioPrompt:
     'A plug-in must write to Dataverse from inside the sandbox. Order the steps.',
+  scenarioOrderItems: [],
   concepts: [
     {
       id: 'sandbox',
@@ -88,6 +89,7 @@ const BRIEF_KEYS = [
   'references',
   'reflection',
   'scenarioExpectedAnswer',
+  'scenarioOrderItems',
   'scenarioPrompt',
   'sections',
   'slug',

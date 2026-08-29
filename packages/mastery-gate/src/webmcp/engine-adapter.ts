@@ -196,6 +196,7 @@ export class MasteryEngineFacade implements EngineFacade {
       examClue: brief.examClue,
       mnemonic: brief.mnemonic ?? null,
       scenarioPrompt: brief.scenarioPrompt,
+      scenarioOrderItems: [...(brief.scenarioOrderItems ?? [])],
       concepts: brief.concepts.map((concept) => ({
         id: concept.id,
         label: concept.label,

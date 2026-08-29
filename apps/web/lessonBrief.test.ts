@@ -33,6 +33,7 @@ const BRIEF_KEYS = [
   "references",
   "reflection",
   "scenarioExpectedAnswer",
+  "scenarioOrderItems",
   "scenarioPrompt",
   "sections",
   "slug",

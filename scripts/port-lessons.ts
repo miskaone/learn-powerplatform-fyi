@@ -185,6 +185,31 @@ interface LessonPage {
 // follow-up owner-reviewed port, not silently dropped.
 // ---------------------------------------------------------------------------
 
+/**
+ * Authored ordering-exercise presentation (2026-08-29): for scenarios that ask
+ * the learner to sequence components, split the prose into an intro plus a
+ * bulleted item list, with items in a deliberately scrambled authored order —
+ * never the answer order, so the rendered list cannot grade itself. Keyed by
+ * slug; lessons absent here keep their plain-prose scenario. The expected
+ * answer (public/pl-400/scenario/<slug>.json) is untouched.
+ */
+const SCENARIO_ORDER_PRESENTATION: Record<
+  string,
+  { intro: string; items: string[] }
+> = {
+  'entra-graph-connector-order': {
+    intro:
+      "A mobile Canvas app must identify the logged-in user, inspect that user's Microsoft Entra role through Microsoft Graph, and allow only authorized administrators to manage users. Put these components in dependency order:",
+    items: [
+      'grant administrator consent',
+      'call it from the Canvas app',
+      'register a Microsoft Entra application',
+      'create the custom connector',
+      'request Graph permissions',
+    ],
+  },
+};
+
 const OBJECTIVES = [
   {
     id: 'custom-connectors-azure-integration',
@@ -767,9 +792,13 @@ function lessonPageFor(
     governingRule: lesson.governingRule,
     examClue: lesson.examClue,
     ...(lesson.mnemonic !== undefined ? { mnemonic: lesson.mnemonic } : {}),
-    scenario: {
-      prompt: lesson.scenario.prompt,
-    },
+    scenario:
+      SCENARIO_ORDER_PRESENTATION[lesson.slug] === undefined
+        ? { prompt: lesson.scenario.prompt }
+        : {
+            prompt: SCENARIO_ORDER_PRESENTATION[lesson.slug]!.intro,
+            orderItems: SCENARIO_ORDER_PRESENTATION[lesson.slug]!.items,
+          },
     concepts: lesson.concepts.map((concept) => ({
       id: concept.id,
       label: concept.label,

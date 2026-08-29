@@ -10,6 +10,8 @@ import { MasteryEngineFacade } from "@learn/mastery-gate/webmcp";
 import { DEMO_MASTERY_QUOTE, lessonSections, manifest } from "./lib/content";
 import { KICKOFF_PROMPT } from "./lib/kickoffPrompt";
 import { anchorOwnerSlug, lessonSectionAnchors } from "./lib/lessonIndex";
+import { getLessonPage } from "./lib/lessonPages";
+import { toLessonBrief } from "./lib/lessonBrief";
 import {
   QUARANTINED_TOOLS,
   registrySnapshot,
@@ -269,4 +271,18 @@ test("answer-cache guard's deliberate boundary: sub-phrase words and free prose 
   expect(
     engine.logCoachingNote("the webhook host question wants the serverless compute answer"),
   ).toEqual({ stored: true, reason: null });
+});
+
+test("ML-13 scenario ships as intro + scrambled order items, and the brief mirrors both", () => {
+  const lesson = getLessonPage("entra-graph-connector-order");
+  if (lesson === undefined) throw new Error("ML-13 lesson missing");
+  expect(lesson.scenario.prompt.endsWith("dependency order:")).toBe(true);
+  expect(lesson.scenario.orderItems).toHaveLength(5);
+  // never the answer order — the list must not grade itself
+  expect(lesson.scenario.orderItems![0]).not.toBe(
+    "register a Microsoft Entra application",
+  );
+  const brief = toLessonBrief(lesson);
+  expect(brief.scenarioPrompt.endsWith("dependency order:")).toBe(true);
+  expect(brief.scenarioOrderItems).toEqual(lesson.scenario.orderItems);
 });

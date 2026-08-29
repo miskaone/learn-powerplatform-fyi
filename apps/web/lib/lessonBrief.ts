@@ -39,6 +39,7 @@ export function toLessonBrief(
     examClue: lesson.examClue,
     mnemonic: lesson.mnemonic ?? null,
     scenarioPrompt: lesson.scenario.prompt,
+    scenarioOrderItems: [...(lesson.scenario.orderItems ?? [])],
     concepts: lesson.concepts.map((concept) => ({
       id: concept.id,
       label: concept.label,

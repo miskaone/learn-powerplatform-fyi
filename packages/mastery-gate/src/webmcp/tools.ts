@@ -1032,6 +1032,7 @@ function publicLessonBrief(brief: LessonBriefPublic): LessonBriefPublic {
     examClue: brief.examClue,
     mnemonic: brief.mnemonic,
     scenarioPrompt: brief.scenarioPrompt,
+    scenarioOrderItems: [...brief.scenarioOrderItems],
     concepts: brief.concepts.map((concept) => ({
       id: concept.id,
       label: concept.label,
