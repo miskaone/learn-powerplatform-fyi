@@ -2,6 +2,18 @@
 // another site. Matches host_permissions in manifest.json; never <all_urls>.
 export const ALLOWED_ORIGIN = 'https://learn.powerplatform.fyi';
 
+// Exact-origin match. A prefix/startsWith test on ALLOWED_ORIGIN would also
+// pass https://learn.powerplatform.fyi.evil.example and
+// https://learn.powerplatform.fyi-attacker.test — parse the URL and compare
+// the resolved origin instead.
+export function isAllowedUrl(url) {
+  try {
+    return new URL(url).origin === ALLOWED_ORIGIN;
+  } catch {
+    return false;
+  }
+}
+
 export const DEFAULT_PORT = 8765;
 
 // Mirror of the server cap in bridge/server/protocol.ts.

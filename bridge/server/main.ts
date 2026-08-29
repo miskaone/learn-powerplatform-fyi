@@ -105,19 +105,61 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     log,
   });
 
-  const notifyToolsChanged = (): void => {
+  // list_changed handling. Three properties enforced here:
+  //   (finding 9) never emit before the client's initialize response has been
+  //     written — hold notifications until `ready`;
+  //   (finding 7) coalesce bursts: the page can fire toolchange in a loop, but
+  //     every notification is identical, so collapse to at most one per window;
+  //   the payload is constant, so a pending flag is all the buffer we need.
+  const LIST_CHANGED_MIN_INTERVAL_MS = 250;
+  let ready = false;
+  let listChangedPending = false;
+  let listChangedCooling = false;
+
+  const flushListChanged = (): void => {
+    if (!ready || !listChangedPending) return;
+    if (listChangedCooling) return;
+    listChangedPending = false;
+    listChangedCooling = true;
     writeStdout(core.makeToolListChangedNotification());
+    setTimeout(() => {
+      listChangedCooling = false;
+      flushListChanged();
+    }, LIST_CHANGED_MIN_INTERVAL_MS).unref?.();
+  };
+
+  const notifyToolsChanged = (): void => {
+    listChangedPending = true;
+    flushListChanged();
   };
   ws.onToolsChanged(notifyToolsChanged);
   ws.onPairingChanged(notifyToolsChanged);
+
+  // Dispatch each JSON-RPC line without awaiting the previous one (finding 8):
+  // a slow tools/call must not head-of-line block ping or cancellation. Writes
+  // stay ordered because writeStdout is synchronous and each completion writes
+  // in microtask order.
+  const dispatch = (line: string): void => {
+    void core.handleLine(line).then(
+      (resp) => {
+        if (resp !== null) writeStdout(resp);
+        if (!ready && core.isInitialized()) {
+          ready = true;
+          flushListChanged();
+        }
+      },
+      (err: unknown) => {
+        log(`handleLine error: ${err instanceof Error ? err.message : String(err)}`);
+      },
+    );
+  };
 
   const splitter = createLineSplitter();
   const decoder = new TextDecoder();
   for await (const chunk of Bun.stdin.stream()) {
     const text = decoder.decode(chunk, { stream: true });
     for (const line of splitter(text)) {
-      const resp = await core.handleLine(line);
-      if (resp !== null) writeStdout(resp);
+      dispatch(line);
     }
   }
 

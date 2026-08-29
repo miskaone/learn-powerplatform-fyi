@@ -64,6 +64,7 @@ export function createMcpCore(
 ): {
   handleLine(line: string): Promise<object | null>;
   makeToolListChangedNotification(): object;
+  isInitialized(): boolean;
 } {
   let initialized = false;
 
@@ -160,5 +161,5 @@ export function createMcpCore(
     return { jsonrpc: '2.0', method: 'notifications/tools/list_changed' };
   }
 
-  return { handleLine, makeToolListChangedNotification };
+  return { handleLine, makeToolListChangedNotification, isInitialized: () => initialized };
 }

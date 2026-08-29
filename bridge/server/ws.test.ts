@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test';
 import { MAX_WS_MESSAGE_BYTES } from './protocol';
-import { generateToken } from './token';
+import { generateNonce, generateToken, hmacHex } from './token';
 import { BridgeWsServer } from './ws';
 
 const live: BridgeWsServer[] = [];
@@ -12,7 +12,11 @@ afterEach(() => {
   }
 });
 
-function startServer(opts?: { requestTimeoutMs?: number; token?: string }): {
+function startServer(opts?: {
+  requestTimeoutMs?: number;
+  token?: string;
+  pingIntervalMs?: number;
+}): {
   server: BridgeWsServer;
   token: string;
   port: number;
@@ -23,6 +27,7 @@ function startServer(opts?: { requestTimeoutMs?: number; token?: string }): {
     token,
     log: () => {},
     requestTimeoutMs: opts?.requestTimeoutMs,
+    pingIntervalMs: opts?.pingIntervalMs,
   });
   server.start();
   live.push(server);
@@ -86,7 +91,18 @@ async function waitUntil(pred: () => boolean, ms = 1000): Promise<void> {
 async function authClient(port: number, token: string) {
   const client = openClient(port);
   await client.waitOpen();
-  client.ws.send(JSON.stringify({ type: 'hello', token }));
+  const clientNonce = generateNonce();
+  client.ws.send(JSON.stringify({ type: 'hello', clientNonce }));
+  const challenge = (await client.nextMessage()) as {
+    type: string;
+    serverNonce: string;
+    serverProof: string;
+  };
+  expect(challenge.type).toBe('hello_challenge');
+  // The server must prove it holds the token before we send our proof.
+  expect(challenge.serverProof).toBe(await hmacHex(token, `server|${clientNonce}`));
+  const clientProof = await hmacHex(token, `client|${challenge.serverNonce}`);
+  client.ws.send(JSON.stringify({ type: 'hello_response', clientProof }));
   const ack = await client.nextMessage();
   expect(ack).toEqual({ type: 'hello_ack' });
   return client;
@@ -109,15 +125,90 @@ async function authAndPair(
   return client;
 }
 
-test('wrong token: hello with bad token receives error then close 4001', async () => {
+test('wrong client proof is rejected with close 4001', async () => {
   const { port } = startServer();
   const client = openClient(port);
   await client.waitOpen();
-  client.ws.send(JSON.stringify({ type: 'hello', token: 'wrong' }));
+  client.ws.send(JSON.stringify({ type: 'hello', clientNonce: generateNonce() }));
+  const challenge = (await client.nextMessage()) as { type: string; serverNonce: string };
+  expect(challenge.type).toBe('hello_challenge');
+  // Prove nothing: a client that does not hold the token cannot compute this.
+  client.ws.send(JSON.stringify({ type: 'hello_response', clientProof: 'deadbeef' }));
   const msg = await client.nextMessage();
   expect(msg).toEqual({ type: 'error', message: expect.any(String) });
   const closed = await client.waitClose();
   expect(closed.code).toBe(4001);
+});
+
+test('server proves token possession before the client sends its proof', async () => {
+  const { port, token } = startServer();
+  const client = openClient(port);
+  await client.waitOpen();
+  const clientNonce = generateNonce();
+  client.ws.send(JSON.stringify({ type: 'hello', clientNonce }));
+  const challenge = (await client.nextMessage()) as {
+    type: string;
+    serverNonce: string;
+    serverProof: string;
+  };
+  expect(challenge.type).toBe('hello_challenge');
+  expect(typeof challenge.serverNonce).toBe('string');
+  expect(challenge.serverProof).toBe(await hmacHex(token, `server|${clientNonce}`));
+  // A rogue server that did not know the token could not produce that proof,
+  // and the token never appeared on the wire.
+});
+
+test('sending a request before the handshake never happens: request frames need auth', async () => {
+  // A request frame arriving pre-auth is a protocol violation from the server
+  // side; the extension guards it. Here we assert the server itself refuses a
+  // client that skips straight past the challenge.
+  const { port } = startServer();
+  const client = openClient(port);
+  await client.waitOpen();
+  client.ws.send(JSON.stringify({ type: 'hello', clientNonce: generateNonce() }));
+  await client.nextMessage(); // challenge
+  // Send a paired frame (post-handshake type) instead of hello_response.
+  client.ws.send(
+    JSON.stringify({ type: 'paired', token: 'x', tab: { id: 1, url: 'https://x' } }),
+  );
+  const closed = await client.waitClose();
+  expect(closed.code).toBe(4001);
+});
+
+test('rejects websocket upgrade from a web-page Origin', async () => {
+  const { port } = startServer();
+  const res = await fetch(`http://127.0.0.1:${port}/`, {
+    headers: {
+      Origin: 'https://evil.example',
+      Upgrade: 'websocket',
+      Connection: 'Upgrade',
+      'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
+      'Sec-WebSocket-Version': '13',
+    },
+  });
+  expect(res.status).toBe(404);
+  await res.text();
+});
+
+test('caps concurrent unauthenticated sockets', async () => {
+  const { port } = startServer();
+  const held = [];
+  for (let i = 0; i < 16; i += 1) {
+    const c = openClient(port);
+    await c.waitOpen();
+    held.push(c);
+  }
+  const overflow = openClient(port);
+  await expect(overflow.waitOpen()).rejects.toThrow();
+  for (const c of held) c.ws.close();
+});
+
+test('server sends application-level ping to keep the extension worker alive', async () => {
+  const { server, token, port } = startServer({ pingIntervalMs: 20 });
+  const client = await authClient(port, token);
+  void server;
+  const ping = await client.nextMessage();
+  expect(ping).toEqual({ type: 'ping' });
 });
 
 test('oversize first message is closed 4001', async () => {
@@ -200,7 +291,13 @@ test('listTools round trip', async () => {
   client.ws.send(
     JSON.stringify({ type: 'response', token, id: req.id, ok: true, result: listed }),
   );
-  await expect(pending).resolves.toEqual(listed);
+  const tools = await pending;
+  expect(tools).toHaveLength(1);
+  expect(tools[0].name).toBe('t1');
+  // The page-authored description crosses to the client wrapped as untrusted.
+  expect(tools[0].description.endsWith('d')).toBe(true);
+  expect(tools[0].description).toContain('untrusted');
+  expect(tools[0].inputSchema).toEqual({ type: 'object' });
 });
 
 test('callTool round trip passes content through verbatim', async () => {

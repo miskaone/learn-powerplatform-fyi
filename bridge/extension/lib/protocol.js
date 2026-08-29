@@ -6,9 +6,56 @@ const MAX_TOOL_LIST = 128;
 const MAX_TOOL_NAME_CHARS = 128;
 const MAX_TOOL_DESCRIPTION_CHARS = 4096;
 const MAX_TOOL_CALL_CONTENT_ITEMS = 1000;
+const MAX_HANDSHAKE_HEX_CHARS = 256;
 
 function fail(error) {
   return { ok: false, error };
+}
+
+function isHex(value) {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= MAX_HANDSHAKE_HEX_CHARS &&
+    /^[0-9a-fA-F]+$/.test(value)
+  );
+}
+
+// Random 128-bit nonce as hex. Uses crypto.getRandomValues, present in the
+// service worker and in Bun test runs.
+export function genNonce() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (const b of bytes) out += b.toString(16).padStart(2, '0');
+  return out;
+}
+
+// HMAC-SHA256(key, message) as lowercase hex — identical derivation to the
+// server's token.ts hmacHex, so the two sides' proofs match.
+export async function hmacHex(key, message) {
+  const enc = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(key),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(message));
+  let out = '';
+  for (const b of new Uint8Array(sig)) out += b.toString(16).padStart(2, '0');
+  return out;
+}
+
+// Length-safe hex compare. Not defending against a local timing side channel
+// (the attacker would already be on loopback); this only avoids leaking via an
+// early-return length check masquerading as constant work.
+export function hexEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i += 1) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
 }
 
 function isPlainObject(value) {
@@ -60,6 +107,16 @@ export function validateServerMessage(raw) {
   switch (type) {
     case 'hello_ack':
       return { ok: true, msg: { type: 'hello_ack' } };
+    case 'hello_challenge': {
+      if (!isHex(parsed.serverNonce)) return fail('serverNonce must be hex');
+      if (!isHex(parsed.serverProof)) return fail('serverProof must be hex');
+      return {
+        ok: true,
+        msg: { type: 'hello_challenge', serverNonce: parsed.serverNonce, serverProof: parsed.serverProof },
+      };
+    }
+    case 'ping':
+      return { ok: true, msg: { type: 'ping' } };
     case 'error': {
       if (typeof parsed.message !== 'string') return fail('error.message must be a string');
       if (parsed.message.length > MAX_ERROR_CHARS) return fail('error.message too long');
@@ -97,8 +154,12 @@ export function validateServerMessage(raw) {
   }
 }
 
-export function makeHello(token) {
-  return { type: 'hello', token, extensionVersion: '0.1.0' };
+export function makeHello(clientNonce) {
+  return { type: 'hello', clientNonce, extensionVersion: '0.1.0' };
+}
+
+export function makeHelloResponse(clientProof) {
+  return { type: 'hello_response', clientProof };
 }
 
 export function makePaired(token, tabId, url) {

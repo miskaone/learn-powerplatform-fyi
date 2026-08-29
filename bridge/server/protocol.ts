@@ -8,11 +8,26 @@ const MAX_TOOL_LIST = 128;
 const MAX_TOOL_NAME_CHARS = 128;
 const MAX_TOOL_DESCRIPTION_CHARS = 4096;
 const MAX_TOOL_CALL_CONTENT_ITEMS = 1000;
+const MAX_HANDSHAKE_HEX_CHARS = 256;
+
+// MCP tool-name grammar: names crossing to the MCP client must match this or
+// a schema-validating client rejects the whole tools/list. Enforced in
+// parseToolList; non-conforming tools are dropped, not passed through.
+const MCP_TOOL_NAME_RE = /^[a-zA-Z0-9_-]{1,128}$/;
+// Marks the start of untrusted, page-authored description text so a
+// same-origin script cannot smuggle instructions into the agent's context as
+// if they came from the bridge.
+const UNTRUSTED_DESCRIPTION_PREFIX = '[untrusted page-provided description] ';
 
 export type HelloMessage = {
   type: 'hello';
-  token: string;
+  clientNonce: string;
   extensionVersion?: string;
+};
+
+export type HelloResponseMessage = {
+  type: 'hello_response';
+  clientProof: string;
 };
 
 export type PairedMessage = {
@@ -42,12 +57,19 @@ export type ResponseMessage = {
 
 export type ExtToServerMessage =
   | HelloMessage
+  | HelloResponseMessage
   | PairedMessage
   | DisarmedMessage
   | ToolsChangedMessage
   | ResponseMessage;
 
 export type HelloAckMessage = { type: 'hello_ack' };
+export type HelloChallengeMessage = {
+  type: 'hello_challenge';
+  serverNonce: string;
+  serverProof: string;
+};
+export type PingMessage = { type: 'ping' };
 export type ErrorMessage = { type: 'error'; message: string };
 export type ListToolsRequest = { type: 'request'; id: string; op: 'listTools' };
 export type CallToolRequest = {
@@ -60,6 +82,8 @@ export type CallToolRequest = {
 
 export type ServerToExtMessage =
   | HelloAckMessage
+  | HelloChallengeMessage
+  | PingMessage
   | ErrorMessage
   | ListToolsRequest
   | CallToolRequest;
@@ -90,6 +114,17 @@ function parseToken(value: unknown): { ok: true; token: string } | { ok: false; 
   return { ok: true, token: value };
 }
 
+function parseHex(
+  value: unknown,
+  label: string,
+): { ok: true; hex: string } | { ok: false; error: string } {
+  if (typeof value !== 'string') return { ok: false, error: `${label} must be a string` };
+  if (value.length === 0) return { ok: false, error: `${label} is empty` };
+  if (value.length > MAX_HANDSHAKE_HEX_CHARS) return { ok: false, error: `${label} too long` };
+  if (!/^[0-9a-fA-F]+$/.test(value)) return { ok: false, error: `${label} must be hex` };
+  return { ok: true, hex: value };
+}
+
 function fail(error: string): { ok: false; error: string } {
   return { ok: false, error };
 }
@@ -117,18 +152,29 @@ export function parseExtMessage(
     return fail('missing type');
   }
 
+  // The handshake frames (hello / hello_response) carry no token: proving
+  // possession over the wire is what the challenge-response replaces. Every
+  // post-handshake frame still carries the token and is checked below.
+  if (type === 'hello') {
+    const nonce = parseHex(parsed.clientNonce, 'clientNonce');
+    if (!nonce.ok) return nonce;
+    const msg: HelloMessage = { type: 'hello', clientNonce: nonce.hex };
+    if (typeof parsed.extensionVersion === 'string') {
+      msg.extensionVersion = parsed.extensionVersion;
+    }
+    return { ok: true, msg };
+  }
+  if (type === 'hello_response') {
+    const proof = parseHex(parsed.clientProof, 'clientProof');
+    if (!proof.ok) return proof;
+    return { ok: true, msg: { type: 'hello_response', clientProof: proof.hex } };
+  }
+
   const tokenParsed = parseToken(parsed.token);
   if (!tokenParsed.ok) return tokenParsed;
   const token = tokenParsed.token;
 
   switch (type) {
-    case 'hello': {
-      const msg: HelloMessage = { type: 'hello', token };
-      if (typeof parsed.extensionVersion === 'string') {
-        msg.extensionVersion = parsed.extensionVersion;
-      }
-      return { ok: true, msg };
-    }
     case 'paired': {
       if (!isPlainObject(parsed.tab)) return fail('tab must be an object');
       const id = parsed.tab.id;
@@ -181,6 +227,12 @@ function clonePlainObject(obj: Record<string, unknown>): Record<string, unknown>
   return out;
 }
 
+// Strip C0 control characters (except none — names may not contain them, and
+// descriptions must not carry ANSI escapes or stray newlines that reframe the
+// agent's context). Keeps ordinary printable text intact.
+// eslint-disable-next-line no-control-regex
+const C0_CONTROL_RE = /[\u0000-\u001F\u007F]/g;
+
 export function parseToolList(
   result: unknown,
 ): { ok: true; tools: WebMcpToolDescriptor[] } | { ok: false; error: string } {
@@ -188,6 +240,7 @@ export function parseToolList(
   if (result.length > MAX_TOOL_LIST) return fail('tool list too large');
 
   const tools: WebMcpToolDescriptor[] = [];
+  const seen = new Set<string>();
   for (const entry of result) {
     if (!isPlainObject(entry)) return fail('tool entry must be an object');
     const name = entry.name;
@@ -195,10 +248,18 @@ export function parseToolList(
       return fail('tool name must be a non-empty string');
     }
     if (name.length > MAX_TOOL_NAME_CHARS) return fail('tool name too long');
-    const description =
+    // Drop — never reject the whole list for — a page tool whose name breaks
+    // the MCP grammar or duplicates one already accepted. One malformed tool
+    // must not vanish every tool for a schema-validating client.
+    if (!MCP_TOOL_NAME_RE.test(name)) continue;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const rawDescription =
       typeof entry.description === 'string'
-        ? entry.description.slice(0, MAX_TOOL_DESCRIPTION_CHARS)
+        ? entry.description.replace(C0_CONTROL_RE, ' ').slice(0, MAX_TOOL_DESCRIPTION_CHARS)
         : '';
+    const description =
+      rawDescription.length > 0 ? UNTRUSTED_DESCRIPTION_PREFIX + rawDescription : '';
     const inputSchema =
       isPlainObject(entry.inputSchema) ? clonePlainObject(entry.inputSchema) : { type: 'object' };
     tools.push({ name, description, inputSchema });
