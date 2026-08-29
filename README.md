@@ -44,7 +44,7 @@ WebMCP support varies by agent host. Verified working:
 |---|---|---|
 | **ChatGPT desktop app** (built-in browser) | ✅ verified | Full discovery + invocation. Open the page in the app's own browser, then talk to ChatGPT. |
 | **Chrome 152+** with `chrome://flags/#enable-webmcp-testing` | ✅ verified | `document.modelContext` present, `toolchange` events supported. |
-| **Edge + Copilot** with the same flag | 🟡 reported working | Chromium-based; nothing in this codebase is vendor-specific. |
+| Edge (+ flag) with Copilot chat | ❌ no invocation bridge | The page runtime registers under Edge, and Copilot can read the roster — but Copilot exposes no tool-invocation bridge to its chat. Same class as other text-only hosts. |
 | Codex Chrome extension side panel | ❌ no bridge | Reads page text only. It injects a `modelContext` but does not bridge tool *invocation* to the conversation, so it reports zero callable tools on any WebMCP site. Not a limitation of this page. |
 
 If your agent says it can only read the page text, you are in a host without a
