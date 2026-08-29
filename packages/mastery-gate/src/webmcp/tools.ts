@@ -226,7 +226,7 @@ export function createToolset(
     ),
     get_current_question: readOnlyDescriptor(
       'get_current_question',
-      'Fetch the current practice question — prompt and options only; the correct answer is structurally absent. Call at the start of each practice loop and after every submit_answer to load the next question. Let the learner reason aloud before they choose, and frame every probing question against THIS lesson\'s scenario from get_lesson_brief — never a generic scenario of your own, and never one that assumes context you have not just given them. While the question is unanswered, do not restate the lesson\'s governing rule, exam clue, or mnemonic; several of them name the correct option almost verbatim.',
+      'Fetch the current practice question — prompt and options only; the correct answer is structurally absent. Call at the start of each practice loop and after every submit_answer to load the next question. During practice, quiz questions come ONLY from this tool — never author your own multiple-choice, diagnostic, or warm-up questions; your own open questions belong to Socratic probing of the current engine question and to the rubric interview when the engine routes there. Let the learner reason aloud before they choose, and frame every probing question against THIS lesson\'s scenario from get_lesson_brief — never a generic scenario of your own, and never one that assumes context you have not just given them. While the question is unanswered, do not restate the lesson\'s governing rule, exam clue, or mnemonic; several of them name the correct option almost verbatim.',
       emptySchema(),
       async (input) => {
         const parsed = parseEmpty(input);
@@ -313,7 +313,7 @@ export function createToolset(
     ),
     request_next_action: descriptor(
       'request_next_action',
-      'Ask the deterministic referee for the next pedagogical move. Call after every graded answer; pass confidence "low" when a correct answer felt shaky to the learner. Verdicts: hint, review, coach, go_deeper, advance, rubric_interview (run the open-question interview described in score_rubric), or continue. Follow the verdict — do not improvise the route.',
+      'Ask the deterministic referee for the next pedagogical move — the site decides sequencing, you coach within it; do not invent your own diagnostics or skip ahead. Call after every graded answer; pass confidence "low" when a correct answer felt shaky to the learner. Verdicts: hint, review, coach, go_deeper, advance, rubric_interview (run the open-question interview described in score_rubric), or continue. Follow the verdict — do not improvise the route.',
       closedObject(
         { confidence: { type: 'string', enum: ['low', 'high'] } },
         [],

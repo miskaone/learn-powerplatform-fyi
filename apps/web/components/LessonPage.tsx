@@ -14,6 +14,7 @@ import { lessonIndex } from "../lib/lessonIndex";
 import { LessonAim, RuleCompression, RunCommitment } from "./LessonReflection";
 import { LessonPracticeSection } from "./LessonPracticeSection";
 import { SectionMap } from "./SectionMap";
+import { TopbarCoachPrompt } from "./TopbarCoachPrompt";
 
 const DRILL_ORDER = [
   ["recall", "RECALL"],
@@ -245,6 +246,7 @@ export function LessonPage({ lesson }: { lesson: LessonPageData }) {
       <div className="lp-topbar">
         <span className="lp-brand">{lesson.id}</span>
         <span className="lp-crumb">PL-400 / {lesson.topic.title}</span>
+        <TopbarCoachPrompt />
         <Link href="/pl-400/" className="lp-topbar-hub">
           Track hub
         </Link>
