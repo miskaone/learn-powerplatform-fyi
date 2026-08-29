@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent, type JSX } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type JSX,
+} from "react";
 import type { ToolDescriptor, ToolName } from "@learn/mastery-gate/webmcp";
 import {
   buildToolInput,
@@ -53,8 +60,11 @@ function FieldControl(props: {
   descriptorName: string;
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
+  invalidKey: string | null;
+  errorId: string;
 }): JSX.Element {
-  const { field, descriptorName, values, onChange } = props;
+  const { field, descriptorName, values, onChange, invalidKey, errorId } =
+    props;
   if (field.kind === "group") {
     return (
       <fieldset className="tool-inspector-group">
@@ -69,6 +79,8 @@ function FieldControl(props: {
             descriptorName={descriptorName}
             values={values}
             onChange={onChange}
+            invalidKey={invalidKey}
+            errorId={errorId}
           />
         ))}
       </fieldset>
@@ -79,6 +91,11 @@ function FieldControl(props: {
   const key = field.path.join(".");
   const value = values[key] ?? "";
   const required = field.required || undefined;
+  // The offending control is tied to the announced validation message
+  // (cross-review finding 7): aria-invalid flags it, aria-describedby
+  // points at the live status element carrying the error text.
+  const invalid = key === invalidKey || undefined;
+  const describedBy = invalid ? errorId : undefined;
 
   return (
     <div>
@@ -92,6 +109,8 @@ function FieldControl(props: {
           type="text"
           value={value}
           aria-required={required}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
           onChange={(event) => {
             onChange(key, event.target.value);
           }}
@@ -106,6 +125,8 @@ function FieldControl(props: {
           min={field.minimum ?? undefined}
           max={field.maximum ?? undefined}
           aria-required={required}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
           onChange={(event) => {
             onChange(key, event.target.value);
           }}
@@ -116,6 +137,8 @@ function FieldControl(props: {
           id={id}
           value={value}
           aria-required={required}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
           onChange={(event) => {
             onChange(key, event.target.value);
           }}
@@ -135,6 +158,8 @@ function FieldControl(props: {
           placeholder="JSON"
           value={value}
           aria-required={required}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
           onChange={(event) => {
             onChange(key, event.target.value);
           }}
@@ -157,15 +182,32 @@ function ToolInvoker(props: {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<FormattedToolResult | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [invalid, setInvalid] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
+  const resultRef = useRef<HTMLPreElement>(null);
+
+  const statusId = `ti-${descriptor.name}-status`;
 
   const setNewResult = (next: FormattedToolResult) => {
     setExpanded(false);
     setResult(next);
   };
 
+  // "Show full response" unmounts itself when clicked; without this the
+  // keyboard focus would fall back to <body> (cross-review finding 6).
+  // The expanded <pre> takes focus instead (tabIndex={-1} below).
+  useEffect(() => {
+    if (expanded) {
+      resultRef.current?.focus();
+    }
+  }, [expanded]);
+
   const invoke = async () => {
     const built = buildToolInput(fields, values);
     if (!built.ok) {
+      setInvalid({ key: built.path.join("."), message: built.error });
       setNewResult({
         pretty: JSON.stringify(
           { error: "invalid_input", detail: built.error },
@@ -176,6 +218,7 @@ function ToolInvoker(props: {
       });
       return;
     }
+    setInvalid(null);
     setRunning(true);
     try {
       const response = await descriptor.execute(built.input);
@@ -198,6 +241,17 @@ function ToolInvoker(props: {
 
   const capped = result === null ? null : capText(result.pretty);
 
+  // Announced via the always-mounted live region below (finding 7):
+  // validation errors verbatim; successful results announce the hint when
+  // one exists, otherwise a short truthful summary — never the JSON dump.
+  const statusText =
+    invalid !== null
+      ? invalid.message
+      : result === null
+        ? ""
+        : (result.hint ??
+          `Response received (${result.pretty.length.toLocaleString()} characters).`);
+
   return (
     <details className="tool-inspector-tool">
       <summary>
@@ -214,6 +268,8 @@ function ToolInvoker(props: {
             onChange={(key, value) => {
               setValues((current) => ({ ...current, [key]: value }));
             }}
+            invalidKey={invalid?.key ?? null}
+            errorId={statusId}
           />
         ))}
         <button
@@ -224,12 +280,24 @@ function ToolInvoker(props: {
           {running ? "Invoking…" : "Invoke"}
         </button>
       </form>
+      <p
+        id={statusId}
+        role="status"
+        className={
+          result !== null && result.hint !== null && invalid === null
+            ? "tool-inspector-hint"
+            : "tool-inspector-status"
+        }
+      >
+        {statusText}
+      </p>
       {result !== null && capped !== null ? (
         <>
-          {result.hint !== null ? (
-            <p className="tool-inspector-hint">{result.hint}</p>
-          ) : null}
-          <pre className="tool-inspector-result">
+          <pre
+            className="tool-inspector-result"
+            tabIndex={-1}
+            ref={resultRef}
+          >
             <code>{expanded ? result.pretty : capped.shown}</code>
           </pre>
           {capped.truncated && !expanded ? (
@@ -257,7 +325,11 @@ export function ToolInspectorPanel(props: {
     return null;
   }
 
-  const toolset = props.gate.stack.getToolset();
+  // Invocation goes through the registry-wrapped descriptors whenever an
+  // agent runtime is bound — the exact guard layer agents pass through
+  // (cross-review finding 1). Agent-less, these are the raw descriptors and
+  // the engine-guard invariant (see MasteryStack.getToolset) is the guard.
+  const toolset = props.gate.stack.getInvocableToolset();
   const descriptors: ToolDescriptor[] = [];
   for (const name of props.gate.rosterNames) {
     if (!Object.prototype.hasOwnProperty.call(toolset, name)) {
@@ -277,8 +349,9 @@ export function ToolInspectorPanel(props: {
           Tool Inspector — {n} {n === 1 ? "tool" : "tools"} live
         </summary>
         <p className="tool-inspector-framing">
-          Every tool below is exactly what a visiting agent sees — same schemas,
-          same guards, same redaction. Invoke anything.
+          {props.gate.agentDetected
+            ? "Every tool below is the same registered descriptor a visiting agent invokes — same schemas, same guard layer, same redaction. Invoke anything."
+            : "No agent runtime is attached — these are the exact descriptors one would register: same schemas, same redaction, with exam-time rules enforced inside the engine itself. Invoke anything."}
         </p>
         {descriptors.map((descriptor) => (
           <ToolInvoker

@@ -933,6 +933,18 @@ button.pl400-btn,
   cursor: default;
 }
 
+/* Always-mounted live region: announces results, hints, and validation
+   errors to screen readers; empty (zero-height) until a result arrives. */
+.tool-inspector-status {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.tool-inspector-status:not(:empty) {
+  margin: 0.45rem 0 0;
+}
+
 .tool-inspector-hint {
   background: var(--pl400-accent-soft);
   border-left: 3px solid var(--pl400-accent);
@@ -971,6 +983,7 @@ button.pl400-btn,
 
 .tool-inspector-invoke:focus-visible,
 .tool-inspector-expand:focus-visible,
+.tool-inspector-result:focus-visible,
 .tool-inspector-details > summary:focus-visible,
 .tool-inspector-tool > summary:focus-visible,
 .tool-roster-inspector-toggle:focus-visible {

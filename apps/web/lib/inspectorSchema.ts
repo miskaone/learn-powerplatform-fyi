@@ -28,7 +28,7 @@ export type InspectorField =
 
 export type BuildInputResult =
   | { ok: true; input: Record<string, unknown> }
-  | { ok: false; error: string };
+  | { ok: false; error: string; path: string[] };
 
 export interface FormattedToolResult {
   pretty: string;
@@ -162,7 +162,7 @@ function allChildrenEmpty(
 
 type FieldBuild =
   | { ok: true; present: boolean; value?: unknown }
-  | { ok: false; error: string };
+  | { ok: false; error: string; path: string[] };
 
 function buildField(
   field: InspectorField,
@@ -175,12 +175,20 @@ function buildField(
       const raw = values[dotted];
       if (isEmptyValue(raw)) {
         if (field.required) {
-          return { ok: false, error: `missing required field "${dotted}"` };
+          return {
+            ok: false,
+            error: `missing required field "${dotted}"`,
+            path: field.path,
+          };
         }
         return { ok: true, present: false };
       }
       if (field.kind === "enum" && !field.values.includes(raw)) {
-        return { ok: false, error: `invalid value for "${dotted}"` };
+        return {
+          ok: false,
+          error: `invalid value for "${dotted}"`,
+          path: field.path,
+        };
       }
       return { ok: true, present: true, value: raw };
     }
@@ -188,24 +196,34 @@ function buildField(
       const raw = values[dotted];
       if (isEmptyValue(raw)) {
         if (field.required) {
-          return { ok: false, error: `missing required field "${dotted}"` };
+          return {
+            ok: false,
+            error: `missing required field "${dotted}"`,
+            path: field.path,
+          };
         }
         return { ok: true, present: false };
       }
       const num = Number(raw);
       if (Number.isNaN(num)) {
-        return { ok: false, error: `invalid number for "${dotted}"` };
+        return {
+          ok: false,
+          error: `invalid number for "${dotted}"`,
+          path: field.path,
+        };
       }
       if (field.minimum !== null && num < field.minimum) {
         return {
           ok: false,
           error: `"${dotted}" is below minimum ${field.minimum}`,
+          path: field.path,
         };
       }
       if (field.maximum !== null && num > field.maximum) {
         return {
           ok: false,
           error: `"${dotted}" is above maximum ${field.maximum}`,
+          path: field.path,
         };
       }
       return { ok: true, present: true, value: num };
@@ -214,14 +232,22 @@ function buildField(
       const raw = values[dotted];
       if (isEmptyValue(raw)) {
         if (field.required) {
-          return { ok: false, error: `missing required field "${dotted}"` };
+          return {
+            ok: false,
+            error: `missing required field "${dotted}"`,
+            path: field.path,
+          };
         }
         return { ok: true, present: false };
       }
       try {
         return { ok: true, present: true, value: JSON.parse(raw) as unknown };
       } catch {
-        return { ok: false, error: `invalid JSON for "${dotted}"` };
+        return {
+          ok: false,
+          error: `invalid JSON for "${dotted}"`,
+          path: field.path,
+        };
       }
     }
     case "group": {
@@ -303,7 +329,14 @@ export function capText(
   cap: number = RESULT_DISPLAY_CAP,
 ): { shown: string; truncated: boolean } {
   if (text.length > cap) {
-    return { shown: text.slice(0, cap), truncated: true };
+    // Never split a surrogate pair at the cap: a high surrogate as the
+    // final UTF-16 unit would render as a lone-surrogate glyph.
+    let end = cap;
+    const last = text.charCodeAt(end - 1);
+    if (last >= 0xd800 && last <= 0xdbff) {
+      end -= 1;
+    }
+    return { shown: text.slice(0, end), truncated: true };
   }
   return { shown: text, truncated: false };
 }

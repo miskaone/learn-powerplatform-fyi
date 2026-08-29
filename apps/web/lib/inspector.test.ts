@@ -12,6 +12,7 @@ import {
   type ToolResponse,
 } from "@learn/mastery-gate/webmcp";
 import {
+  RESULT_DISPLAY_CAP,
   capText,
   formatToolResult,
   schemaToFields,
@@ -254,6 +255,7 @@ describe("buildToolInput", () => {
       expect(missing.ok).toBe(false);
       if (!missing.ok) {
         expect(missing.error).toContain("questionId");
+        expect(missing.path).toEqual(["questionId"]);
       }
 
       const enumFields = schemaToFields(
@@ -285,6 +287,7 @@ describe("buildToolInput", () => {
       if (!outOfRange.ok) {
         expect(outOfRange.error).toContain("recall.score");
         expect(outOfRange.error).toContain("4");
+        expect(outOfRange.path).toEqual(["recall", "score"]);
       }
 
       const validRubric = buildToolInput(rubricFields, {
@@ -314,6 +317,7 @@ describe("buildToolInput", () => {
       expect(invalidJson.ok).toBe(false);
       if (!invalidJson.ok) {
         expect(invalidJson.error).toBe('invalid JSON for "segments"');
+        expect(invalidJson.path).toEqual(["segments"]);
       }
 
       expect(
@@ -349,11 +353,22 @@ describe("textContent rendering path", () => {
       }),
     ).toEqual({ pretty: "not-json{", hint: null });
 
-    const long = "a".repeat(RESULT_OVER_CAP);
+    const long = "a".repeat(RESULT_DISPLAY_CAP + 1);
     const capped = capText(long);
     expect(capped.truncated).toBe(true);
-    expect(capped.shown).toBe(long.slice(0, 2400));
-    expect(capped.shown.length).toBe(2400);
+    expect(capped.shown).toBe(long.slice(0, RESULT_DISPLAY_CAP));
+    expect(capped.shown.length).toBe(RESULT_DISPLAY_CAP);
+
+    // Never split a surrogate pair at the cap (cross-review finding 9 nit):
+    // an emoji straddling the boundary drops entirely, no lone surrogate.
+    const straddling = "a".repeat(RESULT_DISPLAY_CAP - 1) + "😀" + "tail";
+    const surrogateSafe = capText(straddling);
+    expect(surrogateSafe.truncated).toBe(true);
+    expect(surrogateSafe.shown.length).toBe(RESULT_DISPLAY_CAP - 1);
+    const lastUnit = surrogateSafe.shown.charCodeAt(
+      surrogateSafe.shown.length - 1,
+    );
+    expect(lastUnit >= 0xd800 && lastUnit <= 0xdbff).toBe(false);
 
     const source = readFileSync(
       `${import.meta.dir}/../components/ToolInspector.tsx`,
@@ -363,8 +378,6 @@ describe("textContent rendering path", () => {
     expect(source).not.toContain("innerHTML");
   });
 });
-
-const RESULT_OVER_CAP = 2401;
 
 describe("execution round-trip via the shared accessor", () => {
   test("two tools share the stack toolset instance with the live registry", async () => {
@@ -397,6 +410,146 @@ describe("execution round-trip via the shared accessor", () => {
     } finally {
       stack.stopRuntimeDetection();
       stack.watcher?.stop();
+    }
+  });
+});
+
+describe("guard-layer parity (cross-review finding 1)", () => {
+  const EXAM_SNAPSHOT: RegistrySnapshot = {
+    ...BASE_LESSON,
+    gatePassed: true,
+    phase: "exam",
+  };
+
+  test("mid-drain, the wrapped descriptor refuses identically to the agent path", async () => {
+    const ctx = new MockModelContext();
+    const stack = createMasteryStack(() => {}, undefined, {
+      document: { modelContext: ctx },
+    } as never);
+    try {
+      const shared = stack.getToolset();
+      const realNote = shared.log_coaching_note;
+      const slowNote = {
+        name: realNote.name,
+        description: realNote.description,
+        inputSchema: realNote.inputSchema,
+        execute: async (input: unknown) => {
+          await new Promise((resolve) => setTimeout(resolve, 40));
+          return realNote.execute(input);
+        },
+      };
+      const registry = new ToolRegistry(ctx, stack.facade, {
+        disabledTools: QUARANTINED_TOOLS,
+        drainWarnMs: 5,
+        logger: () => {},
+        toolsetOverride: { ...shared, log_coaching_note: slowNote },
+      });
+      await registry.sync(BASE_LESSON);
+
+      // 1. an execution is in flight through the runtime
+      const inFlight = ctx.callTool("log_coaching_note", { note: "in-flight" });
+      await new Promise((resolve) => setTimeout(resolve, 1));
+
+      // 2. exam roster wants the tool gone; drain-first pends the revocation
+      const syncing = registry.sync(EXAM_SNAPSHOT);
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      expect(registry.getRegisteredNames()).toContain("log_coaching_note");
+
+      // 3. agent path and inspector path (the wrapped descriptor the panel
+      // now invokes) must return the SAME refusal — no bypass window.
+      const viaAgent = parseToolPayload(
+        await ctx.callTool("log_coaching_note", { note: "AGENT" }),
+      );
+      const wrapped = registry.getWrappedDescriptor("log_coaching_note");
+      expect(wrapped).toBeDefined();
+      const viaInspector = parseToolPayload(
+        await wrapped!.execute({ note: "INSPECTOR" }),
+      );
+      expect(viaInspector).toEqual(viaAgent);
+      expect(viaInspector.refused).toBe(true);
+      expect(viaInspector.reason).toBe("tool-revoked");
+
+      await inFlight;
+      await syncing;
+
+      // Neither refused write may have landed in engine state.
+      const notes = (
+        parseToolPayload(await shared.get_learner_state.execute({}))
+          .coachingNotes as Array<{ text: string }>
+      ).map((entry) => entry.text);
+      expect(notes).not.toContain("AGENT");
+      expect(notes).not.toContain("INSPECTOR");
+    } finally {
+      stack.stopRuntimeDetection();
+      stack.watcher?.stop();
+    }
+  });
+
+  test("refusal mode: wrapped descriptor refuses during exam like the runtime path", async () => {
+    const ctx = new MockModelContext();
+    const stack = createMasteryStack(() => {}, undefined, {
+      document: { modelContext: ctx },
+    } as never);
+    try {
+      const registry = new ToolRegistry(ctx, stack.facade, {
+        revocationMode: "refusal",
+        disabledTools: QUARANTINED_TOOLS,
+        toolsetOverride: stack.getToolset(),
+      });
+      await registry.sync(EXAM_SNAPSHOT);
+      const viaRuntime = parseToolPayload(
+        await ctx.callTool("log_coaching_note", { note: "y" }),
+      );
+      const viaWrapped = parseToolPayload(
+        await registry
+          .getWrappedDescriptor("log_coaching_note")!
+          .execute({ note: "y" }),
+      );
+      expect(viaWrapped).toEqual(viaRuntime);
+      expect(viaWrapped.refused).toBe(true);
+      expect(viaWrapped.reason).toBe("exam-in-progress");
+    } finally {
+      stack.stopRuntimeDetection();
+      stack.watcher?.stop();
+    }
+  });
+
+  test("getInvocableToolset prefers registry wrappers with a runtime, raw descriptors without", () => {
+    const withRuntime = makeStack();
+    try {
+      const raw = withRuntime.getToolset();
+      const invocable = withRuntime.getInvocableToolset();
+      expect(withRuntime.registry).not.toBeNull();
+      expect(invocable.log_coaching_note).toBe(
+        withRuntime.registry!.getWrappedDescriptor("log_coaching_note")!,
+      );
+      expect(invocable.log_coaching_note).not.toBe(raw.log_coaching_note);
+      // Same public surface either way: name, description, schema.
+      expect(invocable.log_coaching_note.name).toBe(raw.log_coaching_note.name);
+      expect(invocable.log_coaching_note.description).toBe(
+        raw.log_coaching_note.description,
+      );
+      expect(invocable.log_coaching_note.inputSchema).toEqual(
+        raw.log_coaching_note.inputSchema,
+      );
+    } finally {
+      withRuntime.stopRuntimeDetection();
+      withRuntime.watcher?.stop();
+    }
+
+    const agentless = createMasteryStack(
+      () => {},
+      undefined,
+      { document: {} } as never,
+    );
+    try {
+      expect(agentless.registry).toBeNull();
+      // Agent-less parity: the raw shared toolset IS the invocable toolset;
+      // the engine-guard invariant (see MasteryStack.getToolset) is the guard.
+      expect(agentless.getInvocableToolset()).toBe(agentless.getToolset());
+    } finally {
+      agentless.stopRuntimeDetection();
+      agentless.watcher?.stop();
     }
   });
 });

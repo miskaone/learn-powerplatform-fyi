@@ -50,8 +50,25 @@ export interface MasteryStack {
   getActiveLessonSlug(): string | null;
   /** Live read of tools whose revocation drain has exceeded the warn threshold. */
   getStuckRevocations(): string[];
-  /** The one live toolset instance — the registry registers wrapped views of these exact descriptors; the Tool Inspector invokes them directly. */
+  /**
+   * The one live toolset instance — the registry registers wrapped views of
+   * these exact descriptors (shared engine state, shared redaction mappers).
+   * ENGINE-GUARD INVARIANT: raw descriptors carry no registry-layer guards
+   * (drain refusal, refusal-mode exam guard). Every consequential tool MUST
+   * therefore refuse inside the engine/adapter itself (gate-not-passed,
+   * exam-in-progress, structural redaction) — never rely on registry-layer
+   * guards alone, because agent-less surfaces execute without a registry.
+   */
   getToolset(): Record<ToolName, ToolDescriptor>;
+  /**
+   * Descriptors an in-app surface should INVOKE. With an agent runtime
+   * bound these are the registry-wrapped descriptors — the identical guard
+   * layer (mid-drain `tool-revoked` refusal, refusal-mode exam guard) an
+   * agent passes through. Agent-less, no registry exists and the raw
+   * descriptors are returned; safety then rests entirely on the
+   * engine-guard invariant documented on getToolset().
+   */
+  getInvocableToolset(): Record<ToolName, ToolDescriptor>;
 }
 
 /**
@@ -305,6 +322,18 @@ export function createMasteryStack(
     },
     getToolset(): Record<ToolName, ToolDescriptor> {
       return sharedToolset;
+    },
+    getInvocableToolset(): Record<ToolName, ToolDescriptor> {
+      const registry = this.registry;
+      if (registry === null) {
+        return sharedToolset;
+      }
+      const wrapped = {} as Record<ToolName, ToolDescriptor>;
+      for (const name of Object.keys(sharedToolset) as ToolName[]) {
+        wrapped[name] =
+          registry.getWrappedDescriptor(name) ?? sharedToolset[name];
+      }
+      return wrapped;
     },
   };
 
