@@ -85,7 +85,7 @@ function ScenarioCommit({
   if (committed) {
     return (
       <div className="lp-commit">
-        <span className="lp-label">YOUR COMMITMENT</span>
+        <span className="lp-label">YOUR CALL</span>
         <p className="lp-commit-echo" style={{ whiteSpace: "pre-wrap" }}>
           {text}
         </p>
@@ -134,11 +134,11 @@ function ScenarioCommit({
   return (
     <div className="lp-commit">
       <label className="lp-label" htmlFor={textareaId}>
-        YOUR COMMITMENT
+        MAKE YOUR CALL
       </label>
       <p className="lp-commit-help">
-        Write your answer before the mechanism is revealed — commitment is what
-        makes the reveal teach.
+        Decide before the reveal — locking in an answer is what makes the
+        reveal teach.
       </p>
       <textarea
         id={textareaId}
