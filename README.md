@@ -63,6 +63,22 @@ document.modelContext.getTools().then(t => console.log(t.map(x => x.name)));
   `learn.powerplatform.fyi`. No CI deploy workflows; the git integration is
   the only deploy path.
 
+## WebMCP Bridge (companion)
+
+**Experimental. Not part of the site build.** See [`bridge/README.md`](bridge/README.md).
+
+Agent hosts that read a page — the Codex Chrome panel, Copilot — can see a
+site's content but expose no way to *invoke* its WebMCP tools. The bridge closes
+that gap generically: a small local MCP server plus an MV3 browser extension let
+any MCP client (Codex CLI, Claude Code, anything speaking MCP over stdio) list
+and call the WebMCP tools of **one explicitly paired browser tab** on
+`learn.powerplatform.fyi`. It ships nothing into the site: everything lives under
+`bridge/`, imports nothing from `apps/` or `packages/`, and is not part of the
+Cloudflare Pages build. Security is designed in — a single-origin allowlist,
+loopback-only WebSocket, a mutual challenge-response handshake so the pairing
+token never crosses the wire, and per-tab arming. Treat it as an art-of-the-
+possible demo, not a supported product.
+
 ## License
 
 Code is [MIT](LICENSE). Lesson content under `content/` is
