@@ -152,3 +152,26 @@ Conclusions:
 
 The bridge companion (`bridge/`) exists precisely to close that column for any
 MCP-speaking client. The gap is the ecosystem's; the fix is in this repo.
+
+## Addendum 2026-08-29 — Host outage: ChatGPT app bundled-browser cache
+
+Symptom: every conversation (Chat and Work mode) reported zero page tools on a page
+whose own spike verdicts showed registration green. Agent-side error:
+`Module not found: ~/.codex/plugins/cache/openai-bundled/browser/<ver>/skills/control-in-app-browser/scripts/browser-client.mjs`.
+
+Root cause: a ChatGPT app plugin-bundle update (cached 2026-08-28 18:31) shipped
+`browser-client.mjs` at the bundle's top-level `scripts/` while the skill loader
+resolves it inside `skills/control-in-app-browser/scripts/`. The bridge never
+initialized, so no conversation received any page's tools. Entirely host-side.
+
+Repair: `ln -s ../../scripts` inside `skills/control-in-app-browser/`, fully quit
+and relaunch the app. Verified end-to-end afterward: tool list returned with
+schemas + origin, and `tools.call("spike_echo", {text:"ping"})` returned the
+page nonce (`echo:ping nonce:mg-76`) — proof of real in-page execution.
+
+Two host facts worth keeping:
+- The runtime exposes page tools as a per-tab snapshot object invoked via
+  `tools.call(name, input)`; a stale snapshot must be re-fetched. An agent
+  calling `tools.<name>()` gets `is not a function` — agent error, not outage.
+- Filming-day drill: if the coach claims no tools, open /spike.html first. Page
+  verdicts green + agent sees none = check the plugin cache module path above.
