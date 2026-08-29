@@ -7,6 +7,7 @@ import { lessonProgress, type MasteryStack } from "../lib/masteryStack";
 import { PracticePanel } from "./PracticePanel";
 import { RubricPanel } from "./RubricPanel";
 import { StartCoaching } from "./StartCoaching";
+import { ToolInspectorPanel, useInspectorVisibility } from "./ToolInspector";
 import { ToolRoster } from "./ToolRoster";
 import { useMasteryGate } from "./useMasteryGate";
 
@@ -18,6 +19,7 @@ export function LessonPracticeSection(props: {
 }) {
   const { slug, title, questionIds, brief } = props;
   const gate = useMasteryGate();
+  const inspector = useInspectorVisibility();
   const stack: MasteryStack | null = gate.stack;
 
   useEffect(() => {
@@ -116,6 +118,10 @@ export function LessonPracticeSection(props: {
                 ? undefined
                 : "No agent runtime detected — page buttons drive the same engine. Listing the tools that WOULD be registered."
             }
+            inspectorToggle={{
+              open: inspector.visible,
+              onToggle: inspector.toggle,
+            }}
           />
         </details>
         <details className="lp-tools">
@@ -123,6 +129,7 @@ export function LessonPracticeSection(props: {
           <StartCoaching agentDetected={gate.agentDetected} compact />
         </details>
       </div>
+      <ToolInspectorPanel gate={gate} visible={inspector.visible} />
     </div>
   );
 }

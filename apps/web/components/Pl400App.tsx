@@ -15,6 +15,7 @@ import { LessonAim } from "./LessonReflection";
 import { PracticePanel } from "./PracticePanel";
 import { RubricPanel } from "./RubricPanel";
 import { StartCoaching } from "./StartCoaching";
+import { ToolInspectorPanel, useInspectorVisibility } from "./ToolInspector";
 import { ToolRoster } from "./ToolRoster";
 import { useMasteryGate } from "./useMasteryGate";
 import { YourModelPanel } from "./YourModelPanel";
@@ -28,6 +29,7 @@ const DIMENSIONS: { key: RubricDimension; label: string }[] = [
 
 export function Pl400App() {
   const gate = useMasteryGate();
+  const inspector = useInspectorVisibility();
   const stack: MasteryStack | null = gate.stack;
 
   useEffect(() => {
@@ -190,6 +192,7 @@ export function Pl400App() {
               quarantined until then.
             </p>
           </section>
+          <ToolInspectorPanel gate={gate} visible={inspector.visible} />
         </div>
 
         <aside className="pl400-aside">
@@ -208,6 +211,10 @@ export function Pl400App() {
                 ? undefined
                 : "No agent runtime detected — page buttons drive the same engine. Listing the tools that WOULD be registered."
             }
+            inspectorToggle={{
+              open: inspector.visible,
+              onToggle: inspector.toggle,
+            }}
           />
           <RubricPanel scores={gate.learner.scores} />
           {gate.storageDegraded ? (
