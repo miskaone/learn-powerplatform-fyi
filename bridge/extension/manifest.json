@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "WebMCP Bridge",
+  "version": "0.1.0",
+  "description": "Pairs ONE tab's WebMCP tools with a local MCP bridge server. Only https://learn.powerplatform.fyi.",
+  "host_permissions": [
+    "https://learn.powerplatform.fyi/*"
+  ],
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://learn.powerplatform.fyi/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://learn.powerplatform.fyi/*"
+      ],
+      "js": [
+        "injected.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "WebMCP Bridge"
+  }
+}
