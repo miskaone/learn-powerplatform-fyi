@@ -42,7 +42,7 @@ export function validateRubricSubmission(
       );
     } else if (corpus !== undefined && !corpus.includes(quote)) {
       errors.push(
-        `${dimension}: quote is not verbatim from the session transcript`,
+        `${dimension}: quote must be VERBATIM from the lesson text on this page (the passage the learner's answer demonstrated) — not from the chat, and not the learner's own words`,
       );
     }
 

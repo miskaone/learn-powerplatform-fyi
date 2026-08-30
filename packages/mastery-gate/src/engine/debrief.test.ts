@@ -363,7 +363,7 @@ test('learner name never enters rubric evidence', () => {
   expect(verdict.ok).toBe(false);
   if (!verdict.ok) {
     expect(verdict.errors.join(';')).toContain(
-      'quote is not verbatim from the session transcript',
+      "quote must be VERBATIM from the lesson text on this page (the passage the learner's answer demonstrated) — not from the chat, and not the learner's own words",
     );
   }
   expect(engine.getLearnerState().gatePassed).toBe(false);

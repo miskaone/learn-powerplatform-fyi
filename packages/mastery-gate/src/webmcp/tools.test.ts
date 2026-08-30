@@ -556,7 +556,7 @@ const GATE_REGRESS_HINT =
   'Gate closed: this accepted rescore dropped a dimension below 3 — advance_module and start_exam are revoked. Re-check this page\'s tools (getTools).';
 
 const RUBRIC_INTERVIEW_GUIDANCE =
-  'MCQ coverage is sufficient but the gate has not passed — run the rubric interview now: ask 5–8 open questions across recall, connections, application, and transfer, one at a time, never answering for the learner. Then submit score_rubric with a 0–4 score per dimension and a verbatim evidence quote for each.';
+  'MCQ coverage is sufficient but the gate has not passed — run the rubric interview now: ask 5–8 open questions across recall, connections, application, and transfer, one at a time, never answering for the learner. Then submit score_rubric with a 0–4 score per dimension and, for each, a VERBATIM quote from the lesson text on the page — the passage the learner\'s answer demonstrated — never a quote of the learner\'s or your own words.';
 
 function stateWithFires(fires: Record<string, number>): LearnerStatePublic {
   return {

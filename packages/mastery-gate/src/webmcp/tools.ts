@@ -82,7 +82,7 @@ const GATE_REGRESS_HINT =
   'Gate closed: this accepted rescore dropped a dimension below 3 — advance_module and start_exam are revoked. Re-check this page\'s tools (getTools).';
 
 const RUBRIC_INTERVIEW_GUIDANCE =
-  'MCQ coverage is sufficient but the gate has not passed — run the rubric interview now: ask 5–8 open questions across recall, connections, application, and transfer, one at a time, never answering for the learner. Then submit score_rubric with a 0–4 score per dimension and a verbatim evidence quote for each.';
+  'MCQ coverage is sufficient but the gate has not passed — run the rubric interview now: ask 5–8 open questions across recall, connections, application, and transfer, one at a time, never answering for the learner. Then submit score_rubric with a 0–4 score per dimension and, for each, a VERBATIM quote from the lesson text on the page — the passage the learner\'s answer demonstrated — never a quote of the learner\'s or your own words.';
 
 interface ProfileSuffixes {
   hint: string;
@@ -355,7 +355,7 @@ export function createToolset(
     ),
     score_rubric: descriptor(
       'score_rubric',
-      'Submit 0-4 scores for recall, connections, application, and transfer, each grounded by a VERBATIM quote from the lesson text as evidence. Call only after a rubric interview: 5-8 open questions across the four dimensions, one at a time, never answering for the learner. The engine rejects non-verbatim evidence, requires prior graded attempts, and refuses during an exam. Every dimension at 3 or above opens the gate; the response then names the newly available tools.',
+      'Submit 0-4 scores for recall, connections, application, and transfer, each grounded by a VERBATIM quote copied exactly from the lesson text on the page — the passage the learner\'s answer demonstrated. Quotes of the learner\'s answers or your own words always fail validation. Call only after a rubric interview: 5-8 open questions across the four dimensions, one at a time, never answering for the learner. The engine rejects non-verbatim evidence, requires prior graded attempts, and refuses during an exam. Every dimension at 3 or above opens the gate; the response then names the newly available tools.',
       scoreRubricSchema(),
       async (input) => {
         const parsed = parseScoreRubric(input);

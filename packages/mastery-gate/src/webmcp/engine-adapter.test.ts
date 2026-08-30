@@ -219,7 +219,7 @@ describe('MasteryEngineFacade', () => {
     );
     expect(verdict.accepted).toBe(false);
     expect(verdict.gatePassed).toBe(false);
-    expect(verdict.rejectionReason).toContain('verbatim');
+    expect(verdict.rejectionReason).toContain('VERBATIM');
   });
 
   test('lesson text setters key by active lesson slug and fall back to track', () => {
@@ -327,7 +327,7 @@ describe('MasteryEngineFacade', () => {
     );
     expect(verdict.accepted).toBe(false);
     expect(verdict.gatePassed).toBe(false);
-    expect(verdict.rejectionReason).toContain('verbatim');
+    expect(verdict.rejectionReason).toContain('VERBATIM');
   });
 
   test('scoreRubric rejects quotes laundered through log_coaching_note', () => {
@@ -345,7 +345,7 @@ describe('MasteryEngineFacade', () => {
     );
     expect(verdict.accepted).toBe(false);
     expect(verdict.gatePassed).toBe(false);
-    expect(verdict.rejectionReason).toContain('verbatim');
+    expect(verdict.rejectionReason).toContain('VERBATIM');
   });
 
   test('scoreRubric rejects quotes harvested from tool output (prompts, options, misconceptions, titles)', () => {

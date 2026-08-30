@@ -138,7 +138,7 @@ test('corpus mismatch errors with the verbatim message', () => {
     let found = false;
     for (const error of result.errors) {
       if (
-        error === `${dimension}: quote is not verbatim from the session transcript`
+        error === `${dimension}: quote must be VERBATIM from the lesson text on this page (the passage the learner's answer demonstrated) — not from the chat, and not the learner's own words`
       ) {
         found = true;
       }
