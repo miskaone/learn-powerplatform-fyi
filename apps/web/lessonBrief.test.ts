@@ -256,6 +256,8 @@ test("kickoff opens with an unconditional tool call and anti-refusal clause", ()
   expect(KICKOFF_PROMPT).toContain(
     "If an aim is already saved for this lesson, confirm it in one line",
   );
+  expect(KICKOFF_PROMPT).toContain('invoke through its call method');
+  expect(KICKOFF_PROMPT).toContain('use your in-app browser capability');
   expect(KICKOFF_PROMPT).toContain("ORIENT:");
   expect(KICKOFF_PROMPT).toContain("a map, not the material");
   expect(KICKOFF_PROMPT).toContain("COMMIT FIRST:");
