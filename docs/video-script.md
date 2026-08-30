@@ -64,10 +64,27 @@ tool) — and pivots to one probing question. Cut on the refusal.
 
 ## Beat 2 — The miss that diagnoses you (0:35–1:15 · VO 16s)
 
-Same session, next question: commit the known trap distractor through the
-coach ("I'm going with B because…"). Verdict lands: named misconception,
-never the key. Coach (or Review click) drives navigate_to_anchor — the page
-scrolls itself to the repairing section.
+THE AGENT IS THE POINT OF THIS BEAT — the VO says "the AI coaches through
+the gap; the deterministic engine diagnosed it", so both halves must be on
+screen. Do NOT click the page's own Review button; drive it all through the
+coach:
+
+1. Commit the trap out loud: "I'll go with A — hidden UI is enforcement."
+   (ml13-q6 option A, misconception "Client code as a server boundary" — the
+   most viscerally wrong-feeling trap in the lesson, and a real PL-400 exam
+   trap. Alternative: ml13-q2 option A, "Role, permission, and consent
+   collapsed".)
+2. Coach calls submit_answer. Verdict names the misconception — never the
+   key, never "the answer is D".
+3. Coach calls get_misconception_brief and coaches Socratically FROM the
+   named model — not a lecture, a question about why hiding a screen isn't
+   a boundary.
+4. Coach calls navigate_to_anchor — THE PAGE SCROLLS ITSELF to the repairing
+   section while the chat pane sits still. That shot is the beat: an agent
+   moving the site. Hold 3s.
+
+Framing: keep the lesson pane wide enough that the self-scroll is unmistakable;
+the misconception name must be legible (punch in if not).
 
 > VO (vo/beat2.mp3): "Miss a question, and the site doesn't say 'wrong.' It
 > names the faulty mental model that produced the miss — one of seventeen it
