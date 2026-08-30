@@ -73,10 +73,22 @@ export function StartCoaching(props: {
 
   const body = (
     <>
+      <ol className="pl400-coach-steps">
+        <li>
+          Open this page in an AI browser that speaks WebMCP — the ChatGPT
+          desktop app&apos;s built-in browser (nothing to install), or Chrome
+          152+ with the <code>#enable-webmcp-testing</code> flag.
+        </li>
+        <li>Copy the coach prompt with the button below.</li>
+        <li>
+          Paste it into the chat beside the page. If ChatGPT offers
+          &ldquo;Continue in Work,&rdquo; accept — Work mode is where page
+          tools bind best. The coach takes it from there.
+        </li>
+      </ol>
       <p className="muted">
-        Open this page inside the ChatGPT in-app browser (or any WebMCP-capable
-        agent) and paste the kickoff prompt. The page&apos;s tools do the
-        grading; the agent coaches through what the roster permits.
+        The page&apos;s tools do the grading; the agent coaches through what
+        the roster permits.
       </p>
       <pre className="pl400-kickoff-prompt">{KICKOFF_PROMPT}</pre>
       <div className="pl400-btn-row">
