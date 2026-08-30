@@ -261,6 +261,7 @@ test("kickoff opens with an unconditional tool call and anti-refusal clause", ()
   expect(KICKOFF_PROMPT).toContain('run tool discovery for it before concluding');
   expect(KICKOFF_PROMPT).toContain("PRECEDENCE:");
   expect(KICKOFF_PROMPT).toContain("Do not answer with a bare question");
+  expect(KICKOFF_PROMPT).toContain("do NOT repeat your first wording");
   expect(KICKOFF_PROMPT).toContain("Tool-use capabilities are the exception");
   expect(KICKOFF_PROMPT).toContain("ORIENT:");
   expect(KICKOFF_PROMPT).toContain("a map, not the material");
