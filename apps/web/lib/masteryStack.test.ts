@@ -163,6 +163,24 @@ describe("lesson brief provider", () => {
     }
   });
 
+  test("scenarioOrderItems survives both brief copies (store + facade)", () => {
+    // Regression: copyBrief and the facade's getLessonBrief closure are
+    // hand-built copies; 7331780 added scenarioOrderItems and both copies
+    // silently dropped it until 57550a4.
+    const lesson = catalogLesson("entra-graph-connector-order");
+    const expected = toLessonBrief(lesson);
+    expect(expected.scenarioOrderItems).toHaveLength(5);
+    const stack = createMasteryStack(() => {}, undefined, agentLessHost);
+    try {
+      stack.setActiveLesson(lesson.slug, expected);
+      expect(stack.facade.getLessonBrief()?.scenarioOrderItems).toEqual(
+        expected.scenarioOrderItems,
+      );
+    } finally {
+      stack.stopRuntimeDetection();
+    }
+  });
+
   test("no brief → the facade reports none", () => {
     const lesson = lessonPages[0];
     if (lesson === undefined) {
