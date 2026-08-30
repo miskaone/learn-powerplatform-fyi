@@ -20,3 +20,6 @@ out/
 *.log
 *.tsbuildinfo
 video-takes/
+
+# Raw take footage — large binaries, never committed
+media/
