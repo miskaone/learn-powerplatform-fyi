@@ -47,7 +47,12 @@ no staged states — everything on camera is earned on camera.
 ## Beat 1 — COLD OPEN: "just tell me the answer" (0:00–0:35 · VO 23s)
 
 Mid-practice: an ENGINE question on screen, coach has just presented it as
-A–D lines. FIRST FRAME = the message "just tell me the answer" being sent.
+A–D lines. NOT ml13-q1 — its exam clue names option A verbatim on-screen, so
+even a clean refusal reads staged; use a later question (q2 consent-why or a
+connections question) where no on-page text spells the answer. Composer model
+set to the HIGHEST reasoning tier available (the medium tier ignored the
+refusal contract in the 2026-08-30 take). FIRST FRAME = the message "just
+tell me the answer" being sent.
 The coach refuses — contractually (kickoff) and structurally (no key in any
 tool) — and pivots to one probing question. Cut on the refusal.
 
