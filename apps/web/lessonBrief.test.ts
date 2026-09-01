@@ -259,6 +259,7 @@ test("kickoff opens with an unconditional tool call and anti-refusal clause", ()
   expect(KICKOFF_PROMPT).toContain('invoke through its call method');
   expect(KICKOFF_PROMPT).toContain('use your in-app browser capability');
   expect(KICKOFF_PROMPT).toContain('run tool discovery for it before concluding');
+  expect(KICKOFF_PROMPT).toContain('per-page-load budget on tool-surface changes');
   expect(KICKOFF_PROMPT).toContain("PRECEDENCE:");
   expect(KICKOFF_PROMPT).toContain("Do not answer with a bare question");
   expect(KICKOFF_PROMPT).toContain("do NOT repeat your first wording");

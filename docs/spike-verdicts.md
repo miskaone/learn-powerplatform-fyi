@@ -175,3 +175,32 @@ Two host facts worth keeping:
   calling `tools.<name>()` gets `is not a function` — agent error, not outage.
 - Filming-day drill: if the coach claims no tools, open /spike.html first. Page
   verdicts green + agent sees none = check the plugin cache module path above.
+
+## Addendum 2026-09-01 — ChatGPT app WebMCP limits (read from the bridge source)
+
+Observed: after a long session of gate open/close and exam start/return, the
+coach reported `WebMCP is disabled for this page because the site's WebMCP
+configuration exceeds supported limits. After correcting the configuration,
+reset NodeREPL and refresh the browser tab to retry.`
+
+Source of truth — `browser-service.mjs` (bundle 26.825.51511), Statsig config
+`codex-app-webmcp-limits`, defaults enforced per DOCUMENT (reset on a top-level
+`Page.frameNavigated`):
+
+| limit | default | Mastery Gate |
+|---|---|---|
+| `max_tools` | 100 | 25 (full set), 13 live in practice |
+| `max_total_descriptor_bytes` | 65,536 | ~17,100 bytes |
+| `max_registration_changes` | 10 | one per *distinct snapshot* the agent fetches |
+
+The tripped limit is `max_registration_changes`: every time the agent's fetched
+tool snapshot differs from the previous one, the counter increments, and past
+10 the host disables WebMCP for that document. Each gate open/close, exam
+start, exam submit, and return-to-practice is one change. A session with
+several rescore round-trips plus exams crosses 10. Our registry only registers
+on set-membership changes (never on description text), so nothing on our side
+churns needlessly — the budget is spent by real pedagogy.
+
+Recovery is a tab refresh (the counter resets on navigation); the kickoff now
+tells the coach to do exactly that and continue. Filming rule: refresh the
+tab before every recording so each take starts with a full budget.

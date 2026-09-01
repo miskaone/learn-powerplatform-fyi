@@ -19,6 +19,9 @@
 - [ ] Tool Roster visible in frame at all times; desktop, dark theme
 - [ ] Screen recording full res; SYSTEM AUDIO OFF (VO is the only audio)
 - [ ] Kickoff = topbar "Copy coach prompt" button, always the live copy
+- [ ] REFRESH THE TAB before every recording — the ChatGPT host allows 10
+      tool-surface changes per page load before it disables WebMCP for that
+      tab (docs/spike-verdicts.md, 2026-09-01); a fresh load resets the budget
 - [ ] Rehearsal gate (ISC-55): each beat lands twice consecutively before recording
 
 ### Host quirks (2026-08-30 state — all handled, none are bugs on camera)
