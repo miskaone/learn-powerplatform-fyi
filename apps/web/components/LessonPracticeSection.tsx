@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect } from "react";
 import type { LessonBriefPublic } from "@learn/mastery-gate/webmcp";
 import "../app/pl-400/pl400.css";
 import { lessonProgress, type MasteryStack } from "../lib/masteryStack";
+import { ExamSection } from "./ExamSection";
 import { PracticePanel } from "./PracticePanel";
 import { RubricPanel } from "./RubricPanel";
 import { StartCoaching } from "./StartCoaching";
@@ -22,6 +22,19 @@ export function LessonPracticeSection(props: {
   const gate = useMasteryGate();
   const inspector = useInspectorVisibility();
   const stack: MasteryStack | null = gate.stack;
+
+  useEffect(() => {
+    if (!gate.examActive) {
+      return;
+    }
+    const mount = document.getElementById("lesson-practice-mount");
+    if (mount == null) {
+      return;
+    }
+    const reduced =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    mount.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+  }, [gate.examActive]);
 
   useEffect(() => {
     if (stack == null) {
@@ -68,15 +81,10 @@ export function LessonPracticeSection(props: {
       className="lp-practice-mount lp-practice-live"
     >
       {gate.examActive ? (
-        <div className="lp-exam-banner" role="status">
-          <span>
-            <strong>Exam in progress.</strong> The exam lives on the track hub
-            — questions and the timer are there, not on lesson pages.
-          </span>
-          <Link href="/pl-400/#exam" className="lp-btn lp-btn-primary">
-            Go to the exam
-          </Link>
-        </div>
+        <section className="lp-exam-inplace" aria-label="Exam in progress">
+          <span className="lp-label">EXAM IN PROGRESS</span>
+          <ExamSection gate={gate} />
+        </section>
       ) : null}
       <span className="lp-label">THIS LESSON</span>
       <p className="muted">{progressLine}</p>

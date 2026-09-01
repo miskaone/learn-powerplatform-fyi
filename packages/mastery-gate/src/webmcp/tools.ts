@@ -73,7 +73,7 @@ const SECOND_FIRE_HINT = (misconceptionId: string): string =>
   `This misconception has now fired twice: get_misconception_brief is now available for "${misconceptionId}" — re-check this page's tools.`;
 
 const EXAM_START_HINT =
-  'Exam started: coaching tools are revoked until submit — only get_exam_status and submit_exam stay registered. Re-check this page\'s tools.';
+  'Exam started: coaching tools are revoked until submit — only get_exam_status and submit_exam stay registered. The page renders the exam in place and scrolls the learner to it; tell them to look at the page. Re-check this page\'s tools.';
 
 const EXAM_SUBMIT_HINT =
   'Exam submitted: get_exam_debrief is now registered — call it to review. Coaching tools return only after the learner clicks "Return to practice" on the exam screen; until then only the exam tools remain. Re-check this page\'s tools.';

@@ -547,7 +547,7 @@ const GATE_PASS_HINT =
   "Gate passed: advance_module and start_exam are now available — re-check this page's tools (getTools) before your next move.";
 
 const EXAM_START_HINT =
-  'Exam started: coaching tools are revoked until submit — only get_exam_status and submit_exam stay registered. Re-check this page\'s tools.';
+  'Exam started: coaching tools are revoked until submit — only get_exam_status and submit_exam stay registered. The page renders the exam in place and scrolls the learner to it; tell them to look at the page. Re-check this page\'s tools.';
 
 const EXAM_SUBMIT_HINT =
   'Exam submitted: get_exam_debrief is now registered — call it to review. Coaching tools return only after the learner clicks "Return to practice" on the exam screen; until then only the exam tools remain. Re-check this page\'s tools.';
