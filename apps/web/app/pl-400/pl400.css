@@ -1058,3 +1058,8 @@ body.fx-exam-lighting .lp > :not(.lp-map) {
 .pl400-coach-steps { margin: 0 0 .75rem; padding-left: 1.3rem; display: grid; gap: .45rem; font-size: .92rem; }
 .pl400-coach-steps li { list-style: decimal; }
 .pl400-coach-steps code { font-size: .85em; }
+
+/* Exam started from a lesson page: the exam only renders on the hub, so pin a
+   route-out banner to the viewport so it is visible wherever the learner is. */
+.lp-exam-banner { position: fixed; left: 50%; top: 4.25rem; transform: translateX(-50%); z-index: 60; display: flex; gap: .9rem; align-items: center; max-width: min(46rem, calc(100vw - 2rem)); padding: .6rem .9rem; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--pl400-accent) 55%, var(--pl400-border)); background: color-mix(in srgb, var(--bg) 88%, var(--pl400-accent)); box-shadow: 0 8px 24px rgba(0,0,0,.35); font-size: .9rem; }
+.lp-exam-banner .lp-btn { white-space: nowrap; text-decoration: none; }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 import type { LessonBriefPublic } from "@learn/mastery-gate/webmcp";
 import "../app/pl-400/pl400.css";
@@ -66,6 +67,17 @@ export function LessonPracticeSection(props: {
       aria-label={`${title} practice`}
       className="lp-practice-mount lp-practice-live"
     >
+      {gate.examActive ? (
+        <div className="lp-exam-banner" role="status">
+          <span>
+            <strong>Exam in progress.</strong> The exam lives on the track hub
+            — questions and the timer are there, not on lesson pages.
+          </span>
+          <Link href="/pl-400/#exam" className="lp-btn lp-btn-primary">
+            Go to the exam
+          </Link>
+        </div>
+      ) : null}
       <span className="lp-label">THIS LESSON</span>
       <p className="muted">{progressLine}</p>
       <PracticePanel
