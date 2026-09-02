@@ -80,9 +80,14 @@ export function LessonPracticeSection(props: {
       aria-label={`${title} practice`}
       className="lp-practice-mount lp-practice-live"
     >
-      {gate.examActive ? (
-        <section className="lp-exam-inplace" aria-label="Exam in progress">
-          <span className="lp-label">EXAM IN PROGRESS</span>
+      {gate.examActive || gate.examPending ? (
+        <section
+          className="lp-exam-inplace"
+          aria-label={gate.examActive ? "Exam in progress" : "Exam debrief"}
+        >
+          <span className="lp-label">
+            {gate.examActive ? "EXAM IN PROGRESS" : "EXAM SUBMITTED — DEBRIEF"}
+          </span>
           <ExamSection gate={gate} />
         </section>
       ) : null}

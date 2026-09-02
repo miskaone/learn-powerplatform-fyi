@@ -59,6 +59,8 @@ export interface MasteryGateView {
    * UI (cross-review BLOCKER 4).
    */
   examActive: boolean;
+  /** A submitted exam whose debrief has not been dismissed (Return to practice / Retake). */
+  examPending: boolean;
   stuckTools: string[];
 }
 
@@ -77,6 +79,7 @@ export function useMasteryGate(): MasteryGateView {
   const [nextAction, setNextAction] = useState<UiNextAction | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [examActive, setExamActive] = useState(false);
+  const [examPending, setExamPending] = useState(false);
   const [stuckTools, setStuckTools] = useState<string[]>([]);
   const [runtimeTick, setRuntimeTick] = useState(0);
   const { flashes, flash } = useToolRosterHighlights();
@@ -128,6 +131,7 @@ export function useMasteryGate(): MasteryGateView {
     const examStatus = s.facade.getExamStatus();
     const examRunning = examStatus.active && !examStatus.submitted;
     setExamActive(examRunning);
+    setExamPending(examStatus.submitted === true);
     // The exam question must never leak into the practice surfaces — while
     // an exam runs, only ExamSection renders it (cross-review BLOCKER 4).
     setQuestion(examRunning ? null : s.facade.getCurrentQuestion());
@@ -286,6 +290,7 @@ export function useMasteryGate(): MasteryGateView {
     agentDetected,
     storageDegraded,
     examActive,
+    examPending,
     stuckTools,
   };
 }
