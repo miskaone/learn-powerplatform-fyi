@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { QuestionPublic } from "@learn/mastery-gate/schema";
 import type { UiVerdict } from "../lib/types";
@@ -15,6 +16,8 @@ export function QuizCard(props: {
   onHint: () => void;
   hint: string | null;
   disabled?: boolean;
+  /** Owning lesson, shown when the question is served outside its lesson (hub practice). */
+  sourceLesson?: { id: string; title: string; slug: string };
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -32,6 +35,14 @@ export function QuizCard(props: {
           Question {props.questionNumber} of {props.questionCount}
         </h3>
       </div>
+      {props.sourceLesson ? (
+        <p className="muted quiz-source">
+          From {props.sourceLesson.id} ·{" "}
+          <Link href={`/pl-400/${props.sourceLesson.slug}/`}>
+            {props.sourceLesson.title}
+          </Link>
+        </p>
+      ) : null}
       <div className="pl400-chips">
         {props.question.concepts.map((concept) => (
           <span key={concept} className="pl400-chip">

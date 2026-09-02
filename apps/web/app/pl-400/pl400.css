@@ -1062,3 +1062,5 @@ body.fx-exam-lighting .lp > :not(.lp-map) {
 
 /* Exam started from a lesson page: render it in place and scroll to it. */
 .lp-exam-inplace { margin: 0 0 1.25rem; padding: 1rem 1.1rem; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--pl400-accent) 55%, var(--pl400-border)); background: color-mix(in srgb, var(--bg) 90%, var(--pl400-accent)); }
+
+.quiz-source { margin: -.25rem 0 .5rem; font-size: .85rem; }

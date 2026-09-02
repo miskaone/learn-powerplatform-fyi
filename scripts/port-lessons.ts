@@ -193,6 +193,28 @@ interface LessonPage {
  * slug; lessons absent here keep their plain-prose scenario. The expected
  * answer (public/pl-400/scenario/<slug>.json) is untouched.
  */
+/**
+ * Authored question-text overrides (2026-09-02), keyed by OUTPUT question id
+ * and option id. Used when a ported stem leans on context the learner may not
+ * have in front of them (hub practice serves questions track-wide, without
+ * the lesson scenario). Ids, keyed answer, and misconception mapping are
+ * untouched — only the words.
+ */
+const QUESTION_TEXT_OVERRIDES: Record<
+  string,
+  { prompt: string; options: Record<string, string> }
+> = {
+  'ml12-q2': {
+    prompt: "CompanyA is migrating invoices, contracts, and identity documents from Oracle into a model-driven app that uses SharePoint document management. Which responsibility split is correct for that migration?",
+    options: {
+          "ml12-q2-a": "The Dataverse Web API migrates and stores every file; SharePoint only authenticates users",
+          "ml12-q2-b": "Store the binaries as Notes attachments in Dataverse and use C# only for a UI extension",
+          "ml12-q2-c": "A cloud flow performs the bulk migration and supplies all the checkpointing automatically",
+          "ml12-q2-d": "A recoverable C# batch migrates the files; the Web API resolves the owning account or contact by alternate key; SharePoint stores the files"
+    },
+  },
+};
+
 const SCENARIO_ORDER_PRESENTATION: Record<
   string,
   { intro: string; items: string[] }
@@ -694,13 +716,21 @@ function convertQuestion(
     }
   }
 
+  const override = QUESTION_TEXT_OVERRIDES[id];
+  const finalOptions = override
+    ? options.map((option) => ({
+        ...option,
+        text: override.options[option.id] ?? option.text,
+      }))
+    : options;
+
   return {
     id,
     objectiveId,
     concepts: map.concepts,
     dimension,
-    prompt: plain(question.prompt),
-    options,
+    prompt: override?.prompt ?? plain(question.prompt),
+    options: finalOptions,
     correctOptionId,
     rationale: plain(question.explanation),
     remediationAnchor: remediationAnchor(slug, dimension),

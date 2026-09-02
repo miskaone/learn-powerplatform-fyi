@@ -65,21 +65,21 @@
       "options": [
         {
           "id": "ml13-q1-a",
-          "text": "Register → Permission → Consent → Connect → Call"
+          "text": "Register \u2192 Permission \u2192 Consent \u2192 Connect \u2192 Call"
         },
         {
           "id": "ml13-q1-b",
-          "text": "Consent → Register → Call → Permission → Connect",
+          "text": "Consent \u2192 Register \u2192 Call \u2192 Permission \u2192 Connect",
           "misconceptionId": "oauth-chain-unordered"
         },
         {
           "id": "ml13-q1-c",
-          "text": "Connect → Register → Consent → Permission → Call",
+          "text": "Connect \u2192 Register \u2192 Consent \u2192 Permission \u2192 Call",
           "misconceptionId": "oauth-chain-unordered"
         },
         {
           "id": "ml13-q1-d",
-          "text": "Call → Connect → Permission → Consent → Register",
+          "text": "Call \u2192 Connect \u2192 Permission \u2192 Consent \u2192 Register",
           "misconceptionId": "oauth-chain-unordered"
         }
       ],
@@ -337,22 +337,22 @@
       "options": [
         {
           "id": "ml11-q2-a",
-          "text": "External legacy application → Dataverse scheduler",
+          "text": "External legacy application \u2192 Dataverse scheduler",
           "misconceptionId": "trigger-ignores-origin"
         },
         {
           "id": "ml11-q2-b",
-          "text": "Browser web resource → server-side migration job",
+          "text": "Browser web resource \u2192 server-side migration job",
           "misconceptionId": "client-side-is-server-side"
         },
         {
           "id": "ml11-q2-c",
-          "text": "Microsoft Graph → any arbitrary legacy system",
+          "text": "Microsoft Graph \u2192 any arbitrary legacy system",
           "misconceptionId": "component-role-collapse"
         },
         {
           "id": "ml11-q2-d",
-          "text": "Dataverse server event → external handler"
+          "text": "Dataverse server event \u2192 external handler"
         }
       ],
       "correctOptionId": "ml11-q2-d",
@@ -405,21 +405,21 @@
       "options": [
         {
           "id": "ml11-q4-a",
-          "text": "Account update → Microsoft Graph → arbitrary legacy application",
+          "text": "Account update \u2192 Microsoft Graph \u2192 arbitrary legacy application",
           "misconceptionId": "component-role-collapse"
         },
         {
           "id": "ml11-q4-b",
-          "text": "Dataverse Account update → registered webhook → Azure Function handler → external/Dataverse API calls"
+          "text": "Dataverse Account update \u2192 registered webhook \u2192 Azure Function handler \u2192 external/Dataverse API calls"
         },
         {
           "id": "ml11-q4-c",
-          "text": "Account update → web resource server code → automatic background load",
+          "text": "Account update \u2192 web resource server code \u2192 automatic background load",
           "misconceptionId": "client-side-is-server-side"
         },
         {
           "id": "ml11-q4-d",
-          "text": "Account update → custom connector definition with no caller → migration completes",
+          "text": "Account update \u2192 custom connector definition with no caller \u2192 migration completes",
           "misconceptionId": "component-role-collapse"
         }
       ],
@@ -805,26 +805,26 @@
         "sharepoint-content"
       ],
       "dimension": "connections",
-      "prompt": "What is the correct responsibility split in the selected architecture?",
+      "prompt": "CompanyA is migrating invoices, contracts, and identity documents from Oracle into a model-driven app that uses SharePoint document management. Which responsibility split is correct for that migration?",
       "options": [
         {
           "id": "ml12-q2-a",
-          "text": "Web API migrates and stores every file; SharePoint only authenticates",
+          "text": "The Dataverse Web API migrates and stores every file; SharePoint only authenticates users",
           "misconceptionId": "component-role-collapse"
         },
         {
           "id": "ml12-q2-b",
-          "text": "Notes store binaries; C# is only a UI extension",
+          "text": "Store the binaries as Notes attachments in Dataverse and use C# only for a UI extension",
           "misconceptionId": "capability-equals-fit"
         },
         {
           "id": "ml12-q2-c",
-          "text": "Power Automate supplies all required checkpointing automatically",
+          "text": "A cloud flow performs the bulk migration and supplies all the checkpointing automatically",
           "misconceptionId": "flow-scales-to-bulk"
         },
         {
           "id": "ml12-q2-d",
-          "text": "C# migrates; Web API matches Dataverse customers; SharePoint stores files"
+          "text": "A recoverable C# batch migrates the files; the Web API resolves the owning account or contact by alternate key; SharePoint stores the files"
         }
       ],
       "correctOptionId": "ml12-q2-d",
@@ -1248,7 +1248,7 @@
     {
       "id": "component-role-collapse",
       "name": "One component absorbs every job",
-      "contrast": "A webhook is event delivery; the Azure Function is custom compute; the Web API loads data; a custom connector describes how consumers call an API. No component absorbs its neighbor’s job, and the first component in a diagram is not automatically the one doing the processing.",
+      "contrast": "A webhook is event delivery; the Azure Function is custom compute; the Web API loads data; a custom connector describes how consumers call an API. No component absorbs its neighbor\u2019s job, and the first component in a diagram is not automatically the one doing the processing.",
       "socraticSeeds": [
         "Which single job does this component actually own?",
         "Which component in your design is quietly doing two jobs?"
@@ -1291,7 +1291,7 @@
       "contrast": "Business and Non-Business are separation groups, not allow-and-deny levels or quality ratings. Compatibility depends on whether two connectors stay grouped together under every applicable policy, and Non-Business is not Blocked.",
       "socraticSeeds": [
         "Is Business allowing something, or grouping something?",
-        "What would “more permissive” even mean for a data-boundary label?"
+        "What would \u201cmore permissive\u201d even mean for a data-boundary label?"
       ],
       "anchor": "dlp-effective-policy-intersection-rule"
     },

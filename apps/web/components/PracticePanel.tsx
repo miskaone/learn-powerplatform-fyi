@@ -387,6 +387,18 @@ export function PracticePanel(props: {
             onSubmit={handleSubmitAnswer}
             onHint={handleHint}
             hint={currentHint}
+            sourceLesson={
+              props.lessonSlug === undefined
+                ? (() => {
+                    const owner = lessonIndex.find((entry) =>
+                      entry.questionIds.includes(question.id),
+                    );
+                    return owner
+                      ? { id: owner.id, title: owner.title, slug: owner.slug }
+                      : undefined;
+                  })()
+                : undefined
+            }
           />
         </div>
       ) : null}
