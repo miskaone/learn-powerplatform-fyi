@@ -266,6 +266,7 @@ test("kickoff opens with an unconditional tool call and anti-refusal clause", ()
   expect(KICKOFF_PROMPT).toContain("Tool-use capabilities are the exception");
   expect(KICKOFF_PROMPT).toContain("ORIENT:");
   expect(KICKOFF_PROMPT).toContain("a map, not the material");
+  expect(KICKOFF_PROMPT).toContain("STAY ON MY PAGE:");
   expect(KICKOFF_PROMPT).toContain("COMMIT FIRST:");
   expect(KICKOFF_PROMPT).toContain('when I demand the answer ("just tell me"), you refuse too');
   expect(KICKOFF_PROMPT).toContain("never draft the commitment for me");
