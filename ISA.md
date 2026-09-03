@@ -126,7 +126,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 - [x] ISC-16: Routing table verified row by row — first miss→hint, second miss→review, repeated misconception→coach, correct+low-confidence→go_deeper, gate-pass→advance (one unit test per row)
 - [x] ISC-17: Hint ladder refuses tier-2 before a genuine first attempt (unit test)
 - [x] ISC-18: Learner state survives page reload via localStorage (browser test)
-- [ ] ISC-19: `bun test` green across the engine package in the cold clone
+- [x] ISC-19: `bun test` green across the engine package in the cold clone — evidence: fresh `git clone` of miskaone/learn-powerplatform-fyi @ d62a1f9, `bun install --frozen-lockfile`, `bun test` 563 pass / 0 fail, `bun run build` OK — 2026-09-02
 - [x] ISC-20: Tool-registry state machine registers/retracts the correct tool set for each phase transition (unit test per transition)
 
 ### WebMCP tool surface
