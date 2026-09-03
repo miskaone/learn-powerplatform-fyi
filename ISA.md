@@ -165,7 +165,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 ### Submission package
 
 - [x] ISC-45: Package README contains the registerTool example with name, description, inputSchema, and execute verbatim — grep-verified: one `document.modelContext.registerTool` example carries all four fields
-- [ ] ISC-46: Demo video public on YouTube, under 3 minutes, with audio, showing all three scripted beats
+- [x] ISC-46: Demo video public on YouTube, under 3 minutes, with audio, showing all three scripted beats — evidence: https://youtu.be/Eddk5xpK9ig, 1:47, cloned-voice VO on all four beats + end card, oEmbed resolves publicly — 2026-09-02
 - [ ] ISC-47: Devpost text docs filed — use-case fit, UX improvement, collaboration story, implementation description
 - [ ] ISC-48: Devpost submission confirmed complete before 2026-09-03 1pm PDT
 - [ ] ISC-49: Devpost checklist re-verified against the live repo on the morning of Sep 3

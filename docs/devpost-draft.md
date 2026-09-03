@@ -1,7 +1,7 @@
 # Devpost Submission Draft — Mastery Gate (v2, 2026-08-28)
 
 > Live: https://learn.powerplatform.fyi/pl-400 · Repo: https://github.com/miskaone/learn-powerplatform-fyi (MIT)
-> Video: `[PENDING — YouTube link]`
+> Video: https://youtu.be/Eddk5xpK9ig
 
 ---
 
