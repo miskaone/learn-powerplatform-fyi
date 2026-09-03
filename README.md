@@ -47,6 +47,22 @@ WebMCP support varies by agent host. Verified working:
 | Edge (+ flag) with Copilot chat | ❌ no invocation bridge | The page runtime registers under Edge, and Copilot can read the roster — but Copilot exposes no tool-invocation bridge to its chat. Same class as other text-only hosts. |
 | Codex Chrome extension side panel | ❌ no bridge | Reads page text only. It injects a `modelContext` but does not bridge tool *invocation* to the conversation, so it reports zero callable tools on any WebMCP site. Not a limitation of this page. |
 
+**To try the coach (ChatGPT desktop app):** open the page in the app's built-in
+browser → click **Copy coach prompt** (topbar, or the Start Coaching panel) →
+paste it into the chat beside the page → if offered "Continue in Work", accept.
+The coach's first act is a tool call (`get_learner_state`).
+
+Two host behaviours to know (2026-09, ChatGPT app 26.825.x — see
+`docs/spike-verdicts.md`):
+
+- Native page-tool injection into a conversation is intermittent since the
+  app's 2026-08-28 update. The kickoff prompt detects it and routes through the
+  app's own WebMCP browser bridge (`webmcp_list_tools` / `webmcp_invoke_tool`),
+  which calls the same registered tools — you may see "Used the browser" chips.
+- The app allows **10 tool-surface changes per page load** before it disables
+  WebMCP for that tab. Every gate open/close and exam start/exit is one change.
+  Refreshing the tab resets the budget; the kickoff tells the coach to do so.
+
 If your agent says it can only read the page text, you are in a host without a
 WebMCP invocation bridge — the page registers its tools regardless. To verify
 independently, open devtools on the page and run:

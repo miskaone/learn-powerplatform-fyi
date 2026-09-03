@@ -145,6 +145,20 @@ one that wrote it. That process found and sealed, among others, five independent
 exam-escape paths, a self-serviceable mastery gate, and a tool response that
 truthfully described a state change that never happened — before any judge could.
 
+
+**The host moved under us (2026-08-28 → 09-02).** The ChatGPT desktop app's
+plugin update briefly broke its own browser bridge (a missing `scripts/` dir in
+the cached skill; symlink-repaired), then native page-tool injection into
+conversations turned intermittent, and finally a long session tripped an
+undocumented **10-changes-per-page-load** budget on the tool surface (read
+straight from `browser-service.mjs`: `max_tools` 100, `max_total_descriptor_bytes`
+65,536, `max_registration_changes` 10). None of it was the page — Chrome 152's
+reference runtime returned all tools throughout — but a coach that stalls on a
+host quirk is a bad coach, so the kickoff now self-heals all three: it falls
+back to the app's own WebMCP bridge (same registered tools, different
+transport), corrects the `tools.call(name, input)` convention, and refreshes
+the tab when the change budget is spent, saying so in one line each time.
+
 ## What's next
 
 The remaining designed lessons, more certification tracks, spaced-review

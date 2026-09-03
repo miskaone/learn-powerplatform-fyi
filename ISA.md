@@ -107,7 +107,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 
 - [x] ISC-1: WebMCP namespace verdict for Chrome-behind-flag recorded in the repo (which of `navigator.modelContext` / `document.modelContext` resolves, with probe output)
 - [x] ISC-2: WebMCP namespace verdict for the ChatGPT in-app browser recorded in the repo
-- [ ] ISC-3: Adapter shim feature-detects both namespaces and passes unit tests against a mock of each
+- [x] ISC-3: Adapter shim feature-detects both namespaces and passes unit tests against a mock of each — evidence: `model-context.ts` resolves `document.modelContext` then `navigator.modelContext`; `mock-model-context.test.ts` + spike verdicts (ChatGPT app: document present/navigator absent; Chrome 152: both) — 2026-09-02
 - [x] ISC-4: Dynamic deregistration spike verdict recorded in Decisions — Exam Mode mode chosen (real revocation | refusal fallback) before any dependent work starts
 - [x] ISC-5: Repository `miskaone/learn-powerplatform-fyi` exists and is public
 - [x] ISC-6: MIT `LICENSE` file at repo root, present from the first commit
@@ -132,11 +132,11 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 ### WebMCP tool surface
 
 - [x] ISC-21: All ten static tools registered on page load, enumerable via `getTools()` (get_learner_state, get_current_context, navigate_to_anchor, log_coaching_note, get_current_question, submit_answer, get_hint, request_next_action, prescribe_drill, score_rubric)
-- [ ] ISC-22: `get_current_question` response schema structurally lacks any answer-key or distractor-map field (schema test + runtime audit)
-- [ ] ISC-23: `submit_answer` on a miss returns the named misconception id and never the correct answer (test)
-- [ ] ISC-24: `advance_module` absent from `getTools()` while any rubric dimension <3
-- [ ] ISC-25: `advance_module` appears via `toolchange` when the gate passes (integration test)
-- [ ] ISC-26: `get_misconception_brief` registers only after the same misconception fires twice (test)
+- [x] ISC-22: `get_current_question` response schema structurally lacks any answer-key or distractor-map field (schema test + runtime audit) — evidence: `get_current_question returns the public question and omits answer-key fields` + `serialized grade contains no answer-key material` (tests) — 2026-09-02
+- [x] ISC-23: `submit_answer` on a miss returns the named misconception id and never the correct answer (test) — evidence: `submit_answer on a miss returns the misconception id and never the correct option`; `miss-then-correct names the misconception the learner actually fired` (tests) — 2026-09-02
+- [x] ISC-24: `advance_module` absent from `getTools()` while any rubric dimension <3 — evidence: `registry: gate passes then regresses revokes advance_module and start_exam` (test); live take 2026-09-02 file_70: Inspector 13 live with connections=2 — 2026-09-02
+- [x] ISC-25: `advance_module` appears via `toolchange` when the gate passes (integration test) — evidence: `score_rubric toolChangeHint is present only when accepted and the gate passes` (test) + live take file_70: 13 → 15 tools on the accepted rescore, `advance_module`/`start_exam` appear (ChatGPT host polls; Chrome 152 events) — 2026-09-02
+- [x] ISC-26: `get_misconception_brief` registers only after the same misconception fires twice (test) — evidence: `misconceptionFires increments only on misses with a misconceptionId` + brief-registration tests in tools/registry suites — 2026-09-02
 - [x] ISC-27: `reveal_outcome` registers only after `commit_prediction` lands — commit-then-reveal enforced by tool availability (test) — registry transition test observes it in `getTools()`; also exercised live agent-less 2026-08-27 (Reveal appeared only after commit)
 - [x] ISC-28: `start_exam` revokes the coaching toolset per the ISC-4 verdict (deregistration observed in `getTools()`, or every coaching tool returns proctor-refusal states) — deregister-mode registry test asserts the exam-only set via `getTools()`; refusal fallback tested behind the same interface; live roster collapse to exam tools re-confirmed on production 2026-08-27
 - [x] ISC-29: `get_exam_debrief` registers only after `submit_exam` (test) — registry test asserts absent pre-submit, present post-submit
@@ -145,13 +145,13 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 ### UI (`/pl-400`)
 
 - [x] ISC-31: Lesson + quiz flow serves at `learn.powerplatform.fyi/pl-400` — verified 2026-08-27 post micro-lesson restore: hub (track overview + full-track practice) and all five `/pl-400/[slug]` lesson pages return 200 live with the designed arc (scenario commit → concepts → visual → distractors → retrieval lab → drills → references); quiz flow probed end-to-end in real Chrome (miss verdict names misconception + contrast, resolution releases rationale, per-lesson scope shows "N of 7", hub shows "N of 34")
-- [ ] ISC-32: Tool Roster panel lists currently registered tools and updates live on `toolchange`
-- [ ] ISC-33: Rubric panel renders all four dimensions separately (no averaged display)
+- [x] ISC-32: Tool Roster panel lists currently registered tools and updates live on `toolchange` — evidence: live takes 2026-08-31/09-02 — roster/Inspector count moves 13 ↔ 15 ↔ 2 on camera within the 1.5s poll — 2026-09-02
+- [x] ISC-33: Rubric panel renders all four dimensions separately (no averaged display) — evidence: Rubric panel renders Recall/Connections/Application/Transfer as separate bars with per-dimension N/4 and a gate chip; no averaged figure anywhere (screenshots 2026-09-01/02) — 2026-09-02
 - [x] ISC-34: `navigate_to_anchor` scrolls to and visibly highlights the target section — probed 2026-08-27: same-page (coach action → scroll + `anchor-highlight` class observed) and cross-page live (hub → `mastery-gate:navigate-anchor` event → router push to the owning lesson → anchor scrolled into view; highlight auto-clears after 2s as designed)
 - [ ] ISC-35: Every engine path is completable agent-less via page controls (manual walkthrough, scripted checklist)
 - [x] ISC-36: Flip-Condition drill playable end-to-end: mutate assumption → commit prediction → reveal outcome — walked live on production 2026-08-27 (flip "External users?" → commit "Power Pages" + reasoned why → reveal: prediction held, transfer result recorded to ledger)
 - [x] ISC-37: Exam Mode UI shows timer and locked/unlocked tool state per the ISC-4 verdict — verified live 2026-08-27: mm:ss countdown ticking, full locked-tool list rendered from real registry state (every coaching tool LOCKED mid-exam), roster restored on return to practice
-- [ ] ISC-38: Full flow renders and operates in the ChatGPT in-app browser (manual probe, screenshots)
+- [x] ISC-38: Full flow renders and operates in the ChatGPT in-app browser (manual probe, screenshots) — evidence: full arc executed in the ChatGPT in-app browser 2026-08-29 → 09-02 (kickoff, practice, misconception routing, rubric interview, gate open/close, exam start/submit/debrief) with recordings — 2026-09-02
 
 ### Content (two objectives)
 
@@ -173,7 +173,7 @@ ChatGPT in-app browser, with the sub-3-minute demo video and required documentat
 ### Anti-criteria and antecedents
 
 - [ ] ISC-50: Anti: no answer-key material is reachable through any registered tool response (schema audit + adversarial runtime probe asking for answers via every tool)
-- [ ] ISC-51: Anti: zero commits land in `miskaone/powerplatform-fyi` for this feature (git log probe on the flagship repo)
+- [x] ISC-51: Anti: zero commits land in `miskaone/powerplatform-fyi` for this feature (git log probe on the flagship repo) — evidence: `git log --since=2026-08-24` on miskaone/powerplatform-fyi matches nothing for mastery/webmcp/pl-400/coach — 2026-09-02
 - [x] ISC-52: Anti: no server API routes, account code, or LLM-proxy code exists in the repo (static probe)
 - [x] ISC-53: Anti: no drag-drop canvas and no free-text NLP scoring component exists in the repo (static probe + review)
 - [x] ISC-54: Anti: no credential, API token, or account id is committed (git grep over tracked files)
@@ -231,10 +231,10 @@ architectural, not asserted.
 ### Polish rider (approved 2026-08-28/29; shipped 2026-08-29 after lane stall)
 
 - [x] ISC-87: In-lesson section map lists anchors in DOCUMENT order matching LessonPage render order (order regression test green)
-- [ ] ISC-88: Prev/next lesson footer follows lessonIndex order on every lesson page (live pass pending)
+- [x] ISC-88: Prev/next lesson footer follows lessonIndex order on every lesson page (live pass pending) — evidence: live ML-11 page footer shows PREVIOUS 01 Entra-Graph / NEXT 03 DLP, matching lessonIndex order (take file_45, 2026-09-01) — 2026-09-02
 - [x] ISC-89: Hub continue button derives the first incomplete lesson and advances past fully-attempted ones; all-complete hides it (regression tests green)
 - [x] ISC-90: set_focus accepts only the closed preset enum with anchor validation; exam-lighting refused as site-managed everywhere; every preset except clear-focus refused mid-exam; dimmed sections are inert (tests green)
-- [ ] ISC-91: Gate-pass mastery theming reflects engine gatePassed truth and reverts on regress (engine-prop wiring shipped; visual live pass pending)
+- [x] ISC-91: Gate-pass mastery theming reflects engine gatePassed truth and reverts on regress (engine-prop wiring shipped; visual live pass pending) — evidence: Rubric card border + "Gate: open" (green) with gate passed; "Gate: locked" (red) after regress rescore, on camera 2026-08-31/09-02 — 2026-09-02
 
 ### Bridge (art of the possible, approved 2026-08-28)
 
