@@ -16,7 +16,7 @@ Devpost lets you save a draft and edit until the deadline — create the entry E
 | 9 | Text: improved user experience | ✅ draft | § "The learner experience" |
 | 10 | Text: collaborative capabilities | ✅ draft | § "The collaboration: a panel of two" |
 | 11 | Text: implementation description | ✅ draft | § "Implementation notes (the scars)" |
-| 12 | **Devpost entry created** | ✅ draft | Draft saved with all fields except video (2026-08-29); video link now available to paste |
+| 12 | **Devpost entry created** | ✅ SUBMITTED | https://devpost.com/software/mastery-gate — submitted 2026-09-02, one day ahead of the deadline |
 | 13 | Eligibility (age/territory) | — | Owner confirms at registration |
 
 ## Order of operations
